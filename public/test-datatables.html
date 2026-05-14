@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Work Orders DataTables Test</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+</head>
+<body>
+    <h1>Work Orders DataTables Test</h1>
+    <table id="test-table" class="display">
+        <thead>
+            <tr>
+                <th>WO Number</th>
+                <th>Customer</th>
+                <th>Product</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+    </table>
+
+    <script>
+        console.log('Starting DataTables test...');
+        
+        $(document).ready(function() {
+            console.log('jQuery ready');
+            
+            $('#test-table').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: 'http://127.0.0.1:8001/production/work-orders',
+                    type: 'GET',
+                    error: function(xhr, error, thrown) {
+                        console.error('DataTables AJAX Error:', error, thrown);
+                        console.error('Response:', xhr.responseText);
+                    }
+                },
+                columns: [
+                    { data: 'wo_number', name: 'wo_number' },
+                    { data: 'customer_name', name: 'customer.name' },
+                    { data: 'product_name', name: 'product_name' },
+                    { data: 'status', name: 'status' }
+                ],
+                initComplete: function() {
+                    console.log('DataTables initialized successfully');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

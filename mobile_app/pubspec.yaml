@@ -1,0 +1,76 @@
+name: mobile_app
+description: School Parent and Teachers Portal Mobile Application
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP & API
+  http: ^1.1.0
+  dio: ^5.4.0
+
+  # State Management
+  provider: ^6.1.1
+
+  # Firebase
+  firebase_core: ^4.3.0
+  firebase_messaging: ^16.1.0
+
+  # Local Storage
+  shared_preferences: ^2.2.2
+  flutter_secure_storage: ^10.0.0
+
+  # JSON Serialization
+  json_annotation: ^4.8.1
+
+  # UI
+  flutter_svg: ^2.0.9
+  cached_network_image: ^3.3.0
+  flutter_spinkit: ^5.2.0
+
+  # Utils
+  intl: ^0.20.2
+  url_launcher: ^6.2.2
+  image_picker: ^1.0.5
+  file_picker: ^10.3.8
+  
+  # Charts
+  fl_chart: ^1.1.1
+  google_fonts: ^6.1.0
+  
+  # Notifications
+  flutter_local_notifications: ^19.5.0
+  permission_handler: ^12.0.1
+
+  # Icons
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.7
+  json_serializable: ^6.7.1
+  flutter_launcher_icons: ^0.13.1   # << Added for app icon generation
+
+# Dependency overrides to handle web platform issues
+dependency_overrides:
+  # Exclude firebase_messaging_web to prevent compilation errors on web
+  # The app uses conditional imports with a stub file instead
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+
+# Launcher Icon configuration
+flutter_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"   # <-- your logo path

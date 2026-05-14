@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Production System Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .btn { display: inline-block; padding: 12px 24px; margin: 10px; background: #dc3545; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .btn:hover { background: #c82333; }
+        .btn-test { background: #28a745; }
+        .btn-test:hover { background: #218838; }
+        .status { background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #28a745; }
+        .info { background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .error { background: #ffebee; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f44336; }
+        h1 { color: #333; text-align: center; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏭 Production Work Orders - System Status</h1>
+        
+        <div class="status">
+            <strong>✅ System Status:</strong> All fixes applied and test data created!
+            <ul>
+                <li>✅ View template errors fixed</li>
+                <li>✅ Controller error handling improved</li>
+                <li>✅ Sample customers and materials created</li>
+                <li>✅ All caches cleared</li>
+            </ul>
+        </div>
+        
+        <h3>🎯 Try These Links:</h3>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="/production/work-orders" class="btn">
+                📋 Work Orders Dashboard
+            </a>
+            
+            <a href="/production/work-orders/create" class="btn btn-test">
+                ➕ Create New Work Order (TEST THIS)
+            </a>
+            
+            <a href="/production/machines" class="btn">
+                ⚙️ Production Machines
+            </a>
+        </div>
+        
+        <h3>🔧 If Create Page Still Doesn't Work:</h3>
+        
+        <div class="info">
+            <strong>Check These:</strong>
+            <ol>
+                <li><strong>Are you logged in?</strong> - The page requires authentication</li>
+                <li><strong>User company setup</strong> - Your user must have a company_id assigned</li>
+                <li><strong>Session data</strong> - You may need to set a branch location</li>
+                <li><strong>Browser cache</strong> - Try clearing browser cache or hard refresh (Ctrl+F5)</li>
+            </ol>
+        </div>
+        
+        <h3>📝 What's Available Now:</h3>
+        <ul>
+            <li><strong>4 Sample Customers</strong> including Textile Fashion Ltd, Urban Wear Co, Classic Clothing</li>
+            <li><strong>20 Materials</strong> including Cotton Yarn, Polyester Thread, Labels, Packaging</li>
+            <li><strong>14 Production Machines</strong> with assigned stages (Knitting, Cutting, etc.)</li>
+            <li><strong>Complete 9-Stage Workflow</strong> ready to use</li>
+        </ul>
+        
+        <h3>🚨 If You See Errors:</h3>
+        
+        <div class="error">
+            <strong>Common Issues & Solutions:</strong>
+            <ul>
+                <li><strong>"Company information not found"</strong> → Contact admin to assign company to your user</li>
+                <li><strong>"Session expired"</strong> → Log out and log back in</li>
+                <li><strong>"Page not found"</strong> → Check if you're accessing the correct URL</li>
+                <li><strong>"Server error"</strong> → Check Laravel logs in <code>storage/logs/</code></li>
+            </ul>
+        </div>
+        
+        <h3>🔍 Debug Information:</h3>
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 14px;">
+            <strong>Expected URLs:</strong><br>
+            • Work Orders: <code>/production/work-orders</code><br>
+            • Create Page: <code>/production/work-orders/create</code><br>
+            • Machines: <code>/production/machines</code><br><br>
+            
+            <strong>Menu Location:</strong><br>
+            Left Sidebar → Production → Work Orders<br><br>
+            
+            <strong>Required:</strong><br>
+            • User must be logged in<br>
+            • User must have company_id set<br>
+            • Session should have branch information
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <p><strong>🎉 The production system is ready!</strong></p>
+            <p>Click "Create New Work Order" above to test the page.</p>
+        </div>
+    </div>
+</body>
+</html>

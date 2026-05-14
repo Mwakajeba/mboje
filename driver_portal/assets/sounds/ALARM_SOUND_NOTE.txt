@@ -1,0 +1,18 @@
+ALARM SOUND SETUP
+=================
+
+Please add an alarm sound file named "trip_alarm.mp3" to this directory.
+
+You can download a free alarm sound from:
+- https://pixabay.com/sound-effects/search/alarm/
+- https://freesound.org/search/?q=alarm
+- https://www.zapsplat.com/sound-effect-categories/alarm-sounds/
+
+The file should be:
+- Format: MP3
+- Name: trip_alarm.mp3
+- Duration: 3-10 seconds
+- Volume: Medium to loud
+
+Once you have the file, place it in:
+driver_portal/assets/sounds/trip_alarm.mp3

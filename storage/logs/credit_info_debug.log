@@ -1,0 +1,14 @@
+2026-04-30 10:24:30 - getCustomerCreditInfo called
+Customer ID: 1
+All params: {"customer_id":"1"}
+Method: GET
+URL: http://127.0.0.1:8000/sales/invoices/customer-credit-info?customer_id=1
+User ID: 1
+
+2026-04-30 10:24:31 - getCustomerCreditInfo called
+Customer ID: 1
+All params: {"customer_id":"1"}
+Method: GET
+URL: http://127.0.0.1:8000/sales/invoices/customer-credit-info?customer_id=1
+User ID: 1
+

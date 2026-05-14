@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Maintenance Management System - Complete Flow Documentation</title>
+    <style>
+        body {
+            font-family: 'Calibri', 'Arial', sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #7f8c8d;
+            margin-top: 20px;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .workflow-box {
+            background-color: #ecf0f1;
+            border: 2px solid #3498db;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .step-number {
+            background-color: #3498db;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: inline-block;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        ul, ol {
+            margin-left: 20px;
+        }
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Maintenance Management System - Complete Flow Documentation</h1>
+    
+    <h2>Table of Contents</h2>
+    <ol>
+        <li><a href="#overview">System Overview</a></li>
+        <li><a href="#pre-setup">Pre-Setup Configuration</a></li>
+        <li><a href="#request-flow">Maintenance Request Flow</a></li>
+        <li><a href="#work-order">Work Order Creation and Execution</a></li>
+        <li><a href="#cost-capture">Cost Capture and Recording</a></li>
+        <li><a href="#classification">Cost Classification Logic</a></li>
+        <li><a href="#gl-posting">GL Posting and Asset Updates</a></li>
+        <li><a href="#reports">Reports and Analytics</a></li>
+        <li><a href="#integration">Integration Points</a></li>
+        <li><a href="#permissions">User Roles and Permissions</a></li>
+    </ol>
+
+    <h2 id="overview">1. System Overview</h2>
+    <p>The Maintenance Management System is a comprehensive module within the SmartAccounting Assets Management system that handles the complete lifecycle of asset maintenance from request initiation to cost classification and accounting integration.</p>
+    
+    <h3>Key Features</h3>
+    <ul>
+        <li><strong>Preventive Maintenance</strong>: Scheduled maintenance based on time or usage</li>
+        <li><strong>Corrective Maintenance</strong>: Breakdown and repair requests</li>
+        <li><strong>Major Overhaul</strong>: Significant improvements and capital upgrades</li>
+        <li><strong>Cost Tracking</strong>: Material, labor, and other direct costs</li>
+        <li><strong>Automatic Classification</strong>: Expense vs. Capitalization logic</li>
+        <li><strong>GL Integration</strong>: Automatic journal entry posting</li>
+        <li><strong>Asset Updates</strong>: Automatic cost and depreciation adjustments</li>
+    </ul>
+
+    <h2 id="pre-setup">2. Pre-Setup Configuration</h2>
+    
+    <h3>2.1 Maintenance Types Setup</h3>
+    <p><strong>Location</strong>: <code>/asset-management/maintenance/types</code></p>
+    <p><strong>Purpose</strong>: Define maintenance categories that determine expense/capitalization logic.</p>
+    
+    <div class="workflow-box">
+        <h4>Steps:</h4>
+        <ol>
+            <li>Navigate to Maintenance → Types</li>
+            <li>Click "Create New Maintenance Type"</li>
+            <li>Fill in the form:
+                <ul>
+                    <li><strong>Code</strong>: Unique identifier (e.g., "PM-001")</li>
+                    <li><strong>Name</strong>: Descriptive name (e.g., "Preventive Maintenance - Monthly")</li>
+                    <li><strong>Type</strong>: Select from:
+                        <ul>
+                            <li><code>preventive</code>: Routine scheduled maintenance</li>
+                            <li><code>corrective</code>: Breakdown repairs</li>
+                            <li><code>major_overhaul</code>: Significant improvements</li>
+                        </ul>
+                    </li>
+                    <li><strong>Description</strong>: Detailed explanation</li>
+                    <li><strong>Status</strong>: Active/Inactive</li>
+                </ul>
+            </li>
+            <li>Save</li>
+        </ol>
+    </div>
+
+    <h3>2.2 Maintenance Settings Configuration</h3>
+    <p><strong>Location</strong>: <code>/asset-management/maintenance/settings</code></p>
+    
+    <h4>A. GL Accounts</h4>
+    <ul>
+        <li><strong>Maintenance Expense Account</strong>: Default P&L account for routine maintenance expenses</li>
+        <li><strong>Maintenance WIP Account</strong>: Work-in-Progress account for costs during execution</li>
+        <li><strong>Asset Capitalization Account</strong>: GL account for capitalized maintenance costs</li>
+    </ul>
+    
+    <h4>B. Capitalization Thresholds</h4>
+    <ul>
+        <li><strong>Capitalization Threshold Amount</strong>: Minimum cost (TZS) to qualify for capitalization
+            <ul>
+                <li>Default: TZS 2,000,000</li>
+                <li>Example: Any maintenance costing more than 2M TZS may be capitalized</li>
+            </ul>
+        </li>
+        <li><strong>Capitalization Life Extension Threshold</strong>: Minimum life extension (months) to qualify
+            <ul>
+                <li>Default: 12 months</li>
+                <li>Example: If maintenance extends asset life by 12+ months, it may be capitalized</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h2 id="request-flow">3. Maintenance Request Flow</h2>
+    
+    <h3>Step 1: Request Initiation</h3>
+    <p><strong>Location</strong>: <code>/asset-management/maintenance/requests/create</code></p>
+    
+    <h4>Triggering Events:</h4>
+    <ul>
+        <li><strong>Preventive</strong>: Scheduled maintenance based on calendar or usage</li>
+        <li><strong>Corrective</strong>: Asset breakdown or malfunction</li>
+        <li><strong>Planned Improvement</strong>: Upgrades or enhancements</li>
+    </ul>
+    
+    <div class="workflow-box">
+        <h4>Process:</h4>
+        <ol>
+            <li><strong>Select Asset</strong>
+                <ul>
+                    <li>System auto-fetches: Asset ID, name, location, custodian, cost center, department</li>
+                </ul>
+            </li>
+            <li><strong>Select Maintenance Type</strong>
+                <ul>
+                    <li>Choose from configured maintenance types</li>
+                    <li>System determines default classification logic</li>
+                </ul>
+            </li>
+            <li><strong>Enter Request Details</strong>:
+                <ul>
+                    <li><strong>Trigger Type</strong>: Preventive, Corrective, or Planned Improvement</li>
+                    <li><strong>Priority</strong>: Low, Medium, High, Urgent</li>
+                    <li><strong>Description</strong>: What needs to be done</li>
+                    <li><strong>Issue Details</strong>: Problem description (for corrective)</li>
+                    <li><strong>Requested Date</strong>: When maintenance is needed</li>
+                    <li><strong>Preferred Start Date</strong>: Preferred start date</li>
+                    <li><strong>Attachments</strong>: Upload relevant documents/photos</li>
+                </ul>
+            </li>
+            <li><strong>Submit Request</strong>
+                <ul>
+                    <li>System generates unique Request Number (e.g., "MR-2025-001")</li>
+                    <li>Status: <code>pending</code></li>
+                    <li>Notification sent to supervisor</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <h3>Step 2: Supervisor Approval</h3>
+    <p><strong>Location</strong>: <code>/asset-management/maintenance/requests/{id}</code></p>
+    
+    <div class="workflow-box">
+        <h4>Process:</h4>
+        <ol>
+            <li><strong>Supervisor Reviews Request</strong>
+                <ul>
+                    <li>Views asset details</li>
+                    <li>Reviews issue description</li>
+                    <li>Checks attachments</li>
+                    <li>Verifies necessity</li>
+                </ul>
+            </li>
+            <li><strong>Decision Options</strong>:
+                <ul>
+                    <li><strong>Approve</strong>: Status → <code>approved</code>, ready for Work Order creation</li>
+                    <li><strong>Reject</strong>: Status → <code>rejected</code>, request closed</li>
+                    <li><strong>Request More Information</strong>: Add notes, remains <code>pending</code></li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <h2 id="work-order">4. Work Order Creation and Execution</h2>
+    
+    <h3>Step 3: Work Order Creation</h3>
+    <p><strong>Location</strong>: <code>/asset-management/maintenance/work-orders/create</code></p>
+    
+    <div class="workflow-box">
+        <h4>Process:</h4>
+        <ol>
+            <li><strong>Link to Maintenance Request</strong> (if applicable)
+                <ul>
+                    <li>Select approved maintenance request</li>
+                    <li>System auto-populates: Asset details, Maintenance type, Request details</li>
+                </ul>
+            </li>
+            <li><strong>Work Order Details</strong>:
+                <ul>
+                    <li><strong>WO Number</strong>: Auto-generated (e.g., "WO-2025-001")</li>
+                    <li><strong>Asset</strong>: Selected from approved request</li>
+                    <li><strong>Maintenance Type</strong>: From request</li>
+                    <li><strong>Execution Type</strong>:
+                        <ul>
+                            <li><code>in_house</code>: Internal technicians</li>
+                            <li><code>external_vendor</code>: External contractor</li>
+                            <li><code>mixed</code>: Combination</li>
+                        </ul>
+                    </li>
+                    <li><strong>Vendor/Technician</strong>: Select supplier or internal user</li>
+                    <li><strong>Estimated Dates</strong>: Start date, Completion date</li>
+                    <li><strong>Estimated Costs</strong>: Labor, Material, Other costs</li>
+                    <li><strong>Estimated Downtime</strong>: Hours asset will be unavailable</li>
+                    <li><strong>Budget Reference</strong>: Link to budget if applicable</li>
+                    <li><strong>Work Description</strong>: Detailed work plan</li>
+                </ul>
+            </li>
+            <li><strong>Submit Work Order</strong>
+                <ul>
+                    <li>Status: <code>draft</code></li>
+                    <li>Requires approval before execution</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <h3>Step 4: Work Order Approval</h3>
+    <p><strong>Location</strong>: <code>/asset-management/maintenance/work-orders/{id}/approve</code></p>
+    
+    <div class="workflow-box">
+        <h4>Process:</h4>
+        <ol>
+            <li><strong>Review Work Order</strong>
+                <ul>
+                    <li>Verify estimates</li>
+                    <li>Check budget availability</li>
+                    <li>Confirm vendor/technician assignment</li>
+                </ul>
+            </li>
+            <li><strong>Approve</strong>
+                <ul>
+                    <li>Status: <code>approved</code></li>
+                    <li>Notifications sent to: Assigned technician/vendor, Asset custodian, Department head</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <h3>Step 5: Work Order Execution</h3>
+    <p><strong>Location</strong>: <code>/asset-management/maintenance/work-orders/{id}/execute</code></p>
+    
+    <div class="workflow-box">
+        <h4>Process:</h4>
+        <ol>
+            <li><strong>Start Work</strong>
+                <ul>
+                    <li>Update status to <code>in_progress</code></li>
+                    <li>Record <code>actual_start_date</code></li>
+                    <li>Begin cost capture</li>
+                </ul>
+            </li>
+            <li><strong>Cost Capture During Execution</strong>
+                <ul>
+                    <li><strong>Material Costs</strong>: Select inventory items, enter quantity and unit cost</li>
+                    <li><strong>Labor Costs</strong>: Internal (technician hours/rate) or External (vendor invoice)</li>
+                    <li><strong>Other Direct Costs</strong>: Fuel, subcontracting, logistics</li>
+                </ul>
+            </li>
+            <li><strong>Track Progress</strong>
+                <ul>
+                    <li>Update work performed notes</li>
+                    <li>Record actual downtime hours</li>
+                    <li>Add technician notes</li>
+                    <li>Upload completion photos</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <h3>Step 6: Work Order Completion</h3>
+    <p><strong>Location</strong>: <code>/asset-management/maintenance/work-orders/{id}/complete</code></p>
+    
+    <div class="workflow-box">
+        <h4>Process:</h4>
+        <ol>
+            <li><strong>Technician Marks Complete</strong>
+                <ul>
+                    <li>Update status to <code>completed</code></li>
+                    <li>Record <code>actual_completion_date</code></li>
+                    <li>Enter <code>work_performed</code> details</li>
+                    <li>Finalize all costs</li>
+                </ul>
+            </li>
+            <li><strong>System Actions</strong>
+                <ul>
+                    <li>Calculate total actual costs</li>
+                    <li>Update <code>completed_by</code> and <code>completed_at</code></li>
+                    <li>Status: <code>completed</code></li>
+                    <li>Cost Classification: <code>pending_review</code></li>
+                </ul>
+            </li>
+            <li><strong>Notification Sent</strong>
+                <ul>
+                    <li>Finance/Asset Accountant for review</li>
+                    <li>Asset custodian</li>
+                    <li>Department head</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <h2 id="cost-capture">5. Cost Capture and Recording</h2>
+    
+    <h3>Cost Types</h3>
+    
+    <h4>1. Material Costs</h4>
+    <p><strong>Source</strong>: Inventory items</p>
+    <p><strong>Process</strong>:</p>
+    <ol>
+        <li>Navigate to Work Order → Execute → Add Cost</li>
+        <li>Select cost type: <code>material</code></li>
+        <li>Select inventory item</li>
+        <li>Enter quantity and unit cost</li>
+        <li>System calculates total cost</li>
+        <li><strong>Optional</strong>: Link to Purchase Order or Invoice</li>
+    </ol>
+    
+    <h4>2. Labor Costs</h4>
+    <p><strong>Source</strong>: Internal technicians or external vendors</p>
+    
+    <p><strong>Internal Labor</strong>:</p>
+    <ol>
+        <li>Select cost type: <code>labor</code></li>
+        <li>Select technician (user)</li>
+        <li>Enter hours worked</li>
+        <li>System applies hourly rate (from HR/Payroll if integrated)</li>
+        <li>Calculate: hours × rate = labor cost</li>
+    </ol>
+    
+    <p><strong>External Labor</strong>:</p>
+    <ol>
+        <li>Select cost type: <code>labor</code></li>
+        <li>Select supplier/vendor</li>
+        <li>Link to Purchase Invoice</li>
+        <li>System pulls amount from invoice</li>
+    </ol>
+    
+    <h4>3. Other Direct Costs</h4>
+    <p><strong>Source</strong>: Various (fuel, subcontracting, logistics, etc.)</p>
+    <ol>
+        <li>Select cost type: <code>other</code></li>
+        <li>Enter description</li>
+        <li>Enter amount</li>
+        <li><strong>Optional</strong>: Link to supplier invoice</li>
+    </ol>
+
+    <h2 id="classification">6. Cost Classification Logic</h2>
+    
+    <h3>Step 7: Finance Review and Classification</h3>
+    <p><strong>Location</strong>: <code>/asset-management/maintenance/work-orders/{id}/review</code></p>
+    <p><strong>Purpose</strong>: Determine if maintenance costs should be expensed or capitalized.</p>
+    
+    <h3>Classification Rules</h3>
+    
+    <h4>A. Routine Maintenance (Expense)</h4>
+    <p><strong>Criteria</strong>:</p>
+    <ul>
+        <li>Cost < Capitalization Threshold Amount (default: 2M TZS)</li>
+        <li>Life extension < Capitalization Life Extension Threshold (default: 12 months)</li>
+        <li>Standard preventive or corrective maintenance</li>
+        <li>No significant improvement to asset</li>
+    </ul>
+    
+    <p><strong>Classification</strong>: <code>expense</code></p>
+    
+    <p><strong>Accounting Treatment</strong>:</p>
+    <pre>Dr. Maintenance Expense (P&L)
+Cr. Maintenance WIP</pre>
+    
+    <p><strong>Asset Impact</strong>:</p>
+    <ul>
+        <li>Asset cost: <strong>No change</strong></li>
+        <li>Depreciation: <strong>No change</strong></li>
+        <li>Asset history: Recorded as expense</li>
+    </ul>
+    
+    <h4>B. Capital Improvement/Major Overhaul (Capitalized)</h4>
+    <p><strong>Criteria</strong> (any of the following):</p>
+    <ul>
+        <li>Cost ≥ Capitalization Threshold Amount</li>
+        <li>Life extension ≥ Capitalization Life Extension Threshold</li>
+        <li>Significant improvement to asset functionality</li>
+        <li>Major overhaul that extends useful life</li>
+    </ul>
+    
+    <p><strong>Classification</strong>: <code>capitalized</code></p>
+    
+    <p><strong>Accounting Treatment</strong>:</p>
+    <pre>Dr. Fixed Asset (Improvement)
+Cr. Maintenance WIP</pre>
+    
+    <p><strong>Asset Impact</strong>:</p>
+    <ul>
+        <li>Asset cost: <strong>Increased</strong> by capitalized amount</li>
+        <li>Depreciation: <strong>Recalculated</strong> based on new cost</li>
+        <li>Useful life: <strong>Extended</strong> (if applicable)</li>
+        <li>TRA Tax Book: <strong>Updated</strong> (if applicable)</li>
+    </ul>
+
+    <h2 id="gl-posting">7. GL Posting and Asset Updates</h2>
+    
+    <h3>Step 8: GL Posting</h3>
+    <p><strong>Location</strong>: Automatic after classification (or manual trigger)</p>
+    
+    <h4>A. Expense Classification</h4>
+    <p><strong>Journal Entry</strong>:</p>
+    <table>
+        <tr>
+            <th>Account</th>
+            <th>Debit</th>
+            <th>Credit</th>
+        </tr>
+        <tr>
+            <td>Maintenance Expense</td>
+            <td>XXX</td>
+            <td>-</td>
+        </tr>
+        <tr>
+            <td>Maintenance WIP</td>
+            <td>-</td>
+            <td>XXX</td>
+        </tr>
+    </table>
+    
+    <h4>B. Capitalized Classification</h4>
+    <p><strong>Journal Entry</strong>:</p>
+    <table>
+        <tr>
+            <th>Account</th>
+            <th>Debit</th>
+            <th>Credit</th>
+        </tr>
+        <tr>
+            <td>Fixed Asset (Improvement)</td>
+            <td>XXX</td>
+            <td>-</td>
+        </tr>
+        <tr>
+            <td>Maintenance WIP</td>
+            <td>-</td>
+            <td>XXX</td>
+        </tr>
+    </table>
+    
+    <p><strong>Asset Updates</strong>:</p>
+    <ol>
+        <li><strong>Update Asset Cost</strong>: <code>$asset->cost += $capitalizedAmount;</code></li>
+        <li><strong>Recalculate Depreciation</strong>: New depreciation basis = Original cost + Capitalized amount</li>
+        <li><strong>Update Useful Life</strong> (if extended): <code>$asset->useful_life_months += $lifeExtensionMonths;</code></li>
+        <li><strong>TRA Tax Book Update</strong> (if applicable): Update tax book value and adjust tax depreciation</li>
+    </ol>
+
+    <h3>Step 9: Maintenance History Creation</h3>
+    <p><strong>Location</strong>: Automatic after GL posting</p>
+    
+    <div class="workflow-box">
+        <h4>Process:</h4>
+        <ol>
+            <li><strong>Create History Record</strong>
+                <ul>
+                    <li>Table: <code>maintenance_history</code></li>
+                    <li>Links to: Asset, Work Order, Maintenance Type</li>
+                    <li>Records: Completion date, Total cost, Cost classification, Life extension, Vendor/Technician, Work performed, Notes</li>
+                </ul>
+            </li>
+            <li><strong>Update Asset History</strong>
+                <ul>
+                    <li>Last maintenance date</li>
+                    <li>Last maintenance cost</li>
+                    <li>Maintenance frequency tracking</li>
+                    <li>Next maintenance schedule (for preventive)</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <h2 id="reports">8. Reports and Analytics</h2>
+    
+    <h3>Dashboard KPIs</h3>
+    <p><strong>Location</strong>: <code>/asset-management/maintenance</code></p>
+    
+    <p><strong>Metrics</strong>:</p>
+    <ul>
+        <li><strong>Total Requests</strong>: All maintenance requests</li>
+        <li><strong>Pending Requests</strong>: Awaiting approval</li>
+        <li><strong>Open Work Orders</strong>: Approved, In Progress, On Hold</li>
+        <li><strong>Completed This Month</strong>: Completed work orders</li>
+        <li><strong>Total Cost YTD</strong>: Year-to-date maintenance costs</li>
+        <li><strong>Capitalized vs. Expensed</strong>: Percentage breakdown</li>
+        <li><strong>Average Cost per Asset</strong>: Cost efficiency metric</li>
+        <li><strong>Downtime Hours</strong>: Total asset downtime</li>
+    </ul>
+    
+    <h3>Operational Reports</h3>
+    <ul>
+        <li><strong>Upcoming Maintenance Schedule</strong>: Preventive maintenance due, sorted by due date</li>
+        <li><strong>Open Work Orders</strong>: Status: Approved, In Progress, On Hold, with filters</li>
+        <li><strong>Downtime Report</strong>: Asset downtime by period, impact on operations, trend analysis</li>
+        <li><strong>Vendor Performance</strong>: Vendor response time, cost comparison, quality ratings</li>
+    </ul>
+    
+    <h3>Financial Reports</h3>
+    <ul>
+        <li><strong>Cost per Asset/Department</strong>: Total maintenance cost by asset, cost by department/cost center, budget vs. actual</li>
+        <li><strong>Capitalized vs. Expensed</strong>: Breakdown by classification, trend over time, impact on P&L and Balance Sheet</li>
+        <li><strong>Life Extension Analysis</strong>: Assets with extended useful life, capitalized amounts, ROI on capital improvements</li>
+        <li><strong>Budget vs. Actual</strong>: Maintenance budget performance, variance analysis, forecast vs. actual</li>
+        <li><strong>Depreciation Forecast</strong>: Impact of capitalized maintenance, revised depreciation schedules, tax implications</li>
+    </ul>
+
+    <h2 id="integration">9. Integration Points</h2>
+    
+    <h3>1. Fixed Assets Module</h3>
+    <ul>
+        <li>Asset selection in maintenance requests</li>
+        <li>Asset cost updates for capitalized maintenance</li>
+        <li>Depreciation recalculation</li>
+        <li>Asset history updates</li>
+        <li>Next maintenance schedule updates</li>
+    </ul>
+    
+    <h3>2. Inventory Module</h3>
+    <ul>
+        <li>Material requisition from inventory</li>
+        <li>Stock deduction for materials used</li>
+        <li>Cost tracking from inventory items</li>
+    </ul>
+    
+    <h3>3. Procurement Module</h3>
+    <ul>
+        <li>Vendor selection for external work</li>
+        <li>Purchase Order creation</li>
+        <li>Purchase Invoice linking</li>
+        <li>Vendor performance tracking</li>
+    </ul>
+    
+    <h3>4. Accounts Payable</h3>
+    <ul>
+        <li>Vendor invoice posting</li>
+        <li>Payment tracking</li>
+        <li>Accrual management</li>
+    </ul>
+    
+    <h3>5. Finance (GL)</h3>
+    <ul>
+        <li>Automatic journal entry creation</li>
+        <li>Account mapping from settings</li>
+        <li>Cost classification posting</li>
+    </ul>
+    
+    <h3>6. HR/Payroll (Future)</h3>
+    <ul>
+        <li>Technician timesheet integration</li>
+        <li>Labor cost allocation</li>
+        <li>Employee cost rates</li>
+    </ul>
+    
+    <h3>7. Budgeting/Cost Control</h3>
+    <ul>
+        <li>Budget validation</li>
+        <li>Cost center allocation</li>
+        <li>Budget vs. actual tracking</li>
+    </ul>
+
+    <h2 id="permissions">10. User Roles and Permissions</h2>
+    
+    <h3>Required Permissions</h3>
+    <ul>
+        <li><strong>Maintenance Request Creator</strong>: create maintenance requests, view maintenance requests</li>
+        <li><strong>Supervisor</strong>: approve maintenance requests, view maintenance requests, view work orders</li>
+        <li><strong>Maintenance Technician</strong>: view work orders, execute work orders, add work order costs, complete work orders</li>
+        <li><strong>Finance/Asset Accountant</strong>: review work orders, classify work orders, post to GL, view maintenance reports</li>
+        <li><strong>Maintenance Administrator</strong>: All permissions, manage maintenance types, manage maintenance settings, delete maintenance records</li>
+    </ul>
+
+    <h2>Workflow Summary</h2>
+    <div class="workflow-box">
+        <p><strong>Maintenance Request</strong> → <strong>Supervisor Approval</strong> → <strong>Work Order Creation</strong> → <strong>Work Order Approval</strong> → <strong>Execution & Cost Capture</strong> → <strong>Completion</strong> → <strong>Finance Review & Classification</strong> → <strong>GL Posting</strong> → <strong>Asset Updates</strong> → <strong>Maintenance History</strong></p>
+    </div>
+
+    <h2>Key Database Tables</h2>
+    <ul>
+        <li><code>maintenance_types</code>: Maintenance type definitions</li>
+        <li><code>maintenance_requests</code>: Maintenance request records</li>
+        <li><code>asset_maintenance_work_orders</code>: Work order records</li>
+        <li><code>asset_maintenance_work_order_costs</code>: Individual cost records</li>
+        <li><code>maintenance_history</code>: Completed maintenance history</li>
+        <li><code>maintenance_settings</code>: System configuration</li>
+    </ul>
+
+    <h2>Best Practices</h2>
+    <ol>
+        <li><strong>Preventive Maintenance</strong>: Schedule regular maintenance to prevent breakdowns, track maintenance intervals, update schedules based on actual usage</li>
+        <li><strong>Cost Tracking</strong>: Capture all costs in real-time, link to source documents (POs, invoices), maintain audit trail</li>
+        <li><strong>Classification</strong>: Review all completed work orders, apply capitalization rules consistently, document classification decisions</li>
+        <li><strong>Asset Management</strong>: Update asset costs promptly, recalculate depreciation after capitalization, maintain accurate asset history</li>
+        <li><strong>Reporting</strong>: Review maintenance costs regularly, analyze trends and patterns, optimize maintenance strategies</li>
+    </ol>
+
+    <hr>
+    <p><strong>Document Version</strong>: 1.0<br>
+    <strong>Last Updated</strong>: November 2025<br>
+    <strong>System</strong>: SmartAccounting - Maintenance Management Module</p>
+</body>
+</html>
+

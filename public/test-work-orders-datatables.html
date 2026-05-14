@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Work Orders DataTables Debug</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Work Orders DataTables Debug</h1>
+        <div id="debug-info" class="alert alert-info">
+            <strong>Debug Information:</strong><br>
+            Testing DataTables with debug AJAX endpoint...
+        </div>
+        
+        <table id="work-orders-table" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>WO Number</th>
+                    <th>Customer</th>
+                    <th>Product</th>
+                    <th>Style</th>
+                    <th>Quantity</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            console.log('Initializing DataTables...');
+            
+            $('#work-orders-table').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: 'http://127.0.0.1:8001/debug-work-orders-ajax',
+                    type: 'GET',
+                    error: function(xhr, error, thrown) {
+                        console.error('DataTables AJAX Error:', error, thrown);
+                        console.error('Response:', xhr.responseText);
+                        $('#debug-info').html('<strong>Error:</strong> ' + error + '<br><strong>Response:</strong> ' + xhr.responseText);
+                    },
+                    success: function(data) {
+                        console.log('DataTables AJAX Success:', data);
+                        $('#debug-info').html('<strong>Success!</strong> Found ' + data.recordsTotal + ' work orders');
+                    }
+                },
+                columns: [
+                    { data: 'wo_number', name: 'wo_number' },
+                    { data: 'customer_name', name: 'customer.name' },
+                    { data: 'product_name', name: 'product_name' },
+                    { data: 'style', name: 'style' },
+                    { data: 'total_quantity', name: 'total_quantity', searchable: false },
+                    { data: 'due_date', name: 'due_date' },
+                    { data: 'status_badge', name: 'status', orderable: false, searchable: false },
+                    { data: 'progress_bar', name: 'progress_bar', orderable: false, searchable: false },
+                    { data: 'actions', name: 'actions', orderable: false, searchable: false }
+                ],
+                order: [[0, 'desc']],
+                pageLength: 25,
+                responsive: true,
+                initComplete: function() {
+                    console.log('DataTables initialized successfully');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

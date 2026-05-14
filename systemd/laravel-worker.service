@@ -1,0 +1,17 @@
+[Unit]
+Description=Laravel Queue Worker
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/home/anselim/smartaccounting
+ExecStart=/usr/bin/php /home/anselim/smartaccounting/artisan queue:work database --sleep=3 --tries=3 --max-time=3600 --timeout=300
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/anselim/smartaccounting/storage/logs/worker.log
+StandardError=append:/home/anselim/smartaccounting/storage/logs/worker-error.log
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,434 @@
+LOAN MANAGEMENT MODULE – USER GUIDE
+
+Version: 1.0  
+System: SmartFinance / SmartAccounting  
+Module: Loan Management (Loans Payable)
+
+1. PURPOSE OF THE MODULE
+- Record and manage loans obtained from banks or other lenders.
+- Automate repayment schedules (principal and interest).
+- Automate accounting entries for:
+  - Initial disbursement.
+  - Periodic interest accruals.
+  - Repayments, fees, and penalties.
+- Provide a clear operational and audit trail (disbursements, accruals, payments, restructures, covenants).
+
+2. KEY ENTITIES
+- Loan
+  - Represents a single loan facility with lender, principal, interest terms and GL mappings.
+- Loan Schedule
+  - Amortisation schedule per installment (principal, interest, due dates, status).
+- Disbursement
+  - Actual cash received transaction and its GL posting.
+- Payment
+  - Loan repayments (principal/interest/fees/penalty allocations) and GL posting.
+- Interest Accrual
+  - Periodic interest accrual records and related GL.
+- Fees & Covenants
+  - Additional loan fees and covenant monitoring.
+
+3. ACCESSING THE MODULE
+- Menu Path
+  - Go to `Loan Management` (typically under Accounting or Treasury menu depending on your setup).
+- Main Screen (`loans.index`)
+  - Statistics: Total, Active, Draft, Disbursed, Closed.
+  - Filters:
+    - Branch: limited to branches assigned to the logged-in user; “All My Branches” if multiple.
+    - Status: All, Draft, Approved, Disbursed, Active, Closed.
+  - Data Grid:
+    - Loan Number (clickable link).
+    - Bank.
+    - Principal Amount.
+    - Interest Rate.
+    - Term (Months).
+    - Outstanding Principal.
+    - Status.
+    - Branch.
+
+4. LOAN LIFECYCLE – HIGH LEVEL
+1) Create Loan (status: Draft).  
+2) (Optional) Run multi-level approval process (see `LOAN_APPROVAL_SYSTEM.md`) until status is Approved / Authorized.  
+3) Disburse Loan (status changes to Disbursed then Active, with outstanding principal set).  
+4) Generate Repayment Schedule.  
+5) Record periodic interest accruals.  
+6) Record repayments (and any prepayments).  
+7) Restructure loan if terms change.  
+8) Close loan when outstanding principal reaches zero.  
+9) Optionally retro-post GL entries if the loan existed before GL integration.
+
+5. CREATING A NEW LOAN
+Screen: `Loan Management → New Loan` (`loans.create`)
+
+5.1 Lender Information
+- Lender ID (optional)
+  - Internal reference ID for the lender.
+- Lender Name
+  - Name of the bank or lender (e.g., “ABC Bank Ltd”).
+- Bank Account
+  - Bank account in your Chart of Accounts where the loan proceeds will be received.
+  - Must have a mapped bank GL account.
+- Bank Name / Bank Contact
+  - Free text for reference (for contracts, contact persons, phone numbers).
+
+5.2 Facility Information
+- Facility Name
+  - Descriptive name (e.g., “Working Capital Loan 2025”).
+- Facility Type
+  - Options: Term Loan, Revolving, Overdraft, Line of Credit, Other.
+  - Used for reporting and classification only.
+
+5.3 Loan Amount & Dates
+- Principal Amount (required)
+  - Total loan amount in TZS.
+- Disbursed Amount
+  - Net cash expected/received (if blank, defaults to Principal Amount).
+  - Useful if fees are deducted upfront so net proceeds < principal.
+- Disbursement Date
+  - Planned or actual date of receiving funds.
+- Start Date
+  - Loan commencement date (usually same as Disbursement Date).
+- Maturity Date
+  - Final repayment date; the form can auto-calculate from Start Date + Term (months).
+- First Payment Date
+  - First installment’s due date (if known; otherwise schedule generation uses defaults).
+
+5.4 Interest Rate & Calculation
+- Interest Rate (%) (required)
+  - Annual nominal rate (e.g., 10.50).
+- Rate Type
+  - Fixed: rate does not change.
+  - Variable: rate may change based on Base Rate + Spread.
+- Base Rate Source (visible if Rate Type = Variable)
+  - E.g., “TBILL 182 days”, “PRIME”.
+- Spread (%)
+  - Margin added over the base rate.
+- Calculation Basis
+  - 30/360, Actual/365, Actual/360.
+  - Drives how the system computes daily interest in schedules and accruals.
+
+5.5 Repayment Terms
+- Term (Months) (required)
+  - Total duration of the loan.
+- Payment Frequency (required)
+  - Monthly, Quarterly, Semi-Annual, Annual.
+- Amortization Method (required)
+  - Annuity (Equal Installment):
+    - Same total installment amount each period (principal + interest).
+  - Straight Principal:
+    - Equal principal each period; interest declines as balance falls.
+  - Interest Only:
+    - Only interest paid during term; principal repaid at maturity or via bullet.
+- Repayment Method (optional)
+  - If blank, defaults to Amortization Method.
+  - Options include Annuity, Equal Principal, Interest Only, Bullet.
+- Grace Period (Months)
+  - Months during which you pay interest only or have special repayment rules.
+
+5.6 Fees & Prepayment
+- Fees Amount
+  - Total arrangement, processing, or legal fees for the loan.
+- Capitalise Fees
+  - No (Expense Immediately): fees go to expense account at disbursement.
+  - Yes (Capitalize): fees go to Deferred Loan Costs (asset) and can be amortised.
+- Prepayment Allowed
+  - Yes/No: Whether early repayment is allowed.
+- Prepayment Penalty Rate (%)
+  - If configured and prepayment occurs, penalty is computed as:
+    - Penalty = Prepayment Amount × Penalty Rate.
+
+5.7 Chart of Accounts Mapping
+- Loan Payable Account (liability)
+  - GL liability account representing loan principal balance.
+- Interest Expense Account
+  - GL expense account for interest charges.
+- Interest Payable Account
+  - GL liability account for accrued but unpaid interest.
+- Deferred Loan Costs Account
+  - GL asset account used if fees are capitalised.
+- Bank Charges Account
+  - GL expense account for bank charges and penalties (both on disbursement and payments).
+
+5.8 Notes
+- Free text field for special conditions, covenants, or comments.
+
+5.9 Save
+- When you click **Save Loan**:
+  - A Loan record is created with status = Draft.
+  - Defaults applied:
+    - If Disbursed Amount is empty → set to Principal Amount.
+    - If Repayment Method empty → set to Amortization Method.
+    - Capitalise Fees defaults to false.
+    - Prepayment Allowed defaults to true.
+
+6. LOAN APPROVAL WORKFLOW (SUMMARY)
+- This module integrates with a multi-level approval framework described in `docs/LOAN_APPROVAL_SYSTEM.md`.
+- Typical statuses:
+  - Applied → Checked → Approved → Authorized → Active.
+- Key points:
+  - Approval levels are role-based (loan officer, branch manager, credit manager, etc.).
+  - Only after required approvals should the loan be disbursed.
+  - Some products may skip approvals and go directly to Active.
+
+7. DISBURSING A LOAN
+Screen: Loan Details (`loans.show`) → **Disburse** button
+
+7.1 Preconditions
+- Loan status should be Draft or Approved (depending on your business rule).
+- Loan Payable Account and Bank Account must be mapped.
+
+7.2 Disbursement Form Fields
+- Disbursement Date
+- Bank Account
+  - Bank where funds are received (must have chart account).
+- Amount Received (Gross)
+  - Total amount from lender (usually equal to principal).
+- Net Proceeds
+  - Net cash after bank charges and possibly fees deducted.
+- Bank Charges
+  - Bank fees charged at disbursement (posting to Bank Charges Account).
+- Reference Number / Narration
+  - Bank reference and description.
+
+7.3 What the System Does
+- Creates a `LoanDisbursement` record.
+- Posts a Journal with typical pattern:
+  - Debit: Bank Account (net proceeds).
+  - Debit: Deferred Loan Costs (if capitalised fees and amount > 0).
+  - Debit: Bank Charges Expense (if bank charges > 0).
+  - Credit: Loan Payable (amount received).
+- Updates Loan:
+  - Sets Disbursement Date and Start Date (if not already set).
+  - Calculates Maturity Date if missing (Start Date + Term).
+  - Sets Disbursed Amount.
+  - Sets Outstanding Principal = Principal Amount.
+  - Updates Status to Disbursed.
+
+8. GENERATING REPAYMENT SCHEDULE
+Screen: Loan Details → **Generate Schedule**
+
+8.1 Preconditions
+- Loan should have:
+  - Principal, Interest Rate, Term, Payment Frequency, Calculation Basis.
+- If any installment already has payments (`amount_paid > 0`), the system will block regeneration (you cannot regenerate after recording payments).
+
+8.2 Logic (Simplified)
+- Uses `LoanService::generateSchedule`:
+  - Calculates number of periods = Term (months) / Frequency.
+  - Computes periodic rate based on annual rate and frequency.
+  - For each period:
+    - Computes opening balance, interest due (per basis), principal due, total installment.
+    - Sets status = Due initially.
+  - Produces `LoanSchedule` rows with:
+    - Due Date, Opening Principal, Principal Due/Paid, Interest Due/Paid, Installment Amount, Closing Principal, Status.
+
+8.3 Result
+- Loan Details → “Repayment Schedule” tab shows:
+  - Installment number.
+  - Due date.
+  - Opening balance.
+  - Interest due.
+  - Principal due.
+  - Installment amount.
+  - Amount paid.
+  - Closing balance.
+  - Status (Due, Partial, Paid, Overdue).
+
+9. RECORDING INTEREST ACCRUALS
+Screen: Loan Details → **Accrue Interest** button
+
+9.1 Purpose
+- To recognise interest expense and interest payable periodically (e.g., month-end), even if there is no cash payment.
+
+9.2 Form Fields
+- Accrual Date (required)
+- Period Start (optional)
+- Period End (optional)
+  - If blank, defaults to the month of the Accrual Date.
+
+9.3 What the System Does
+- Calls `LoanService::accrueInterest`:
+  - Uses Outstanding Principal and loan Interest Rate.
+  - Computes days in period and interest using Calculation Basis.
+  - Creates `LoanAccrual` record.
+  - Increases `loan.accrued_interest`.
+- Then calls `LoanService::createAccrualGlEntry`:
+  - Debit: Interest Expense Account.
+  - Credit: Interest Payable Account.
+
+10. RECORDING REPAYMENTS
+You can record payments either from:
+- Loan Details → **Record Payment** (modal).
+- `Record Loan Payment` screen (`loans.payment-create`) – simpler standalone form.
+
+10.1 Key Concepts
+- Payments can target:
+  - A specific schedule installment, or
+  - Auto-allocation to the next due/partial/overdue installments.
+- Allocation order:
+  - Interest first, then Principal (fees/penalties if applicable).
+
+10.2 Payment Modal (Recommended)
+- Fields:
+  - Payment Date.
+  - Bank Account (cash out).
+  - Optional: Selected Schedule.
+  - Payment Amount.
+  - Reference and Notes.
+- If a schedule is selected:
+  - System shows schedule details (interest due, principal due, total due, amount already paid).
+  - If Payment > Installment Amount, extra goes to subsequent installments.
+- Status Update Rules:
+  - If amount_paid approximately equals installment_amount (tolerance for rounding), status set to Paid.
+  - If some amount paid but less than installment amount, status set to Partial.
+
+10.3 Accounting for Payment
+- `LoanService::createPaymentGlEntry`:
+  - Debit:
+    - Loan Payable (principal portion).
+    - Interest Payable or Interest Expense (interest portion).
+    - Bank Charges Account (fees and penalties, if any).
+  - Credit:
+    - Bank Account (total paid).
+- Loan is updated:
+  - `total_interest_paid`, `total_principal_paid` increased.
+  - `outstanding_principal` reduced by principal portion.
+  - Status:
+    - Closed if `outstanding_principal <= 0`.
+    - Otherwise Active.
+
+11. PREPAYMENTS (EARLY PARTIAL/FULL SETTLEMENT)
+Screen: Loan Details → **Prepayment**
+
+11.1 Preconditions
+- Loan must have `prepayment_allowed = true`.
+
+11.2 Form Fields
+- Prepayment Date.
+- Prepayment Amount.
+- Bank Account.
+- Reference and Notes.
+
+11.3 System Behaviour
+- Calculates penalty using `LoanService::calculatePrepaymentPenalty`:
+  - Penalty = Prepayment Amount × Prepayment Penalty Rate (if configured).
+- Allocation:
+  - Interest portion applied up to accrued interest.
+  - Remaining amount (after interest and penalty) allocated to principal.
+- Updates Loan:
+  - Increases `total_interest_paid`, `total_principal_paid`.
+  - Reduces `outstanding_principal` and `accrued_interest`.
+  - If principal reaches zero → Status = Closed.
+- Posts GL using same payment entry logic (principal/interest/penalty).
+
+12. RESTRUCTURING A LOAN
+Screen: Loan Details → **Restructure**
+
+12.1 Typical Use Cases
+- Change of interest rate.
+- Change of term (extension or reduction).
+- Change of payment frequency after renegotiation.
+
+12.2 Form Fields
+- Restructure Date.
+- Reason (required).
+- New Terms Summary (required).
+- New Interest Rate (optional).
+- New Term (Months) (optional).
+- New Payment Frequency (optional).
+- Approval Notes / Approver.
+
+12.3 What the System Does
+- Saves old terms (rate, term, frequency, method).
+- Applies new terms if provided.
+- Sets loan status = Restructured.
+- Creates `LoanRestructureHistory` record with old vs new terms.
+- NOTE: You may need to regenerate the schedule after restructuring (ensure no conflicting payments exist before regenerating).
+
+13. LOAN COVENANTS & FEES (OVERVIEW)
+- Covenants
+  - Track metrics (threshold vs actual) per period.
+  - Status: Compliant, Non-Compliant, etc.
+  - Visible under “Transactions” tab in loan details.
+- Fees
+  - Stored as `LoanFee` records.
+  - Each fee has:
+    - Type, Name, Amount, Treatment (capitalize vs expense), Recognized On date.
+  - Summarised in the “Loan Fees” section of the Transactions tab.
+
+14. GL POSTING AND RETROACTIVE ENTRIES
+Screen: Loan Details → **Post to GL**
+
+14.1 Purpose
+- For legacy loans or when GL integration was added after loans already had disbursements/accruals/payments.
+
+14.2 Behaviour
+- `LoanService::retroactivelyCreateGlEntries` will:
+  - For first unposted disbursement:
+    - Create disbursement journal if missing.
+  - For each unposted accrual:
+    - Create accrual journal and mark as posted.
+  - For each unposted payment:
+    - Create payment journal and mark as posted.
+- Displays a summary with counts and any errors.
+
+15. LOAN STATUS DEFINITIONS (OPERATIONAL)
+- Draft
+  - Data entry in progress; editable.
+- Applied / Checked / Approved / Authorized
+  - Approval workflow statuses (see `LOAN_APPROVAL_SYSTEM.md`).
+- Disbursed
+  - Disbursement completed; outstanding principal set.
+- Active
+  - Disbursed and under normal repayment.
+- Restructured
+  - Terms changed; schedule may need regeneration.
+- Closed
+  - Outstanding principal fully paid.
+- Defaulted
+  - Loan marked as default (final problematic status; business rules apply).
+
+16. PERMISSIONS & ROLES (TYPICAL)
+- Create / Edit Loans
+  - Loan officers, treasury or finance staff.
+- Approvals
+  - Loan officer, branch manager, credit manager, as configured.
+- Disbursement
+  - Accountant (or finance role with GL rights).
+- Accruals
+  - Accountants (can also be run via scheduled console command).
+- Payments
+  - Cashiers or accountants, according to company policy.
+- Restructure / Default
+  - Senior finance/credit roles, with appropriate permissions.
+
+17. REPORTING & ANALYSIS
+- From Loan Details:
+  - Repayment progress (installments paid vs total).
+  - Outstanding principal vs original principal.
+  - Total interest paid, fees, penalties.
+- From General Ledger / Reporting:
+  - Interest expense by period.
+  - Loan balances by lender, branch, product.
+  - Overdue installments and defaulted loans.
+
+18. BEST PRACTICES
+- Always map GL accounts before disbursement.
+- Regenerate schedule only before any payments are recorded.
+- Use monthly accruals to align interest expense with periods.
+- Record payments promptly and match them to the correct schedule whenever possible.
+- Perform restructures with clear documentation in Reason and New Terms Summary.
+- Use `Post to GL` for historical loans to ensure accounting completeness.
+
+19. TROUBLESHOOTING QUICK NOTES
+- Cannot edit loan:
+  - Only Draft or Approved loans are editable; others must be handled via restructure or specific workflows.
+- Schedule regeneration blocked:
+  - Check if any installment has Amount Paid > 0.
+- Disbursement error about chart accounts:
+  - Ensure Bank Account and Loan Payable Account (and optionally Deferred Costs / Bank Charges) are mapped to valid chart accounts.
+- Payment posting imbalance:
+  - System automatically adjusts for small rounding differences; if errors persist, review interest rate, term, and basis settings.
+- Prepayment not allowed:
+  - Confirm `prepayment_allowed` is set to Yes for the loan.
+
+
