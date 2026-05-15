@@ -313,7 +313,7 @@
                                         <div class="mb-3">
                                             <i class="bx bx-receipt fs-1 text-danger"></i>
                                         </div>
-                                        <h5 class="card-title">Ankara ya Mauzo <small class="text-muted">(Sales Invoice)</small></h5>
+                                        <h5 class="card-title">Mauzo ya Mkopo <small class="text-muted">(Sales Invoice)</small></h5>
                                         <p class="card-text">Tengeneza ankara za mauzo zenye kodi, posti kwa deni la wateja, na thibitisha mapato.</p>
                                         @can('view sales invoices')
                                         <a href="{{ route('sales.invoices.index') }}" class="btn btn-danger">
