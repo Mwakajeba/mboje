@@ -12,6 +12,7 @@
         <h6 class="mb-0 text-uppercase">SALES MANAGEMENT</h6>
         <hr />
 
+        {{-- Sales Statistics (hidden — uncomment when needed)
         <!-- Sales Statistics -->
         <div class="row">
             <div class="col-12 col-lg-8">
@@ -193,6 +194,7 @@
                 </div>
             </div>
         </div>
+        --}}
 
         <!-- Sales Flow Modules -->
         <div class="row">
@@ -228,6 +230,7 @@
                                 </div>
                             </div>
 
+                            {{-- Hidden modules (uncomment when needed)
                             <!-- 2. Sales Quote (Proforma) -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-success position-relative">
@@ -296,6 +299,7 @@
                                     </div>
                                 </div>
                             </div>
+                            --}}
 
                             <!-- 5. Sales Invoice -->
                             <div class="col-md-6 col-lg-4 mb-4">
@@ -325,6 +329,7 @@
                                 </div>
                             </div>
 
+                            {{-- Credit Note (hidden — uncomment when needed)
                             <!-- 6. Credit Note -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-primary position-relative">
@@ -347,6 +352,7 @@
                                     </div>
                                 </div>
                             </div>
+                            --}}
 
                             <!-- 7. Cash Sales -->
                             <div class="col-md-6 col-lg-4 mb-4">
@@ -420,6 +426,7 @@
             </div>
         </div>
 
+        {{-- Recent Proformas (hidden — uncomment when needed)
         <!-- Recent Proformas -->
         @php
         $recentProformas = \App\Models\Sales\SalesProforma::with('customer')
@@ -515,6 +522,7 @@
             </div>
         </div>
         @endif
+        --}}
     </div>
 </div>
 @endsection
