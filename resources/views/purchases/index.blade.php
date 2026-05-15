@@ -12,7 +12,7 @@
         <h6 class="mb-0 text-uppercase">PURCHASE MANAGEMENT</h6>
         <hr />
 
-        <!-- Purchase Statistics -->
+        {{-- Purchase Statistics (hidden — uncomment when needed)
         <div class="row">
             <div class="col-12 col-lg-8">
                 <div class="card border-top border-0 border-4 border-primary">
@@ -144,6 +144,7 @@
                 </div>
             </div>
         </div>
+        --}}
 
         <!-- Purchase Flow Modules -->
         <div class="row">
@@ -179,7 +180,7 @@
                                 </div>
                             </div>
 
-                            <!-- Supplier advances -->
+                            <!-- Advance Payments -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-teal position-relative" style="border-color: #0d9488 !important;">
                                     <div class="card-body text-center">
@@ -197,7 +198,7 @@
                                         <div class="mb-3">
                                             <i class="bx bx-wallet-alt fs-1" style="color: #0d9488;"></i>
                                         </div>
-                                        <h5 class="card-title">Supplier Advances</h5>
+                                        <h5 class="card-title">Advance Payments</h5>
                                         <p class="card-text">Record prepayments to suppliers, track applied amounts and balances, and print statements.</p>
                                         @can('view purchases')
                                         <a href="{{ route('purchases.supplier-advances.index') }}" class="btn text-white" style="background-color: #0d9488;">
@@ -208,7 +209,7 @@
                                 </div>
                             </div>
 
-                            <!-- 2. Purchase Requisitions -->
+                            {{-- 2. Purchase Requisitions (hidden — uncomment when needed)
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-dark position-relative">
                                     <div class="card-body text-center">
@@ -228,8 +229,9 @@
                                     </div>
                                 </div>
                             </div>
+                            --}}
 
-                            <!-- 3. Purchase Quotation -->
+                            {{-- 3. Purchase Quotation (hidden — uncomment when needed)
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-success position-relative">
                                     <div class="card-body text-center">
@@ -251,8 +253,9 @@
                                     </div>
                                 </div>
                             </div>
+                            --}}
 
-                            <!-- 4. Purchase Order -->
+                            {{-- 4. Purchase Order (hidden — uncomment when needed)
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-warning position-relative">
                                     <div class="card-body text-center">
@@ -300,8 +303,35 @@
                                     </div>
                                 </div>
                             </div>
+                            --}}
 
-                            <!-- 6. Purchase Invoice -->
+                            <!-- Cash Purchase -->
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card border-success position-relative">
+                                    <div class="card-body text-center">
+                                        <!-- Count Badge -->
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
+                                            @php
+                                                $branchId = session('branch_id') ?? auth()->user()->branch_id;
+                                            @endphp
+                                            {{ \App\Models\Purchase\CashPurchase::where('company_id', auth()->user()->company_id)->when($branchId, fn($q) => $q->where('branch_id', $branchId))->count() }}
+                                            <span class="visually-hidden">cash purchases count</span>
+                                        </span>
+                                        <div class="mb-3">
+                                            <i class="bx bx-dollar-circle fs-1 text-success"></i>
+                                        </div>
+                                        <h5 class="card-title">Cash Purchase</h5>
+                                        <p class="card-text">Process immediate cash purchases with instant payment settlement.</p>
+                                        @can('view cash purchases')
+                                        <a href="{{ route('purchases.cash-purchases.index') }}" class="btn btn-success">
+                                            <i class="bx bx-list-ul me-1"></i> Manage Cash Purchases
+                                        </a>
+                                        @endcan
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Purchase Invoice -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-danger position-relative">
                                     <div class="card-body text-center">
@@ -332,33 +362,7 @@
                                 </div>
                             </div>
 
-                            <!-- 6. Cash Purchase -->
-                            <div class="col-md-6 col-lg-4 mb-4">
-                                <div class="card border-success position-relative">
-                                    <div class="card-body text-center">
-                                        <!-- Count Badge -->
-                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
-                                            @php
-                                                $branchId = session('branch_id') ?? auth()->user()->branch_id;
-                                            @endphp
-                                            {{ \App\Models\Purchase\CashPurchase::where('company_id', auth()->user()->company_id)->when($branchId, fn($q) => $q->where('branch_id', $branchId))->count() }}
-                                            <span class="visually-hidden">cash purchases count</span>
-                                        </span>
-                                        <div class="mb-3">
-                                            <i class="bx bx-dollar-circle fs-1 text-success"></i>
-                                        </div>
-                                        <h5 class="card-title">Cash Purchase</h5>
-                                        <p class="card-text">Process immediate cash purchases with instant payment settlement.</p>
-                                        @can('view cash purchases')
-                                        <a href="{{ route('purchases.cash-purchases.index') }}" class="btn btn-success">
-                                            <i class="bx bx-list-ul me-1"></i> Manage Cash Purchases
-                                        </a>
-                                        @endcan
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 7. Debit Notes -->
+                            {{-- 7. Debit Notes (hidden — uncomment when needed)
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-secondary position-relative">
                                     <div class="card-body text-center">
@@ -401,6 +405,7 @@
                                     </div>
                                 </div>
                             </div>
+                            --}}
 
                         </div>
                     </div>
@@ -408,6 +413,7 @@
             </div>
         </div>
 
+        {{-- Recent Quotations (hidden — uncomment when needed)
         <!-- Recent Quotations -->
         @php
             $recentQuotations = \App\Models\Purchase\PurchaseQuotation::with('supplier')
@@ -501,6 +507,7 @@
                 </div>
             </div>
         @endif
+        --}}
     </div>
 </div>
 @endsection
