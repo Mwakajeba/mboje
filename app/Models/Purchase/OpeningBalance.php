@@ -30,6 +30,8 @@ class OpeningBalance extends Model
         'reference',
         'notes',
         'purchase_invoice_id',
+        'journal_id',
+        'payable_chart_account_id',
         'created_by',
         'updated_by',
     ];
@@ -46,6 +48,8 @@ class OpeningBalance extends Model
     public function branch() { return $this->belongsTo(Branch::class); }
     public function company() { return $this->belongsTo(Company::class); }
     public function invoice() { return $this->belongsTo(\App\Models\Purchase\PurchaseInvoice::class, 'purchase_invoice_id'); }
+    public function journal() { return $this->belongsTo(\App\Models\Journal::class); }
+    public function payableChartAccount() { return $this->belongsTo(\App\Models\ChartAccount::class, 'payable_chart_account_id'); }
     public function creator() { return $this->belongsTo(User::class, 'created_by'); }
     public function updater() { return $this->belongsTo(User::class, 'updated_by'); }
 

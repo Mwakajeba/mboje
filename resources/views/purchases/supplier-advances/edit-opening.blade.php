@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'New Supplier Advance')
+@section('title', 'Edit Opening Supplier Advance')
 
 @section('content')
 <div class="page-wrapper">
@@ -9,16 +9,16 @@
             ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Purchase Management', 'url' => route('purchases.index'), 'icon' => 'bx bx-purchase-tag'],
             ['label' => 'Supplier Advances', 'url' => route('purchases.supplier-advances.index'), 'icon' => 'bx bx-wallet-alt'],
-            ['label' => 'New advance', 'url' => '#', 'icon' => 'bx bx-plus']
+            ['label' => 'Edit advance', 'url' => '#', 'icon' => 'bx bx-plus']
         ]" />
 
-        <h6 class="mb-0 text-uppercase">New supplier advance</h6>
+        <h6 class="mb-0 text-uppercase">Edit opening supplier advance</h6>
         <hr />
 
         <div class="card radius-10">
             <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0 text-white"><i class="bx bx-wallet me-2"></i>Supplier advance voucher</h5>
-                <p class="mb-0 opacity-75 small">Money paid to the supplier in advance: debit the advance (asset) account, credit the bank/cash account used.</p>
+                <h5 class="mb-0 text-white"><i class="bx bx-wallet me-2"></i>Edit opening supplier advance voucher</h5>
+                <p class="mb-0 opacity-75 small">Debit the advance (asset) account, credit retained earnings. Posted via journal, journal items, and GL (no bank account).</p>
             </div>
             <div class="card-body">
                 @if($errors->any())
@@ -30,8 +30,9 @@
                     <div class="alert alert-danger">{{ session('error') }}</div>
                 @endif
 
-                <form id="supplier-advance-create-form" action="{{ route('purchases.supplier-advances.store') }}" method="post" enctype="multipart/form-data">
+                <form id="supplier-advance-edit-opening-form" action="{{ route('purchases.supplier-advances.update', \Vinkla\Hashids\Facades\Hashids::encode($advance->id)) }}" method="post" enctype="multipart/form-data">
                     @csrf
+                    @method('PUT')
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="supplier_id" class="form-label fw-bold">Supplier <span class="text-danger">*</span></label>
@@ -39,7 +40,7 @@
                                 <option value=""></option>
                                 @foreach($suppliers as $s)
                                     @php $supAmt = number_format((float) ($s->advances_total ?? 0), 2, '.', ','); @endphp
-                                    <option value="{{ $s->id }}" @selected(old('supplier_id') == $s->id)>{{ $s->name }} — {{ $supAmt }}</option>
+                                    <option value="{{ $s->id }}" @selected(old('supplier_id', $advance->supplier_id) == $s->id)>{{ $s->name }} — {{ $supAmt }}</option>
                                 @endforeach
                             </select>
                             @error('supplier_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -47,33 +48,34 @@
                         <div class="col-md-6">
                             <label for="advance_date" class="form-label fw-bold">Date <span class="text-danger">*</span></label>
                             <input type="date" id="advance_date" name="advance_date" class="form-control @error('advance_date') is-invalid @enderror"
-                                   value="{{ old('advance_date', date('Y-m-d')) }}" required>
+                                   value="{{ old('advance_date', $advance->advance_date->format('Y-m-d')) }}" required>
                             @error('advance_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="bank_account_id" class="form-label fw-bold">Bank / cash account (credited) <span class="text-danger">*</span></label>
-                            <select id="bank_account_id" name="bank_account_id" class="form-select select2-single @error('bank_account_id') is-invalid @enderror" required>
-                                <option value=""></option>
-                                @foreach($bankAccounts as $b)
-                                    <option value="{{ $b->id }}" @selected(old('bank_account_id') == $b->id)>{{ $b->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('bank_account_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <label class="form-label fw-bold">Retained earnings (credited)</label>
+                            @if($retainedEarningsAccount ?? null)
+                                <input type="text" class="form-control bg-light" readonly
+                                       value="{{ $retainedEarningsAccount->account_code }} — {{ $retainedEarningsAccount->account_name }}">
+                                <small class="text-muted">From <strong>retained_earnings_account_id</strong> in settings.</small>
+                            @else
+                                <input type="text" class="form-control bg-light text-danger" readonly value="Not configured">
+                                <small class="text-danger">Configure retained_earnings_account_id before posting.</small>
+                            @endif
                         </div>
                         <div class="col-md-6">
-                            <label for="reference" class="form-label fw-bold">Reference (optional)</label>
+                            <label for="reference" class="form-label fw-bold">Reference (optional)</label><label for="reference" class="form-label fw-bold">Reference (optional)</label>
                             <input type="text" id="reference" name="reference" class="form-control @error('reference') is-invalid @enderror"
-                                   value="{{ old('reference') }}" maxlength="64" placeholder="Leave blank to auto-generate">
+                                   value="{{ old('reference', $advance->reference) }}" maxlength="64" placeholder="Leave blank to auto-generate">
                             @error('reference')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
                     <div class="mb-3">
                         <label for="description" class="form-label fw-bold">Description (optional)</label>
-                        <textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="2" placeholder="Notes for the supplier or internal use">{{ old('description') }}</textarea>
+                        <textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="2" placeholder="Notes for the supplier or internal use">{{ old('description', $advance->description) }}</textarea>
                         @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
@@ -92,7 +94,7 @@
                                 <select id="debit_chart_account_id" name="debit_chart_account_id" class="form-select select2-single @error('debit_chart_account_id') is-invalid @enderror" required>
                                     <option value=""></option>
                                     @forelse($chartAccounts as $ca)
-                                        <option value="{{ $ca->id }}" @selected(old('debit_chart_account_id') == $ca->id)>
+                                        <option value="{{ $ca->id }}" @selected(old('debit_chart_account_id', $advance->debit_chart_account_id) == $ca->id)>
                                             {{ $ca->account_code }} — {{ $ca->account_name }}
                                         </option>
                                     @empty
@@ -106,7 +108,7 @@
                                 <label for="amount" class="form-label fw-bold">Amount <span class="text-danger">*</span></label>
                                 <input type="text" inputmode="decimal" id="amount" name="amount" autocomplete="off"
                                        class="form-control @error('amount') is-invalid @enderror"
-                                       value="{{ old('amount') }}" required placeholder="0.00">
+                                       value="{{ old('amount', number_format((float)$advance->amount, 2, '.', ',')) }}" required placeholder="0.00">
                                 <small class="text-muted">Thousands separated by commas (e.g. 1,234.56).</small>
                                 @error('amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
@@ -114,7 +116,7 @@
                     </div>
 
                     <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn btn-primary"><i class="bx bx-save me-1"></i> Save &amp; post to GL</button>
+                        <button type="submit" class="btn btn-primary" @disabled(!($retainedEarningsAccount ?? null))><i class="bx bx-save me-1"></i> Post journal &amp; GL</button>
                         <a href="{{ route('purchases.supplier-advances.index') }}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
@@ -126,12 +128,13 @@
 
 @push('styles')
 <style>
-    #supplier-advance-create-form .select2-container--bootstrap-5 .select2-selection--single {
+    /* Align Select2 single control with adjacent form controls */
+    #supplier-advance-edit-opening-form .select2-container--bootstrap-5 .select2-selection--single {
         min-height: 38px;
         display: flex;
         align-items: center;
     }
-    #supplier-advance-create-form #amount {
+    #supplier-advance-edit-opening-form #amount {
         min-height: 38px;
     }
 </style>
@@ -140,10 +143,13 @@
 @push('scripts')
 <script nonce="{{ $cspNonce ?? '' }}">
 (function () {
-    var $form = $('#supplier-advance-create-form');
+    var $form = $('#supplier-advance-edit-opening-form');
     var $amt = $('#amount');
     if (!$form.length || !$amt.length) return;
-    function stripCommas(v) { return String(v || '').replace(/,/g, ''); }
+
+    function stripCommas(v) {
+        return String(v || '').replace(/,/g, '');
+    }
     function formatAmountDisplay(v) {
         var s = stripCommas(v).replace(/[^\d.]/g, '');
         var parts = s.split('.');
@@ -157,7 +163,9 @@
         if (stripCommas(this.value) === '') return;
         this.value = formatAmountDisplay(this.value);
     });
-    $form.on('submit', function () { $amt.val(stripCommas($amt.val())); });
+    $form.on('submit', function () {
+        $amt.val(stripCommas($amt.val()));
+    });
 })();
 </script>
 @endpush

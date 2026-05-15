@@ -20,8 +20,11 @@
                     <a href="{{ route('purchases.supplier-advances.index', ['all' => 1]) }}" class="btn btn-outline-secondary btn-sm">Show all suppliers (summary)</a>
                 @endif
                 @can('record purchase payment')
+                <a href="{{ route('purchases.supplier-advances.opening-advance.create') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bx bx-book-open me-1"></i> Opening balance advance payment
+                </a>
                 <a href="{{ route('purchases.supplier-advances.create') }}" class="btn btn-primary btn-sm">
-                    <i class="bx bx-plus me-1"></i> New advance
+                    <i class="bx bx-plus me-1"></i> Add new advance
                 </a>
                 @endcan
             </div>
@@ -45,7 +48,7 @@
             <div class="card-body">
                 <h6 class="text-primary mb-3"><i class="bx bx-receipt me-1"></i> Advance vouchers</h6>
                 <p class="text-muted small mb-3">
-                    Each row is one posted advance (debit advance account, credit bank/cash). Use actions to edit, delete, or open the supplier's full statement.
+                    Each row is one posted advance (debit advance account; credit bank/cash or retained earnings for opening balance). Use actions to edit, delete, or open the supplier's full statement.
                 </p>
                 <div class="table-responsive">
                     <table class="table table-striped table-hover align-middle">
@@ -55,7 +58,7 @@
                                 <th>Reference</th>
                                 <th>Supplier</th>
                                 <th>Debit account</th>
-                                <th>Bank / cash</th>
+                                <th>Credit account</th>
                                 <th class="text-end">Amount</th>
                                 <th class="text-end text-nowrap">Actions</th>
                             </tr>
@@ -74,7 +77,13 @@
                                             —
                                         @endif
                                     </td>
-                                    <td class="small">{{ $advance->bankAccount->name ?? '—' }}</td>
+                                    <td class="small">
+                                        @if($advance->isOpeningJournalAdvance())
+                                            <span class="text-muted">Retained earnings (journal #{{ $advance->journal_id }})</span>
+                                        @else
+                                            {{ $advance->bankAccount->name ?? '—' }}
+                                        @endif
+                                    </td>
                                     <td class="text-end">{{ format_currency((float) $advance->amount) }}</td>
                                     <td class="text-end">
                                         <div class="btn-group btn-group-sm" role="group" aria-label="Actions">

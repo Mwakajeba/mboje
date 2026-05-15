@@ -42,6 +42,30 @@
                         </div>
                     </div>
 
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Payable chart of account (credit) <span class="text-danger">*</span></label>
+                            <select name="payable_chart_account_id" class="form-select select2-single" required>
+                                <option value="">Select account</option>
+                                @foreach($chartAccounts as $ca)
+                                    <option value="{{ $ca->id }}" @selected(old('payable_chart_account_id', $defaultPayableId ?? null) == $ca->id)>
+                                        {{ $ca->account_code }} — {{ $ca->account_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Retained earnings (debit)</label>
+                            @if($retainedEarningsAccount ?? null)
+                                <input type="text" class="form-control bg-light" readonly
+                                       value="{{ $retainedEarningsAccount->account_code }} — {{ $retainedEarningsAccount->account_name }}">
+                            @else
+                                <input type="text" class="form-control bg-light text-danger" readonly value="Not configured">
+                            @endif
+                        </div>
+                    </div>
+
                     <div class="row mb-3">
                         <div class="col-md-3">
                             <label class="form-label">Currency</label>

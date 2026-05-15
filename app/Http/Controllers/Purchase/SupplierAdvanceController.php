@@ -9,6 +9,7 @@ use App\Models\Purchase\SupplierAdvance;
 use App\Models\Purchase\SupplierAdvanceDeduction;
 use App\Models\Supplier;
 use App\Services\BankReconciliationService;
+use App\Services\Purchase\SupplierAdvanceJournalService;
 use App\Services\Purchase\SupplierAdvanceStatementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,10 @@ class SupplierAdvanceController extends Controller
     /** Debit GL line: only chart accounts whose trimmed code starts with this (e.g. 1100, 11001). */
     private const SUPPLIER_ADVANCE_DEBIT_ACCOUNT_CODE_PREFIX = '1100';
 
+    public function __construct(
+        private readonly SupplierAdvanceJournalService $advanceJournalService
+    ) {}
+
     public function index(Request $request)
     {
         abort_unless(Auth::user()->can('view purchases'), 403);
@@ -33,7 +38,7 @@ class SupplierAdvanceController extends Controller
         $advances = SupplierAdvance::query()
             ->where('company_id', $companyId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->with(['supplier', 'debitChartAccount', 'bankAccount'])
+            ->with(['supplier', 'debitChartAccount', 'bankAccount', 'journal'])
             ->orderByDesc('advance_date')
             ->orderByDesc('id')
             ->get();
@@ -92,6 +97,29 @@ class SupplierAdvanceController extends Controller
         $chartAccounts = $this->supplierAdvanceDebitChartAccounts($user);
 
         return view('purchases.supplier-advances.create', compact('bankAccounts', 'suppliers', 'chartAccounts'));
+    }
+
+    public function createOpening()
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        $user = Auth::user();
+        $branchId = session('branch_id') ?? ($user->branch_id ?? null);
+
+        $suppliers = Supplier::where('company_id', $user->company_id)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->withSum(['supplierAdvances as advances_total' => function ($q) use ($user, $branchId) {
+                $q->where('company_id', $user->company_id)
+                    ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
+            }], 'amount')
+            ->orderBy('name')
+            ->get();
+
+        $chartAccounts = $this->supplierAdvanceDebitChartAccounts($user);
+        $retainedEarningsId = $this->advanceJournalService->resolveRetainedEarningsAccountId((int) $user->company_id);
+        $retainedEarningsAccount = $retainedEarningsId ? ChartAccount::find($retainedEarningsId) : null;
+
+        return view('purchases.supplier-advances.create-opening', compact('suppliers', 'chartAccounts', 'retainedEarningsAccount'));
     }
 
     public function store(Request $request)
@@ -166,6 +194,77 @@ class SupplierAdvanceController extends Controller
             ->with('success', 'Supplier advance recorded and posted to the general ledger.');
     }
 
+    public function storeOpening(Request $request)
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        $this->mergeNormalizedAmount($request);
+
+        $validated = $request->validate([
+            'supplier_id' => 'required|exists:suppliers,id',
+            'advance_date' => 'required|date',
+            'debit_chart_account_id' => 'required|exists:chart_accounts,id',
+            'amount' => 'required|numeric|min:0.01',
+            'description' => 'nullable|string|max:2000',
+            'reference' => 'nullable|string|max:64',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $resolvedBranchId = $user->branch_id
+            ?? (session('branch_id') ?: null)
+            ?? (function_exists('current_branch_id') ? current_branch_id() : null);
+        if (! $resolvedBranchId) {
+            return back()->withInput()->with('error', 'Active branch is not set. Please select a branch and try again.');
+        }
+
+        $supplier = Supplier::where('company_id', $companyId)->findOrFail($validated['supplier_id']);
+
+        $err = $this->validateOpeningAdvanceChart($companyId, (int) $validated['debit_chart_account_id']);
+        if ($err instanceof RedirectResponse) {
+            return $err;
+        }
+
+        $attachmentPath = null;
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $fileName = time().'_'.\Illuminate\Support\Str::random(10).'.'.$file->getClientOriginalExtension();
+            $attachmentPath = $file->storeAs('supplier-advance-attachments', $fileName, 'public');
+        }
+
+        try {
+            DB::beginTransaction();
+            $advance = SupplierAdvance::create([
+                'company_id' => $companyId,
+                'branch_id' => $resolvedBranchId,
+                'supplier_id' => $supplier->id,
+                'advance_date' => $validated['advance_date'],
+                'reference' => $validated['reference'] ?: null,
+                'debit_chart_account_id' => $validated['debit_chart_account_id'],
+                'bank_account_id' => null,
+                'amount' => $validated['amount'],
+                'description' => $validated['description'] ?? null,
+                'attachment_path' => $attachmentPath,
+                'user_id' => $user->id,
+            ]);
+            if (empty($advance->reference)) {
+                $advance->update(['reference' => 'SADV-'.$advance->id]);
+            }
+            $this->advanceJournalService->postOpeningAdvance($advance->fresh(['supplier']), (int) $user->id);
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            report($e);
+
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('purchases.supplier-advances.index')
+            ->with('success', 'Opening balance advance payment posted via journal and general ledger.');
+    }
+
     public function edit(string $encodedId)
     {
         abort_unless(Auth::user()->can('record purchase payment'), 403);
@@ -205,6 +304,19 @@ class SupplierAdvanceController extends Controller
                 ->values();
         }
 
+        $retainedEarningsAccount = null;
+        if ($advance->isOpeningJournalAdvance()) {
+            $reId = $this->advanceJournalService->resolveRetainedEarningsAccountId((int) $user->company_id);
+            $retainedEarningsAccount = $reId ? ChartAccount::find($reId) : null;
+
+            return view('purchases.supplier-advances.edit-opening', compact(
+                'advance',
+                'suppliers',
+                'chartAccounts',
+                'retainedEarningsAccount'
+            ));
+        }
+
         return view('purchases.supplier-advances.edit', compact('advance', 'bankAccounts', 'suppliers', 'chartAccounts'));
     }
 
@@ -213,6 +325,10 @@ class SupplierAdvanceController extends Controller
         abort_unless(Auth::user()->can('record purchase payment'), 403);
 
         $advance = $this->advanceForEncodedId($encodedId);
+
+        if ($advance->isOpeningJournalAdvance()) {
+            return $this->updateOpeningAdvance($request, $advance);
+        }
 
         $this->mergeNormalizedAmount($request);
 
@@ -294,12 +410,23 @@ class SupplierAdvanceController extends Controller
 
         $advance = $this->advanceForEncodedId($encodedId);
 
+        if ($advance->advanceDeductions()->exists()) {
+            return redirect()
+                ->route('purchases.supplier-advances.index')
+                ->with('error', 'Cannot delete: this advance has been applied to purchases.');
+        }
+
         try {
             DB::beginTransaction();
             $this->assertAdvanceGlCanBeReversed($advance);
 
             $advance->loadMissing(['bankAccount.chartAccount', 'debitChartAccount']);
-            $this->assertChartsNotInCompletedReconciliation($advance->bankAccount?->chart_account_id, $advance->advance_date);
+            if ($advance->isOpeningJournalAdvance()) {
+                $retainedId = $this->advanceJournalService->resolveRetainedEarningsAccountId((int) $advance->company_id);
+                $this->assertChartsNotInCompletedReconciliation($retainedId, $advance->advance_date);
+            } else {
+                $this->assertChartsNotInCompletedReconciliation($advance->bankAccount?->chart_account_id, $advance->advance_date);
+            }
             $this->assertChartsNotInCompletedReconciliation($advance->debit_chart_account_id, $advance->advance_date);
 
             $advance->removeGlTransactions();
@@ -385,6 +512,97 @@ class SupplierAdvanceController extends Controller
     /**
      * @return RedirectResponse|null
      */
+    private function validateOpeningAdvanceChart(int $companyId, int $debitChartAccountId): ?RedirectResponse
+    {
+        if (! $this->debitChartAccountIsAllowedForSupplierAdvance($companyId, $debitChartAccountId)) {
+            return back()->withInput()->withErrors([
+                'debit_chart_account_id' => 'Selected account must be a chart account with code starting '.self::SUPPLIER_ADVANCE_DEBIT_ACCOUNT_CODE_PREFIX.'.',
+            ]);
+        }
+
+        $retainedId = $this->advanceJournalService->resolveRetainedEarningsAccountId($companyId);
+        if (! $retainedId) {
+            return back()->withInput()->withErrors([
+                'error' => 'Retained earnings account is not configured. Set retained_earnings_account_id in Settings.',
+            ]);
+        }
+
+        if ($debitChartAccountId === $retainedId) {
+            return back()->withInput()->withErrors([
+                'debit_chart_account_id' => 'Advance account cannot be the same as the retained earnings account.',
+            ]);
+        }
+
+        return null;
+    }
+
+    private function updateOpeningAdvance(Request $request, SupplierAdvance $advance): RedirectResponse
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        if ($advance->advanceDeductions()->exists()) {
+            return back()->withInput()->with('error', 'Cannot edit: this advance has been applied to purchases.');
+        }
+
+        $this->mergeNormalizedAmount($request);
+
+        $validated = $request->validate([
+            'supplier_id' => 'required|exists:suppliers,id',
+            'advance_date' => 'required|date',
+            'debit_chart_account_id' => 'required|exists:chart_accounts,id',
+            'amount' => 'required|numeric|min:0.01',
+            'description' => 'nullable|string|max:2000',
+            'reference' => 'nullable|string|max:64',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $supplier = Supplier::where('company_id', $companyId)->findOrFail($validated['supplier_id']);
+
+        $err = $this->validateOpeningAdvanceChart($companyId, (int) $validated['debit_chart_account_id']);
+        if ($err) {
+            return $err;
+        }
+
+        try {
+            DB::beginTransaction();
+            $this->assertAdvanceGlCanBeReversed($advance);
+
+            $attachmentPath = $advance->attachment_path;
+            if ($request->hasFile('attachment')) {
+                if ($attachmentPath && Storage::disk('public')->exists($attachmentPath)) {
+                    Storage::disk('public')->delete($attachmentPath);
+                }
+                $file = $request->file('attachment');
+                $fileName = time().'_'.\Illuminate\Support\Str::random(10).'.'.$file->getClientOriginalExtension();
+                $attachmentPath = $file->storeAs('supplier-advance-attachments', $fileName, 'public');
+            }
+
+            $advance->update([
+                'supplier_id' => $supplier->id,
+                'advance_date' => $validated['advance_date'],
+                'reference' => $validated['reference'] ?: ('SADV-'.$advance->id),
+                'debit_chart_account_id' => $validated['debit_chart_account_id'],
+                'amount' => $validated['amount'],
+                'description' => $validated['description'] ?? null,
+                'attachment_path' => $attachmentPath,
+            ]);
+
+            $this->advanceJournalService->postOpeningAdvance($advance->fresh(['supplier']), (int) $user->id);
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            report($e);
+
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('purchases.supplier-advances.index')
+            ->with('success', 'Opening supplier advance updated and journal reposted.');
+    }
+
     private function validateBankAndChartForStore(int $companyId, int $resolvedBranchId, array $validated, ?int $preserveDebitChartAccountId = null): ?RedirectResponse
     {
         $bankOk = BankAccount::whereKey($validated['bank_account_id'])

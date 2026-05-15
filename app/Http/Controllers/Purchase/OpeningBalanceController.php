@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Purchase;
 
 use App\Http\Controllers\Controller;
+use App\Models\ChartAccount;
 use App\Models\Purchase\OpeningBalance;
 use App\Models\Purchase\PurchaseInvoice;
 use App\Models\Supplier;
-use App\Models\GlTransaction;
+use App\Models\SystemSetting;
+use App\Services\Purchase\SupplierOpeningBalanceJournalService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,44 +18,102 @@ use Vinkla\Hashids\Facades\Hashids;
 
 class OpeningBalanceController extends Controller
 {
+    public function __construct(
+        private readonly SupplierOpeningBalanceJournalService $journalService
+    ) {}
+
     public function index()
     {
         $branchId = session('branch_id') ?? (Auth::user()->branch_id ?? null);
-        $balances = OpeningBalance::with('supplier')
-            ->when($branchId, fn($q)=>$q->where('branch_id', $branchId))
+        $balances = OpeningBalance::with(['supplier', 'journal', 'payableChartAccount'])
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->orderByDesc('opening_date')
             ->paginate(25);
+
         return view('purchases.opening-balances.index', compact('balances'));
     }
 
     public function create()
     {
+        return $this->renderCreateForm(false);
+    }
+
+    public function createFromAdvances()
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        return $this->renderCreateForm(true);
+    }
+
+    private function renderCreateForm(bool $fromAdvances)
+    {
         $branchId = session('branch_id') ?? (Auth::user()->branch_id ?? null);
-        if (!$branchId) {
+        if (! $branchId) {
             return redirect()->back()->withErrors(['error' => 'Please select a branch before creating opening balance.']);
         }
-        $suppliers = Supplier::forBranch($branchId)->get();
-        return view('purchases.opening-balances.create', compact('suppliers'));
+
+        $user = Auth::user();
+        $suppliers = Supplier::where('company_id', $user->company_id)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->orderBy('name')
+            ->get();
+
+        $chartAccounts = ChartAccount::whereHas('accountClassGroup', function ($query) use ($user) {
+            $query->where('company_id', $user->company_id);
+        })
+            ->orderBy('account_code')
+            ->orderBy('account_name')
+            ->get();
+
+        $retainedEarningsId = $this->journalService->resolveRetainedEarningsAccountId((int) $user->company_id);
+        $retainedEarningsAccount = $retainedEarningsId
+            ? ChartAccount::find($retainedEarningsId)
+            : null;
+
+        $defaultPayableId = (int) (SystemSetting::where('key', 'inventory_default_purchase_payable_account')->value('value') ?? 0);
+
+        $view = $fromAdvances
+            ? 'purchases.supplier-advances.opening-balance-create'
+            : 'purchases.opening-balances.create';
+
+        return view($view, compact(
+            'suppliers',
+            'chartAccounts',
+            'retainedEarningsAccount',
+            'defaultPayableId',
+            'fromAdvances'
+        ));
     }
 
     public function store(Request $request)
+    {
+        return $this->persistOpeningBalance($request, false);
+    }
+
+    public function storeFromAdvances(Request $request)
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        return $this->persistOpeningBalance($request, true);
+    }
+
+    private function persistOpeningBalance(Request $request, bool $fromAdvances): RedirectResponse
     {
         $branchId = session('branch_id') ?? (Auth::user()->branch_id ?? null);
         Log::info('purchase.opening_balance.store.start', [
             'user_id' => Auth::id(),
             'branch_id' => $branchId,
-            'payload' => $request->only(['supplier_id','opening_date','currency','exchange_rate','amount','reference'])
+            'from_advances' => $fromAdvances,
         ]);
-        if (!$branchId) {
-            Log::warning('purchase.opening_balance.store.no_branch', [
-                'user_id' => Auth::id()
-            ]);
+
+        if (! $branchId) {
             return back()->withInput()->withErrors(['error' => 'Please select a branch before creating opening balance.']);
         }
 
         $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'opening_date' => 'required|date',
+            'payable_chart_account_id' => 'required|exists:chart_accounts,id',
             'currency' => 'nullable|string|max:3',
             'exchange_rate' => 'nullable|numeric|min:0.000001',
             'amount' => 'required|numeric|min:0.01',
@@ -60,17 +121,22 @@ class OpeningBalanceController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        Log::info('purchase.opening_balance.store.validated');
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+
+        $chartOk = ChartAccount::whereKey($request->payable_chart_account_id)
+            ->whereHas('accountClassGroup', fn ($q) => $q->where('company_id', $companyId))
+            ->exists();
+        if (! $chartOk) {
+            return back()->withInput()->withErrors(['payable_chart_account_id' => 'Invalid chart account for this company.']);
+        }
+
         DB::beginTransaction();
         try {
-            $companyId = Auth::user()->company_id;
             $userId = Auth::id();
-            
-            // Get functional currency
-            $functionalCurrency = \App\Models\SystemSetting::getValue('functional_currency', Auth::user()->company->functional_currency ?? 'TZS');
+            $functionalCurrency = SystemSetting::getValue('functional_currency', $user->company->functional_currency ?? 'TZS');
             $currency = $request->currency ?? $functionalCurrency;
-            
-            // Get exchange rate using FxTransactionRateService
+
             $fxTransactionRateService = app(\App\Services\FxTransactionRateService::class);
             $userProvidedRate = $request->filled('exchange_rate') ? (float) $request->exchange_rate : null;
             $rateResult = $fxTransactionRateService->getTransactionRate(
@@ -81,8 +147,6 @@ class OpeningBalanceController extends Controller
                 $userProvidedRate
             );
             $rate = $rateResult['rate'];
-            $fxRateUsed = $rate; // Store the rate used for fx_rate_used field
-            
             $amount = (float) $request->amount;
 
             $opening = OpeningBalance::create([
@@ -92,22 +156,20 @@ class OpeningBalanceController extends Controller
                 'opening_date' => $request->opening_date,
                 'currency' => $currency,
                 'exchange_rate' => $rate,
-                'fx_rate_used' => $fxRateUsed,
                 'amount' => $amount,
                 'paid_amount' => 0,
                 'balance_due' => $amount,
                 'status' => 'posted',
                 'reference' => $request->reference,
                 'notes' => $request->notes,
+                'payable_chart_account_id' => $request->payable_chart_account_id,
                 'created_by' => $userId,
             ]);
-            Log::info('purchase.opening_balance.created', [
-                'opening_balance_id' => $opening->id,
-                'supplier_id' => $opening->supplier_id,
-                'amount' => $opening->amount
-            ]);
-            
-            // Create synthetic invoice
+
+            if (empty($opening->reference)) {
+                $opening->update(['reference' => 'SOB-'.$opening->id]);
+            }
+
             $invoice = PurchaseInvoice::create([
                 'supplier_id' => $request->supplier_id,
                 'invoice_number' => $this->generateInvoiceNumber(),
@@ -124,8 +186,7 @@ class OpeningBalanceController extends Controller
                 'balance_due' => $amount,
                 'currency' => $currency,
                 'exchange_rate' => $rate,
-                'fx_rate_used' => $fxRateUsed,
-                'notes' => 'Opening Balance',
+                'notes' => 'Supplier Opening Balance',
                 'terms_conditions' => null,
                 'branch_id' => $branchId,
                 'company_id' => $companyId,
@@ -133,87 +194,46 @@ class OpeningBalanceController extends Controller
             ]);
 
             $opening->update(['purchase_invoice_id' => $invoice->id]);
-            Log::info('purchase.opening_balance.invoice_created', [
-                'opening_balance_id' => $opening->id,
-                'invoice_id' => $invoice->id,
-                'supplier_id' => $invoice->supplier_id,
-                'total_amount' => $invoice->total_amount
-            ]);
 
-            // Post GL: Dr AP, Cr Opening AP Equity
-            $payableAccountId = (int) (\App\Models\SystemSetting::where('key','inventory_default_purchase_payable_account')->value('value') ?? 30);
-            // Resolve Opening Balance Equity account with multiple fallbacks
-            $openingEquityAccountId = (int) (\App\Models\SystemSetting::where('key','inventory_default_opening_balance_account')->value('value') ?? 0);
-            if (!$openingEquityAccountId) {
-                $openingEquityAccountId = (int) (\App\Models\SystemSetting::where('key','ap_opening_balance_account_id')->value('value') ?? 0);
-            }
-            if (!$openingEquityAccountId) {
-                // Fallback to Retained Earnings or a safe equity account id if configured
-                $openingEquityAccountId = (int) (\App\Models\SystemSetting::where('key','retained_earnings_account_id')->value('value') ?? 0);
-            }
-            Log::info('purchase.opening_balance.gl_accounts_resolved', [
-                'payable_account_id' => $payableAccountId,
-                'opening_equity_account_id' => $openingEquityAccountId
-            ]);
-            if (!$openingEquityAccountId) {
-                Log::warning('purchase.opening_balance.missing_equity_account', [
-                    'opening_balance_id' => $opening->id
-                ]);
-                DB::rollBack();
-                return back()->withInput()->withErrors(['error' => 'Opening Balance Equity account is not configured. Set inventory_default_opening_balance_account (preferred) or ap_opening_balance_account_id or retained_earnings_account_id in Settings.']);
-            }
-
-            GlTransaction::create([
-                'chart_account_id' => $payableAccountId,
-                'supplier_id' => $request->supplier_id,
-                'amount' => $amount,
-                'nature' => 'credit',
-                'transaction_id' => $invoice->id,
-                'transaction_type' => 'purchase_invoice',
-                'date' => $request->opening_date,
-                'description' => 'Opening Balance AP',
-                'branch_id' => $branchId,
-                'user_id' => $userId,
-            ]);
-
-            GlTransaction::create([
-                'chart_account_id' => $openingEquityAccountId,
-                'supplier_id' => $request->supplier_id,
-                'amount' => $amount,
-                'nature' => 'debit',
-                'transaction_id' => $invoice->id,
-                'transaction_type' => 'purchase_invoice',
-                'date' => $request->opening_date,
-                'description' => 'Opening Balance Offset',
-                'branch_id' => $branchId,
-                'user_id' => $userId,
-            ]);
+            $this->journalService->post(
+                $opening->fresh(['supplier']),
+                (int) $request->payable_chart_account_id,
+                (int) $userId
+            );
 
             DB::commit();
-            Log::info('purchase.opening_balance.store.success', [
-                'opening_balance_id' => $opening->id,
-                'invoice_id' => $invoice->id
-            ]);
-            $encodedId = \Vinkla\Hashids\Facades\Hashids::encode($opening->id);
-            return redirect()->route('purchases.opening-balances.show', $encodedId)->with('success', 'Opening balance posted successfully.');
+
+            $encodedId = Hashids::encode($opening->id);
+            $success = 'Supplier opening balance posted via journal (retained earnings and selected payable account).';
+
+            if ($fromAdvances) {
+                return redirect()
+                    ->route('purchases.supplier-advances.index')
+                    ->with('success', $success);
+            }
+
+            return redirect()
+                ->route('purchases.opening-balances.show', $encodedId)
+                ->with('success', $success);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('purchase.opening_balance.store.failed', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
             ]);
-            return back()->withInput()->withErrors(['error' => 'Failed to create opening balance: ' . $e->getMessage()]);
+
+            return back()->withInput()->withErrors(['error' => 'Failed to create opening balance: '.$e->getMessage()]);
         }
     }
 
     public function show($encodedId)
     {
         $id = Hashids::decode($encodedId)[0] ?? null;
-        if (!$id) {
+        if (! $id) {
             return redirect()->route('purchases.opening-balances.index')
                 ->with('error', 'Invalid opening balance ID');
         }
-        $balance = OpeningBalance::with(['supplier','invoice'])->findOrFail($id);
+        $balance = OpeningBalance::with(['supplier', 'invoice', 'journal', 'payableChartAccount'])->findOrFail($id);
+
         return view('purchases.opening-balances.show', compact('balance'));
     }
 
@@ -225,9 +245,10 @@ class OpeningBalanceController extends Controller
             ->orderByDesc('id')
             ->first();
         $seq = 1;
-        if ($last && preg_match('/^(PINV-\d{8})-(\d{4})$/', (string) $last->invoice_number, $m) && $m[1] === ($prefix . $datePart)) {
+        if ($last && preg_match('/^(PINV-\d{8})-(\d{4})$/', (string) $last->invoice_number, $m) && $m[1] === ($prefix.$datePart)) {
             $seq = (int) $m[2] + 1;
         }
-        return $prefix . $datePart . '-' . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+
+        return $prefix.$datePart.'-'.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
     }
 }

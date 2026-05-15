@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'New Supplier Advance')
+@section('title', 'Opening Balance Advance Payment')
 
 @section('content')
 <div class="page-wrapper">
@@ -9,16 +9,17 @@
             ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Purchase Management', 'url' => route('purchases.index'), 'icon' => 'bx bx-purchase-tag'],
             ['label' => 'Supplier Advances', 'url' => route('purchases.supplier-advances.index'), 'icon' => 'bx bx-wallet-alt'],
-            ['label' => 'New advance', 'url' => '#', 'icon' => 'bx bx-plus']
+            ['label' => 'Opening balance advance', 'url' => '#', 'icon' => 'bx bx-book-open']
         ]" />
 
-        <h6 class="mb-0 text-uppercase">New supplier advance</h6>
+        <h6 class="mb-0 text-uppercase">Opening balance advance payment</h6>
+        <p class="text-muted small mb-0">For supplier advance balances already existing before go-live (not paid from bank now).</p>
         <hr />
 
         <div class="card radius-10">
             <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0 text-white"><i class="bx bx-wallet me-2"></i>Supplier advance voucher</h5>
-                <p class="mb-0 opacity-75 small">Money paid to the supplier in advance: debit the advance (asset) account, credit the bank/cash account used.</p>
+                <h5 class="mb-0 text-white"><i class="bx bx-book-open me-2"></i>Opening balance advance voucher</h5>
+                <p class="mb-0 opacity-75 small">Debit advance (asset) account, credit retained earnings. Posted via journal, journal items, and GL.</p>
             </div>
             <div class="card-body">
                 @if($errors->any())
@@ -30,7 +31,13 @@
                     <div class="alert alert-danger">{{ session('error') }}</div>
                 @endif
 
-                <form id="supplier-advance-create-form" action="{{ route('purchases.supplier-advances.store') }}" method="post" enctype="multipart/form-data">
+                @if(!($retainedEarningsAccount ?? null))
+                    <div class="alert alert-warning">
+                        Retained earnings account is not configured. Set <strong>retained_earnings_account_id</strong> in settings before posting.
+                    </div>
+                @endif
+
+                <form id="supplier-advance-opening-form" action="{{ route('purchases.supplier-advances.opening-advance.store') }}" method="post" enctype="multipart/form-data">
                     @csrf
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -54,14 +61,14 @@
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="bank_account_id" class="form-label fw-bold">Bank / cash account (credited) <span class="text-danger">*</span></label>
-                            <select id="bank_account_id" name="bank_account_id" class="form-select select2-single @error('bank_account_id') is-invalid @enderror" required>
-                                <option value=""></option>
-                                @foreach($bankAccounts as $b)
-                                    <option value="{{ $b->id }}" @selected(old('bank_account_id') == $b->id)>{{ $b->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('bank_account_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <label class="form-label fw-bold">Retained earnings (credited)</label>
+                            @if($retainedEarningsAccount ?? null)
+                                <input type="text" class="form-control bg-light" readonly
+                                       value="{{ $retainedEarningsAccount->account_code }} — {{ $retainedEarningsAccount->account_name }}">
+                                <small class="text-muted">From <strong>retained_earnings_account_id</strong> in settings.</small>
+                            @else
+                                <input type="text" class="form-control bg-light text-danger" readonly value="Not configured">
+                            @endif
                         </div>
                         <div class="col-md-6">
                             <label for="reference" class="form-label fw-bold">Reference (optional)</label>
@@ -73,7 +80,7 @@
 
                     <div class="mb-3">
                         <label for="description" class="form-label fw-bold">Description (optional)</label>
-                        <textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="2" placeholder="Notes for the supplier or internal use">{{ old('description') }}</textarea>
+                        <textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="2" placeholder="Opening balance advance notes">{{ old('description') }}</textarea>
                         @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
@@ -99,7 +106,7 @@
                                         <option value="" disabled>No accounts with code starting 1100</option>
                                     @endforelse
                                 </select>
-                                <small class="text-muted">Only accounts whose code begins with <strong>1100</strong> (e.g. 1100, 11001).</small>
+                                <small class="text-muted">Accounts with code beginning <strong>1100</strong>.</small>
                                 @error('debit_chart_account_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-12 col-md-6">
@@ -114,7 +121,9 @@
                     </div>
 
                     <div class="d-flex gap-2 mt-4">
-                        <button type="submit" class="btn btn-primary"><i class="bx bx-save me-1"></i> Save &amp; post to GL</button>
+                        <button type="submit" class="btn btn-primary" @disabled(!($retainedEarningsAccount ?? null))>
+                            <i class="bx bx-save me-1"></i> Post journal &amp; GL
+                        </button>
                         <a href="{{ route('purchases.supplier-advances.index') }}" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
@@ -126,12 +135,12 @@
 
 @push('styles')
 <style>
-    #supplier-advance-create-form .select2-container--bootstrap-5 .select2-selection--single {
+    #supplier-advance-opening-form .select2-container--bootstrap-5 .select2-selection--single {
         min-height: 38px;
         display: flex;
         align-items: center;
     }
-    #supplier-advance-create-form #amount {
+    #supplier-advance-opening-form #amount {
         min-height: 38px;
     }
 </style>
@@ -140,7 +149,7 @@
 @push('scripts')
 <script nonce="{{ $cspNonce ?? '' }}">
 (function () {
-    var $form = $('#supplier-advance-create-form');
+    var $form = $('#supplier-advance-opening-form');
     var $amt = $('#amount');
     if (!$form.length || !$amt.length) return;
     function stripCommas(v) { return String(v || '').replace(/,/g, ''); }

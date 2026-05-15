@@ -78,6 +78,13 @@
                     <div class="col-md-6">
                         <div><strong>Reference:</strong> {{ $balance->reference ?? '-' }}</div>
                         <div><strong>Notes:</strong> {{ $balance->notes ?? '-' }}</div>
+                        @if($balance->payableChartAccount)
+                            <div><strong>Payable account:</strong> {{ $balance->payableChartAccount->account_code }} — {{ $balance->payableChartAccount->account_name }}</div>
+                        @endif
+                        @if($balance->journal_id)
+                            <div><strong>Journal:</strong> #{{ $balance->journal_id }} (supplier_opening_balance)</div>
+                        @endif
+
                     </div>
                 </div>
 

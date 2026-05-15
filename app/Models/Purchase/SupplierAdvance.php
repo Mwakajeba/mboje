@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\ChartAccount;
 use App\Models\Company;
 use App\Models\GlTransaction;
+use App\Models\Journal;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\BankReconciliationService;
@@ -27,6 +28,7 @@ class SupplierAdvance extends Model
         'reference',
         'debit_chart_account_id',
         'bank_account_id',
+        'journal_id',
         'amount',
         'description',
         'attachment_path',
@@ -63,6 +65,16 @@ class SupplierAdvance extends Model
         return $this->belongsTo(BankAccount::class);
     }
 
+    public function journal(): BelongsTo
+    {
+        return $this->belongsTo(Journal::class);
+    }
+
+    public function isOpeningJournalAdvance(): bool
+    {
+        return $this->journal_id !== null && $this->bank_account_id === null;
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -84,9 +96,7 @@ class SupplierAdvance extends Model
      */
     public function removeGlTransactions(): void
     {
-        GlTransaction::where('transaction_type', 'supplier_advance')
-            ->where('transaction_id', $this->id)
-            ->delete();
+        app(\App\Services\Purchase\SupplierAdvanceJournalService::class)->removeJournalAndGl($this);
     }
 
     /**
@@ -94,6 +104,10 @@ class SupplierAdvance extends Model
      */
     public function postGlTransactions(): void
     {
+        if ($this->journal_id) {
+            return;
+        }
+
         if (GlTransaction::where('transaction_type', 'supplier_advance')->where('transaction_id', $this->id)->exists()) {
             return;
         }

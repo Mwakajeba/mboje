@@ -1435,6 +1435,8 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
     // Supplier advances (prepayments to suppliers)
     Route::prefix('supplier-advances')->name('supplier-advances.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'index'])->name('index');
+        Route::get('/opening-advance/create', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'createOpening'])->name('opening-advance.create');
+        Route::post('/opening-advance', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'storeOpening'])->name('opening-advance.store');
         Route::get('/create', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'create'])->name('create');
         Route::post('/', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'store'])->name('store');
         Route::get('/statement/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'statement'])->name('statement');
