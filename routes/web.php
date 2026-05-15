@@ -1442,6 +1442,8 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
         Route::get('/statement/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'statement'])->name('statement');
         Route::get('/pay/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'pay'])->name('pay');
         Route::post('/pay/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'payStore'])->name('pay.store');
+        Route::get('/expense/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'expense'])->name('expense');
+        Route::post('/expense/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'expenseStore'])->name('expense.store');
         Route::get('/{encodedId}/edit', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'edit'])->name('edit');
         Route::put('/{encodedId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'update'])->name('update');
         Route::delete('/{encodedId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'destroy'])->name('destroy');

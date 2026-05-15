@@ -129,8 +129,8 @@
             <div class="card-body">
                 <h6 class="text-primary mb-3"><i class="bx bx-pie-chart-alt me-1"></i> Balances by supplier</h6>
                 <p class="text-muted small mb-3">
-                    <strong>Advances</strong> total posted prepayments; <strong>Applied</strong> is amounts offset on purchases or refunded in cash; <strong>Balance</strong> is advances minus applied.
-                    Use <strong>Pay</strong> when the supplier returns cash (debits bank, credits advance).
+                    <strong>Advances</strong> total posted prepayments; <strong>Applied</strong> is amounts offset on purchases, expenses, or refunds; <strong>Balance</strong> is advances minus applied.
+                    <strong>Pay</strong> = cash returned (bank). <strong>Expense</strong> = charge expense accounts against advance.
                 </p>
                 <div class="table-responsive">
                     <table class="table table-striped table-hover align-middle">
@@ -163,6 +163,10 @@
                                                 <a href="{{ route('purchases.supplier-advances.pay', ['encodedSupplierId' => $encSup]) }}"
                                                    class="btn btn-outline-primary" title="Record cash returned by supplier">
                                                     <i class="bx bx-money"></i> Pay
+                                                </a>
+                                                <a href="{{ route('purchases.supplier-advances.expense', ['encodedSupplierId' => $encSup]) }}"
+                                                   class="btn btn-outline-warning" title="Apply advance to expense accounts">
+                                                    <i class="bx bx-receipt"></i> Expense
                                                 </a>
                                                 @endif
                                             @endcan

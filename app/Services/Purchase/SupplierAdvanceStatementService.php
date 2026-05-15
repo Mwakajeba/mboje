@@ -103,6 +103,7 @@ class SupplierAdvanceStatementService
         return match ($deduction->source_type) {
             'cash_purchase' => 'Applied to cash purchase #'.($deduction->source_id ?? ''),
             'supplier_advance_refund' => 'Cash returned by supplier (receipt #'.($deduction->source_id ?? '').')',
+            'supplier_advance_expense' => 'Applied to expense (journal #'.($deduction->source_id ?? '').')',
             default => 'Advance applied',
         };
     }

@@ -11,6 +11,7 @@ use App\Models\Supplier;
 use App\Services\BankReconciliationService;
 use App\Services\Purchase\SupplierAdvanceAllocationService;
 use App\Services\Purchase\SupplierAdvanceJournalService;
+use App\Services\Purchase\SupplierAdvanceExpenseService;
 use App\Services\Purchase\SupplierAdvanceRefundService;
 use App\Services\Purchase\SupplierAdvanceStatementService;
 use Illuminate\Http\RedirectResponse;
@@ -28,7 +29,8 @@ class SupplierAdvanceController extends Controller
     public function __construct(
         private readonly SupplierAdvanceJournalService $advanceJournalService,
         private readonly SupplierAdvanceAllocationService $allocationService,
-        private readonly SupplierAdvanceRefundService $refundService
+        private readonly SupplierAdvanceRefundService $refundService,
+        private readonly SupplierAdvanceExpenseService $expenseService
     ) {}
 
     public function index(Request $request)
@@ -590,6 +592,109 @@ class SupplierAdvanceController extends Controller
             ->with('success', 'Supplier advance refund recorded. Bank debited and advance balance reduced.');
     }
 
+    public function expense(string $encodedSupplierId)
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+        $supplier = $this->supplierForEncodedId($encodedSupplierId, $companyId, $branchId);
+
+        $balance = $this->allocationService->balanceForSupplier(
+            $supplier->id,
+            $companyId,
+            $branchId ? (int) $branchId : null
+        );
+
+        if ($balance <= 0) {
+            return redirect()
+                ->route('purchases.supplier-advances.index')
+                ->with('error', 'This supplier has no advance balance to apply to expenses.');
+        }
+
+        $expenseAccounts = $this->expenseChartAccounts($companyId);
+
+        return view('purchases.supplier-advances.expense', compact(
+            'supplier',
+            'balance',
+            'expenseAccounts',
+            'encodedSupplierId'
+        ));
+    }
+
+    public function expenseStore(Request $request, string $encodedSupplierId)
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        $this->mergeNormalizedLineItemAmounts($request);
+
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'description' => 'nullable|string|max:2000',
+            'reference' => 'nullable|string|max:64',
+            'line_items' => 'required|array|min:1',
+            'line_items.*.chart_account_id' => 'required|exists:chart_accounts,id',
+            'line_items.*.amount' => 'required|numeric|min:0.01',
+            'line_items.*.description' => 'nullable|string|max:500',
+        ]);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $resolvedBranchId = $user->branch_id
+            ?? (session('branch_id') ?: null)
+            ?? (function_exists('current_branch_id') ? current_branch_id() : null);
+        if (! $resolvedBranchId) {
+            return back()->withInput()->with('error', 'Active branch is not set. Please select a branch and try again.');
+        }
+
+        $supplier = $this->supplierForEncodedId($encodedSupplierId, $companyId, $resolvedBranchId);
+
+        $lineItems = [];
+        foreach ($validated['line_items'] as $row) {
+            $chartId = (int) $row['chart_account_id'];
+            if (! $this->expenseChartAccountIsAllowed($companyId, $chartId)) {
+                return back()->withInput()->withErrors([
+                    'line_items' => 'One or more selected accounts are not valid expense accounts for this company.',
+                ]);
+            }
+            $lineItems[] = [
+                'chart_account_id' => $chartId,
+                'amount' => (float) $row['amount'],
+                'description' => $row['description'] ?? null,
+            ];
+        }
+
+        $total = round(collect($lineItems)->sum('amount'), 2);
+        $balance = $this->allocationService->balanceForSupplier($supplier->id, $companyId, (int) $resolvedBranchId);
+        if ($total > $balance + 0.05) {
+            return back()->withInput()->withErrors([
+                'line_items' => 'Total cannot exceed supplier advance balance ('.number_format($balance, 2).').',
+            ]);
+        }
+
+        try {
+            $this->expenseService->processExpense(
+                $supplier,
+                $companyId,
+                (int) $resolvedBranchId,
+                $lineItems,
+                $validated['date'],
+                (int) $user->id,
+                $validated['description'] ?? null,
+                $validated['reference'] ?? null
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('purchases.supplier-advances.index')
+            ->with('success', 'Supplier advance expense journal posted. Expense debited and advance balance reduced.');
+    }
+
     private function decodeAdvanceId(string $encodedId): int
     {
         $decoded = Hashids::decode($encodedId);
@@ -814,6 +919,48 @@ class SupplierAdvanceController extends Controller
             return;
         }
         $request->merge(['amount' => $clean]);
+    }
+
+    private function mergeNormalizedLineItemAmounts(Request $request): void
+    {
+        if (! $request->has('line_items') || ! is_array($request->line_items)) {
+            return;
+        }
+        $items = $request->line_items;
+        foreach ($items as $i => $row) {
+            if (! isset($row['amount'])) {
+                continue;
+            }
+            $raw = (string) $row['amount'];
+            $clean = preg_replace('/[^\d.]/', '', str_replace(',', '', $raw));
+            $items[$i]['amount'] = $clean === '' ? null : $clean;
+        }
+        $request->merge(['line_items' => $items]);
+    }
+
+    private function expenseChartAccounts(int $companyId)
+    {
+        return ChartAccount::whereHas('accountClassGroup', function ($q) use ($companyId) {
+            $q->where('company_id', $companyId)
+                ->whereHas('accountClass', function ($q2) {
+                    $q2->where('name', 'LIKE', '%expense%');
+                });
+        })
+            ->orderBy('account_code')
+            ->orderBy('account_name')
+            ->get();
+    }
+
+    private function expenseChartAccountIsAllowed(int $companyId, int $chartAccountId): bool
+    {
+        return ChartAccount::whereKey($chartAccountId)
+            ->whereHas('accountClassGroup', function ($q) use ($companyId) {
+                $q->where('company_id', $companyId)
+                    ->whereHas('accountClass', function ($q2) {
+                        $q2->where('name', 'LIKE', '%expense%');
+                    });
+            })
+            ->exists();
     }
 
     private function assertChartsNotInCompletedReconciliation(?int $chartAccountId, $transactionDate): void

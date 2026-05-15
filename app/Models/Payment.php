@@ -497,7 +497,7 @@ class Payment extends Model
         if ($this->reference_type === 'accrual_schedule_amortisation') {
             return;
         }
-        
+
         // Check if GL transactions already exist to avoid duplicates
         if ($this->glTransactions()->exists()) {
             return;
@@ -1042,7 +1042,7 @@ class Payment extends Model
             'Posted At' => now()->format('Y-m-d H:i:s')
         ]);
     }
-    
+
     /**
      * Handle FX Gain/Loss for purchase invoice payments
      */
