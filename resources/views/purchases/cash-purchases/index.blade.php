@@ -174,7 +174,7 @@
                                     <tr>
                                         <th>Supplier</th>
                                         <th>Date</th>
-                                        <th>Payment Method</th>
+                                        <th>Settlement</th>
                                         <th>Total Amount</th>
                                         <th class="text-center">Actions</th>
                                     </tr>
@@ -225,7 +225,7 @@ $(document).ready(function() {
         columns: [
             {data: 'supplier_name', name: 'supplier_name'},
             {data: 'purchase_date_formatted', name: 'purchase_date'},
-            {data: 'payment_method', name: 'payment_method'},
+            {data: 'settlement_method', name: 'settlement_method', orderable: false, searchable: false},
             {data: 'total_amount_formatted', name: 'total_amount'},
             {data: 'actions', name: 'actions', orderable: false, searchable: false}
         ],

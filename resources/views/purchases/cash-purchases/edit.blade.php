@@ -48,17 +48,14 @@
 
                         <div class="col-md-3">
                             <div class="mb-3">
-                                <label for="payment_method" class="form-label">Payment Method <span class="text-danger">*</span></label>
-                                <select class="form-select" id="payment_method" name="payment_method" required>
-                                    <option value="bank" selected>Bank</option>
-                                </select>
-                                <div class="invalid-feedback"></div>
+                                <label class="form-label">Settlement</label>
+                                <div class="form-control bg-light">Supplier advance</div>
                             </div>
                         </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="currency" class="form-label">Currency</label>
                                 @php
@@ -86,7 +83,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="exchange_rate" class="form-label">Exchange Rate</label>
                                 <div class="input-group">
@@ -104,35 +101,14 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="mb-3" id="bank_account_section">
-                                <label for="bank_account_id" class="form-label">Bank Account</label>
-                                <select class="form-select select2-single" id="bank_account_id" name="bank_account_id" required>
-                                    <option value="">Select Bank Account</option>
-                                    @foreach($bankAccounts as $bankAccount)
-                                        <option value="{{ $bankAccount->id }}" {{ (int)$purchase->bank_account_id === (int)$bankAccount->id ? 'selected' : '' }}>{{ $bankAccount->name }} ({{ $bankAccount->account_number }})</option>
-                                    @endforeach
-                                </select>
-                                <div class="invalid-feedback"></div>
-                            </div>
-                        </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-md-8">
-                            <div class="mb-3">
-                                <label for="supplier_advance_applied_amount" class="form-label">Apply from supplier advance <span class="text-muted">(optional)</span></label>
-                                <input type="number" step="0.01" min="0" class="form-control" id="supplier_advance_applied_amount" name="supplier_advance_applied_amount" value="{{ old('supplier_advance_applied_amount', $purchase->supplier_advance_applied_amount ?? 0) }}">
-                                <small class="text-muted">In <strong>purchase currency</strong>. Reduces the bank payment. Available advance for the selected supplier (including this document’s current application): <strong><span id="supplier-advance-available">0.00</span> {{ $functionalCurrency }}</strong>.</small>
-                                @error('supplier_advance_applied_amount')
-                                    <div class="text-danger small">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="col-md-4 d-flex align-items-end">
-                            <div class="mb-3 w-100 border rounded p-2 bg-light small">
-                                <div class="fw-semibold mb-1">Settlement preview</div>
-                                <div>Bank pays: <span id="bank-pay-preview">0.00</span></div>
+                        <div class="col-md-12">
+                            <div class="alert alert-info mb-3 py-2 small">
+                                The full purchase total is settled from <strong>supplier advance</strong> and posted as a <strong>journal entry</strong>.
+                                Available advance: <strong><span id="supplier-advance-available">0.00</span> {{ $functionalCurrency }}</strong>.
+                                Purchase total: <strong><span id="advance-settlement-total">0.00</span></strong>.
                             </div>
                         </div>
                     </div>
@@ -373,10 +349,6 @@ $(document).ready(function() {
     $('.select2-modal').select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#itemModal') });
 
     // Toggle bank section based on current value
-    function toggleBank(){ $('#bank_account_section').toggle($('#payment_method').val()==='bank'); }
-    toggleBank();
-    $('#payment_method').on('change', toggleBank);
-
     // Get functional currency for exchange rate calculations
     const functionalCurrency = '{{ \App\Models\SystemSetting::getValue("functional_currency", auth()->user()->company->functional_currency ?? "TZS") }}';
     const supplierAdvanceBalances = @json($supplierAdvanceBalances ?? []);
@@ -389,11 +361,9 @@ $(document).ready(function() {
         }
         $('#supplier-advance-available').text(isNaN(bal) ? '0.00' : bal.toFixed(2));
         const total = parseFloat($('#total-amount-input').val()) || 0;
-        const adv = Math.max(0, parseFloat($('#supplier_advance_applied_amount').val()) || 0);
-        $('#bank-pay-preview').text(Math.max(0, total - adv).toFixed(2));
+        $('#advance-settlement-total').text(total.toFixed(2));
     }
     $('#supplier_id').on('change select2:select', updateAdvanceUi);
-    $('#supplier_advance_applied_amount').on('input change', updateAdvanceUi);
 
     // Function to convert item price from functional currency to purchase currency
     function convertItemPrice(basePrice, purchaseCurrency, exchangeRate) {
@@ -764,6 +734,17 @@ $(document).ready(function() {
         if ($('#items-tbody tr').length === 0) {
             e.preventDefault();
             Swal.fire('Error','Please add at least one item','error');
+            return;
+        }
+        const total = parseFloat($('#total-amount-input').val()) || 0;
+        const sid = $('#supplier_id').val();
+        let bal = 0;
+        if (sid && supplierAdvanceBalances[sid] !== undefined) {
+            bal = parseFloat(supplierAdvanceBalances[sid]) || 0;
+        }
+        if (total > 0 && bal + 0.05 < total) {
+            e.preventDefault();
+            Swal.fire('Error', 'Supplier advance balance is insufficient for this purchase total.', 'error');
         }
     });
 });

@@ -7,6 +7,8 @@ use App\Models\Inventory\Item;
 use App\Models\Supplier;
 use App\Models\BankAccount;
 use App\Models\GlTransaction;
+use App\Models\Journal;
+use App\Models\JournalItem;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\Branch;
@@ -28,6 +30,7 @@ class CashPurchase extends Model
 
     protected $fillable = [
         'supplier_id',
+        'journal_id',
         'purchase_date',
         'payment_method', // cash, bank
         'bank_account_id',
@@ -107,6 +110,12 @@ class CashPurchase extends Model
         return $this->belongsTo(Company::class);
     }
 
+    public function journal(): BelongsTo
+    {
+        return $this->belongsTo(Journal::class);
+    }
+
+    /** @deprecated Legacy direct GL; new postings use journal. */
     public function glTransactions(): HasMany
     {
         return $this->hasMany(GlTransaction::class, 'transaction_id')
@@ -207,268 +216,232 @@ class CashPurchase extends Model
         }
     }
 
+    /**
+     * Post inventory/VAT/advance settlement via Journal → Journal items → GL (no Payment / bank).
+     */
     public function createDoubleEntryTransactions(): void
     {
-        // Check if period is locked
         $companyId = $this->company_id ?? ($this->branch->company_id ?? null);
         if ($companyId) {
             $periodLockService = app(\App\Services\PeriodClosing\PeriodLockService::class);
-            try {
-                $periodLockService->validateTransactionDate($this->purchase_date, $companyId, 'cash purchase');
-            } catch (\Exception $e) {
-                \Log::warning('CashPurchase - Cannot post: Period is locked', [
-                    'purchase_id' => $this->id,
-                    'purchase_date' => $this->purchase_date,
-                    'error' => $e->getMessage()
-                ]);
-                throw $e;
-            }
+            $periodLockService->validateTransactionDate($this->purchase_date, $companyId, 'cash purchase');
         }
-
-        // Remove any existing GL rows for idempotency
-        $this->glTransactions()->delete();
 
         /** @var SupplierAdvanceAllocationService $advanceAllocation */
         $advanceAllocation = app(SupplierAdvanceAllocationService::class);
         $advanceAllocation->deleteDeductionsForCashPurchase((int) $this->id);
 
-        // Get functional currency and check if conversion is needed
+        // Remove legacy direct cash_purchase GL rows
+        $this->glTransactions()->delete();
+
         $functionalCurrency = SystemSetting::getValue('functional_currency', $this->company->functional_currency ?? 'TZS');
         $purchaseCurrency = $this->currency ?? $functionalCurrency;
-        $exchangeRate = $this->exchange_rate ?? 1.000000;
+        $exchangeRate = (float) ($this->exchange_rate ?? 1.000000);
         $needsConversion = ($purchaseCurrency !== $functionalCurrency && $exchangeRate != 1.000000);
-        
-        // Helper function to convert FCY to LCY if needed
-        $convertToLCY = function($fcyAmount) use ($needsConversion, $exchangeRate) {
-            return $needsConversion ? round($fcyAmount * $exchangeRate, 2) : $fcyAmount;
+
+        $convertToLCY = function ($fcyAmount) use ($needsConversion, $exchangeRate) {
+            return $needsConversion ? round((float) $fcyAmount * $exchangeRate, 2) : round((float) $fcyAmount, 2);
         };
-        
-        // Helper function to add currency info to description
-        $addCurrencyInfo = function($description) use ($needsConversion, $purchaseCurrency, $functionalCurrency, $exchangeRate) {
+
+        $addCurrencyInfo = function ($description) use ($needsConversion, $purchaseCurrency, $functionalCurrency, $exchangeRate) {
             if ($needsConversion) {
-                return $description . " [FCY: {$purchaseCurrency}, Rate: {$exchangeRate}, Converted to {$functionalCurrency}]";
+                return $description." [FCY: {$purchaseCurrency}, Rate: {$exchangeRate}, Converted to {$functionalCurrency}]";
             }
+
             return $description;
         };
 
-        $transactions = [];
-
-        // Accounts
         $inventoryAccountId = (int) (SystemSetting::where('key', 'inventory_default_inventory_account')->value('value') ?? 185);
         $vatAccountId = (int) (SystemSetting::where('key', 'inventory_default_vat_account')->value('value') ?? 36);
         $discountIncomeAccountId = (int) (SystemSetting::where('key', 'inventory_default_discount_income_account')->value('value') ?? 0);
 
-        // Determine credit account (cash/bank)
-        $creditAccountId = null;
-        if ($this->payment_method === 'bank' && $this->bank_account_id && $this->bankAccount) {
-            $creditAccountId = (int) $this->bankAccount->chart_account_id;
-        }
-        if (!$creditAccountId) {
-            $creditAccountId = (int) (SystemSetting::where('key', 'inventory_default_cash_account')->value('value') ?? 1);
-        }
-
-        // Check if this account is in a completed reconciliation period - prevent posting
-        if ($creditAccountId) {
-            $isInCompletedReconciliation = \App\Services\BankReconciliationService::isChartAccountInCompletedReconciliation(
-                $creditAccountId,
-                $this->purchase_date
-            );
-            
-            if ($isInCompletedReconciliation) {
-                \Log::warning('CashPurchase::postGlTransactions - Cannot post: Account is in a completed reconciliation period', [
-                    'cash_purchase_id' => $this->id,
-                    'purchase_number' => $this->purchase_number ?? 'N/A',
-                    'chart_account_id' => $creditAccountId,
-                    'payment_method' => $this->payment_method,
-                    'purchase_date' => $this->purchase_date
-                ]);
-                throw new \Exception("Cannot post cash purchase: Account is in a completed reconciliation period for date {$this->purchase_date}.");
-            }
-        }
-
         $userId = auth()->id() ?? ($this->created_by ?? 1);
+        $this->loadMissing('items.inventoryItem', 'supplier');
 
-        $this->loadMissing('items.inventoryItem');
-        
         $inventoryNet = 0.0;
         $costService = new \App\Services\InventoryCostService();
-        
         foreach ($this->items as $line) {
-            // Use the same VAT-exclusive calculation method as purchase invoices
             $netUnitCost = $costService->normalizeCostToVatExclusive(
                 (float) $line->unit_cost,
                 $line->vat_type ?? 'no_vat',
                 (float) ($line->vat_rate ?? 0)
             );
-            $netUnitCostRounded = round($netUnitCost, 2);
-            $net = round((float) $line->quantity * $netUnitCostRounded, 2);
-            
-            if ($line->isInventory()) {
-                $inventoryNet += $net;
-            } else {
-                // Non-inventory: treat as expense (inventory account or expense fallback)
-                $inventoryNet += $net;
+            $inventoryNet += round((float) $line->quantity * round($netUnitCost, 2), 2);
+        }
+
+        $totalDebitsFcy = $inventoryNet + (float) ($this->vat_amount ?? 0) - (float) ($this->discount_amount ?? 0);
+        $totalDebitsLCY = $convertToLCY($totalDebitsFcy);
+
+        $applyFcy = round((float) ($this->supplier_advance_applied_amount ?? 0), 2);
+        $applyLcy = $convertToLCY($applyFcy);
+
+        if ($totalDebitsLCY <= 0) {
+            throw new \RuntimeException('Cash purchase total must be greater than zero.');
+        }
+
+        if (abs($applyFcy - (float) $this->total_amount) > 0.05) {
+            throw new \RuntimeException('Cash purchase must be settled entirely from supplier advance (applied amount must equal purchase total).');
+        }
+
+        if (abs($applyLcy - $totalDebitsLCY) > 0.05) {
+            throw new \RuntimeException('Supplier advance applied does not match the purchase settlement amount.');
+        }
+
+        $advanceSlices = $advanceAllocation->allocateFifo(
+            (int) $this->supplier_id,
+            (int) $this->company_id,
+            $this->branch_id,
+            $applyLcy
+        );
+        $allocatedSum = round((float) $advanceSlices->sum('amount'), 2);
+        if ($advanceSlices->isEmpty()) {
+            throw new \RuntimeException('No supplier advance balance is available for this supplier.');
+        }
+        if (abs($allocatedSum - $applyLcy) > 0.05) {
+            throw new \RuntimeException('Supplier advance balance is insufficient for this purchase.');
+        }
+
+        foreach ($advanceSlices->pluck('debit_chart_account_id')->unique()->filter() as $advChartId) {
+            if (\App\Services\BankReconciliationService::isChartAccountInCompletedReconciliation((int) $advChartId, $this->purchase_date)) {
+                throw new \Exception("Cannot post cash purchase: a supplier advance account is in a completed bank reconciliation for date {$this->purchase_date}.");
             }
         }
+
+        $journalLines = [];
 
         if ($inventoryNet > 0) {
-            $inventoryNetLCY = $convertToLCY($inventoryNet);
-            $transactions[] = [
+            $journalLines[] = [
                 'chart_account_id' => $inventoryAccountId,
-                'supplier_id' => $this->supplier_id,
-                'amount' => $inventoryNetLCY,
+                'amount' => $convertToLCY($inventoryNet),
                 'nature' => 'debit',
-                'transaction_id' => $this->id,
-                'transaction_type' => 'cash_purchase',
-                'date' => $this->purchase_date,
-                'description' => $addCurrencyInfo('Inventory Purchase - Cash purchase'),
-                'branch_id' => $this->branch_id,
-                'user_id' => $userId,
+                'description' => $addCurrencyInfo('Inventory Purchase - Cash purchase #'.$this->id),
             ];
         }
 
-        // 2) Debit VAT Input if applicable
         if (($this->vat_amount ?? 0) > 0) {
-            $vatAmountLCY = $convertToLCY($this->vat_amount);
-            $transactions[] = [
+            $journalLines[] = [
                 'chart_account_id' => $vatAccountId,
-                'supplier_id' => $this->supplier_id,
-                'amount' => $vatAmountLCY,
+                'amount' => $convertToLCY($this->vat_amount),
                 'nature' => 'debit',
-                'transaction_id' => $this->id,
-                'transaction_type' => 'cash_purchase',
-                'date' => $this->purchase_date,
-                'description' => $addCurrencyInfo('VAT Input - Cash purchase'),
-                'branch_id' => $this->branch_id,
-                'user_id' => $userId,
+                'description' => $addCurrencyInfo('VAT Input - Cash purchase #'.$this->id),
             ];
         }
 
-        // 3) Credit Cash/Bank (sum of all debits to ensure balance)
-        // Calculate total debits: inventory + VAT
-        // Note: Discount is handled as a separate credit entry below
-        $totalDebits = $inventoryNet;
-        $totalDebits += ($this->vat_amount ?? 0);
-        
-        // Subtract discount from cash credit (discount reduces what we pay)
-        $totalDebits -= ($this->discount_amount ?? 0);
-
-        $advanceSlices = collect();
-
-        if ($totalDebits > 0) {
-            $totalDebitsLCY = $convertToLCY($totalDebits);
-            $advanceApplyFCY = round(max(0, min((float) ($this->supplier_advance_applied_amount ?? 0), (float) $totalDebits)), 2);
-            $advanceApplyLCY = $convertToLCY($advanceApplyFCY);
-
-            if ($advanceApplyLCY > 0) {
-                $advanceSlices = $advanceAllocation->allocateFifo(
-                    (int) $this->supplier_id,
-                    (int) $this->company_id,
-                    $this->branch_id,
-                    $advanceApplyLCY
-                );
-                $allocatedSum = round((float) $advanceSlices->sum('amount'), 2);
-                if ($advanceSlices->isEmpty()) {
-                    throw new \RuntimeException('Supplier advance apply amount was set but no supplier advance balance is available.');
-                }
-                if (abs($allocatedSum - $advanceApplyLCY) > 0.05) {
-                    throw new \RuntimeException('Supplier advance balance is insufficient to apply '.number_format($advanceApplyFCY, 2).' in purchase currency.');
-                }
-                foreach ($advanceSlices->pluck('debit_chart_account_id')->unique()->filter() as $advChartId) {
-                    if (\App\Services\BankReconciliationService::isChartAccountInCompletedReconciliation((int) $advChartId, $this->purchase_date)) {
-                        throw new \Exception("Cannot post cash purchase: a supplier advance account is in a completed bank reconciliation for date {$this->purchase_date}.");
-                    }
-                }
-            }
-
-            $bankCreditLCY = round(max(0, $totalDebitsLCY - (float) $advanceSlices->sum('amount')), 2);
-            if ($bankCreditLCY > 0.0001) {
-                $transactions[] = [
-                    'chart_account_id' => $creditAccountId,
-                    'supplier_id' => $this->supplier_id,
-                    'amount' => $bankCreditLCY,
-                    'nature' => 'credit',
-                    'transaction_id' => $this->id,
-                    'transaction_type' => 'cash_purchase',
-                    'date' => $this->purchase_date,
-                    'description' => $addCurrencyInfo('Cash/Bank Payment - Cash purchase'),
-                    'branch_id' => $this->branch_id,
-                    'user_id' => $userId,
-                ];
-            }
-            foreach ($advanceSlices as $slice) {
-                $transactions[] = [
-                    'chart_account_id' => (int) $slice['debit_chart_account_id'],
-                    'supplier_id' => $this->supplier_id,
-                    'amount' => (float) $slice['amount'],
-                    'nature' => 'credit',
-                    'transaction_id' => $this->id,
-                    'transaction_type' => 'cash_purchase',
-                    'date' => $this->purchase_date,
-                    'description' => $addCurrencyInfo('Supplier advance applied - Cash purchase'),
-                    'branch_id' => $this->branch_id,
-                    'user_id' => $userId,
-                ];
-            }
-        }
-
-        // 4) If discount provided, credit Discount Income (Purchase discount)
-        if (($this->discount_amount ?? 0) > 0 && $discountIncomeAccountId) {
-            $discountAmountLCY = $convertToLCY($this->discount_amount);
-            $transactions[] = [
-                'chart_account_id' => $discountIncomeAccountId,
-                'supplier_id' => $this->supplier_id,
-                'amount' => $discountAmountLCY,
+        foreach ($advanceSlices as $slice) {
+            $journalLines[] = [
+                'chart_account_id' => (int) $slice['debit_chart_account_id'],
+                'amount' => (float) $slice['amount'],
                 'nature' => 'credit',
-                'transaction_id' => $this->id,
-                'transaction_type' => 'cash_purchase',
-                'date' => $this->purchase_date,
-                'description' => $addCurrencyInfo('Purchase Discount'),
-                'branch_id' => $this->branch_id,
-                'user_id' => $userId,
+                'description' => $addCurrencyInfo('Supplier advance applied - Cash purchase #'.$this->id),
             ];
         }
 
-        $createdCount = 0;
-        foreach ($transactions as $t) {
-            GlTransaction::create($t);
-            $createdCount++;
+        if (($this->discount_amount ?? 0) > 0 && $discountIncomeAccountId) {
+            $journalLines[] = [
+                'chart_account_id' => $discountIncomeAccountId,
+                'amount' => $convertToLCY($this->discount_amount),
+                'nature' => 'credit',
+                'description' => $addCurrencyInfo('Purchase Discount - Cash purchase #'.$this->id),
+            ];
         }
 
-        if ($advanceSlices->isNotEmpty()) {
-            $advanceAllocation->recordDeductions(
-                $advanceSlices,
-                (int) $this->supplier_id,
-                (int) $this->company_id,
-                $this->branch_id,
-                $this->purchase_date,
-                (int) $this->id,
-                $userId,
-                'Cash purchase #'.$this->id
-            );
+        $debitSum = round(collect($journalLines)->where('nature', 'debit')->sum('amount'), 2);
+        $creditSum = round(collect($journalLines)->where('nature', 'credit')->sum('amount'), 2);
+        if (abs($debitSum - $creditSum) > 0.05) {
+            throw new \RuntimeException("Journal is out of balance (debits {$debitSum}, credits {$creditSum}).");
         }
 
-        // Log activity for posting to GL
-        $supplierName = $this->supplier ? $this->supplier->name : 'N/A';
-        $totalAmountLCY = isset($totalAmountLCY) ? $totalAmountLCY : $convertToLCY($this->total_amount ?? 0);
-        $currencyInfo = $needsConversion ? " (FCY: {$purchaseCurrency} " . number_format($this->total_amount ?? 0, 2) . ", Rate: {$exchangeRate}, LCY: {$functionalCurrency} " . number_format($totalAmountLCY, 2) . ")" : "";
-        $this->logActivity('post', "Posted Cash Purchase to General Ledger for Supplier: {$supplierName}{$currencyInfo}", [
+        $supplierName = $this->supplier->name ?? 'Supplier';
+        $journal = $this->journal_id ? Journal::find($this->journal_id) : null;
+
+        if ($journal) {
+            GlTransaction::where('transaction_type', 'journal')->where('transaction_id', $journal->id)->delete();
+            $journal->items()->delete();
+            $journal->update([
+                'date' => $this->purchase_date,
+                'reference' => (string) $this->id,
+                'reference_type' => 'cash_purchase',
+                'supplier_id' => $this->supplier_id,
+                'description' => 'Cash purchase #'.$this->id.' — '.$supplierName.' (supplier advance)',
+                'branch_id' => $this->branch_id,
+                'user_id' => $userId,
+                'approved' => true,
+                'approved_by' => $userId,
+                'approved_at' => now(),
+            ]);
+        } else {
+            $journal = Journal::create([
+                'date' => $this->purchase_date,
+                'reference' => (string) $this->id,
+                'reference_type' => 'cash_purchase',
+                'supplier_id' => $this->supplier_id,
+                'description' => 'Cash purchase #'.$this->id.' — '.$supplierName.' (supplier advance)',
+                'branch_id' => $this->branch_id,
+                'user_id' => $userId,
+                'approved' => true,
+                'approved_by' => $userId,
+                'approved_at' => now(),
+            ]);
+            $this->journal_id = $journal->id;
+            $this->saveQuietly();
+        }
+
+        foreach ($journalLines as $line) {
+            JournalItem::create([
+                'journal_id' => $journal->id,
+                'chart_account_id' => $line['chart_account_id'],
+                'amount' => $line['amount'],
+                'nature' => $line['nature'],
+                'description' => $line['description'],
+            ]);
+        }
+
+        $journal->load('items');
+        $journal->createGlTransactions();
+
+        $advanceAllocation->recordDeductions(
+            $advanceSlices,
+            (int) $this->supplier_id,
+            (int) $this->company_id,
+            $this->branch_id,
+            $this->purchase_date,
+            (int) $this->id,
+            $userId,
+            'Cash purchase #'.$this->id
+        );
+
+        $glCount = GlTransaction::where('transaction_type', 'journal')
+            ->where('transaction_id', $journal->id)
+            ->count();
+
+        $totalAmountLCY = $convertToLCY($this->total_amount ?? 0);
+        $currencyInfo = $needsConversion
+            ? " (FCY: {$purchaseCurrency} ".number_format($this->total_amount ?? 0, 2).", LCY: {$functionalCurrency} ".number_format($totalAmountLCY, 2).')'
+            : '';
+
+        $this->logActivity('post', "Posted Cash Purchase journal for Supplier: {$supplierName}{$currencyInfo}", [
             'Supplier' => $supplierName,
+            'Journal ID' => $journal->id,
             'Purchase Date' => $this->purchase_date ? $this->purchase_date->format('Y-m-d') : 'N/A',
-            'Payment Method' => ucfirst(str_replace('_', ' ', $this->payment_method ?? 'cash')),
-            'Currency' => $purchaseCurrency,
-            'Functional Currency' => $functionalCurrency,
-            'Exchange Rate' => $exchangeRate,
-            'Total Amount (FCY)' => number_format($this->total_amount ?? 0, 2) . ' ' . $purchaseCurrency,
-            'Total Amount (LCY)' => $needsConversion ? number_format($totalAmountLCY, 2) . ' ' . $functionalCurrency : number_format($this->total_amount ?? 0, 2) . ' ' . $functionalCurrency,
-            'Subtotal' => number_format($this->subtotal ?? 0, 2),
-            'VAT Amount' => number_format($this->vat_amount ?? 0, 2),
-            'Discount Amount' => number_format($this->discount_amount ?? 0, 2),
-            'Supplier advance applied' => number_format((float) ($this->supplier_advance_applied_amount ?? 0), 2),
-            'GL Transactions Created' => $createdCount,
+            'Settlement' => 'Supplier advance only',
+            'Supplier advance applied' => number_format($applyFcy, 2),
+            'GL lines (journal)' => $glCount,
             'Posted By' => auth()->user()->name ?? 'System',
-            'Posted At' => now()->format('Y-m-d H:i:s')
+            'Posted At' => now()->format('Y-m-d H:i:s'),
         ]);
+    }
+
+    public function removeJournalAndGl(): void
+    {
+        if ($this->journal_id) {
+            $journalId = $this->journal_id;
+            GlTransaction::where('transaction_type', 'journal')->where('transaction_id', $journalId)->delete();
+            JournalItem::where('journal_id', $journalId)->delete();
+            Journal::where('id', $journalId)->delete();
+            $this->journal_id = null;
+            $this->saveQuietly();
+        }
+        $this->glTransactions()->delete();
     }
 
 }

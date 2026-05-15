@@ -16,6 +16,7 @@ class Journal extends Model
         'reference',
         'reference_type',
         'customer_id',
+        'supplier_id',
         'description',
         'attachment',
         'branch_id',
@@ -34,6 +35,11 @@ class Journal extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function user()
@@ -320,7 +326,7 @@ class Journal extends Model
                 $glTransaction = GlTransaction::create([
                 'chart_account_id' => $item->chart_account_id,
                 'customer_id' => null,
-                'supplier_id' => null,
+                'supplier_id' => $this->supplier_id,
                 'amount' => $item->amount,
                 'nature' => $item->nature,
                 'transaction_id' => $this->id,

@@ -62,20 +62,20 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label class="form-label text-muted small">Payment Method</label>
-                                    <div>
-                                        <span class="badge bg-{{ $purchase->payment_method == 'cash' ? 'success' : 'primary' }} fs-6">
-                                            {{ ucfirst($purchase->payment_method) }}
-                                        </span>
-                                    </div>
+                                    <label class="form-label text-muted small">Settlement</label>
+                                    <div><span class="badge bg-info fs-6">Supplier advance</span></div>
                                 </div>
-                                @if($purchase->bankAccount)
+                                @if($purchase->journal)
                                 <div class="mb-3">
-                                    <label class="form-label text-muted small">Bank Account</label>
-                                    <div class="fw-bold">{{ $purchase->bankAccount->name }}</div>
-                                    <small class="text-muted">{{ $purchase->bankAccount->account_number }}</small>
+                                    <label class="form-label text-muted small">Journal</label>
+                                    <div class="fw-bold">#{{ $purchase->journal->id }}</div>
+                                    <small class="text-muted">{{ $purchase->journal->description }}</small>
                                 </div>
                                 @endif
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small">Advance applied</label>
+                                    <div class="fw-bold">{{ number_format((float)($purchase->supplier_advance_applied_amount ?? 0), 2) }} {{ $purchase->currency ?? 'TZS' }}</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -155,11 +155,13 @@
 
                 <div class="card mt-4">
                     <div class="card-header bg-warning text-dark">
-                        <h6 class="mb-0"><i class="bx bx-book-open me-2"></i>General Ledger Double Entry</h6>
+                        <h6 class="mb-0"><i class="bx bx-book-open me-2"></i>Journal / General Ledger</h6>
                     </div>
                     <div class="card-body">
                         @php
-                            $transactions = $purchase->glTransactions()->with('chartAccount')->get();
+                            $transactions = $purchase->journal
+                                ? $purchase->journal->glTransactions()->with('chartAccount')->get()
+                                : $purchase->glTransactions()->with('chartAccount')->get();
                         @endphp
                         @if($transactions->count() > 0)
                             @php
@@ -219,7 +221,7 @@
                             <div class="text-center py-4">
                                 <i class="bx bx-book-open text-muted" style="font-size: 3rem;"></i>
                                 <p class="text-muted mt-2">No GL transactions found for this cash purchase.</p>
-                                <small class="text-muted">GL transactions are created automatically when the purchase is saved.</small>
+                                <small class="text-muted">GL is posted via a journal entry when the purchase is saved.</small>
                             </div>
                         @endif
                     </div>
