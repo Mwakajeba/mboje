@@ -9,6 +9,7 @@ use App\Models\Purchase\SupplierAdvance;
 use App\Models\Purchase\SupplierAdvanceDeduction;
 use App\Models\Supplier;
 use App\Services\BankReconciliationService;
+use App\Services\Purchase\SupplierAdvanceStatementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -339,59 +340,19 @@ class SupplierAdvanceController extends Controller
 
         $supplier = Supplier::where('company_id', $companyId)->findOrFail($supplierId);
 
-        $advancesQuery = SupplierAdvance::query()
-            ->where('supplier_id', $supplier->id)
-            ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->with(['debitChartAccount', 'bankAccount']);
+        $statement = app(SupplierAdvanceStatementService::class)->buildForSupplier(
+            $supplier->id,
+            $companyId,
+            $branchId ? (int) $branchId : null
+        );
 
-        $deductionsQuery = SupplierAdvanceDeduction::query()
-            ->where('supplier_id', $supplier->id)
-            ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
-
-        $advances = $advancesQuery->orderBy('advance_date')->orderBy('id')->get();
-        $deductions = $deductionsQuery->orderBy('deduction_date')->orderBy('id')->get();
-
-        $lines = collect();
-        foreach ($advances as $a) {
-            $lines->push([
-                'date' => $a->advance_date,
-                'sort' => $a->advance_date->format('Y-m-d').'-A-'.$a->id,
-                'type' => 'advance',
-                'reference' => $a->reference,
-                'description' => $a->description ?: 'Advance payment',
-                'debit' => (float) $a->amount,
-                'credit' => 0.0,
-            ]);
-        }
-        foreach ($deductions as $d) {
-            $lines->push([
-                'date' => $d->deduction_date,
-                'sort' => $d->deduction_date->format('Y-m-d').'-D-'.$d->id,
-                'type' => 'applied',
-                'reference' => $d->source_type.($d->source_id ? '-'.$d->source_id : ''),
-                'description' => $d->description ?: 'Applied to purchases',
-                'debit' => 0.0,
-                'credit' => (float) $d->amount,
-            ]);
-        }
-
-        $lines = $lines->sortBy('sort')->values();
-
-        $running = 0.0;
-        $lines = $lines->map(function (array $line) use (&$running) {
-            $running += $line['debit'] - $line['credit'];
-            $line['balance'] = $running;
+        $lines = $statement['lines']->map(function (array $line) {
+            $line['debit'] = $line['paid'];
+            $line['credit'] = $line['deducted'];
 
             return $line;
-        })->values();
-
-        $totals = [
-            'advances' => (float) $advances->sum('amount'),
-            'applied' => (float) $deductions->sum('amount'),
-            'balance' => (float) $advances->sum('amount') - (float) $deductions->sum('amount'),
-        ];
+        });
+        $totals = $statement['totals'];
 
         return view('purchases.supplier-advances.statement', compact('supplier', 'lines', 'totals'));
     }

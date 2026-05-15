@@ -10,6 +10,7 @@ use App\Models\Region;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Services\Purchase\SupplierAdvanceStatementService;
 use Vinkla\Hashids\Facades\Hashids;
 
 class SupplierController extends Controller
@@ -154,7 +155,21 @@ class SupplierController extends Controller
         $supplier = Supplier::findOrFail($decoded[0]);
         $supplier->load(['company', 'branch', 'createdBy', 'updatedBy']);
 
-        return view('accounting.suppliers.show', compact('supplier'));
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+
+        $advanceStatement = app(SupplierAdvanceStatementService::class)->buildForSupplier(
+            (int) $supplier->id,
+            $companyId,
+            $branchId ? (int) $branchId : null
+        );
+
+        return view('accounting.suppliers.show', [
+            'supplier' => $supplier,
+            'advanceLines' => $advanceStatement['lines'],
+            'advanceTotals' => $advanceStatement['totals'],
+        ]);
     }
 
     public function edit($encodedId)

@@ -54,8 +54,9 @@
                                 <th>Type</th>
                                 <th>Reference</th>
                                 <th>Description</th>
-                                <th class="text-end">Advance (+)</th>
-                                <th class="text-end">Applied (−)</th>
+                                <th>Performed by</th>
+                                <th class="text-end">Paid</th>
+                                <th class="text-end">Deducted</th>
                                 <th class="text-end">Balance</th>
                             </tr>
                         </thead>
@@ -66,13 +67,14 @@
                                     <td>{{ $line['type'] === 'advance' ? 'Advance' : 'Applied' }}</td>
                                     <td>{{ $line['reference'] }}</td>
                                     <td>{{ $line['description'] }}</td>
-                                    <td class="text-end">{{ $line['debit'] > 0 ? format_currency($line['debit']) : '—' }}</td>
-                                    <td class="text-end">{{ $line['credit'] > 0 ? format_currency($line['credit']) : '—' }}</td>
+                                    <td>{{ $line['performed_by'] ?? '—' }}</td>
+                                    <td class="text-end">{{ ($line['debit'] ?? $line['paid'] ?? 0) > 0 ? format_currency($line['debit'] ?? $line['paid']) : '—' }}</td>
+                                    <td class="text-end">{{ ($line['credit'] ?? $line['deducted'] ?? 0) > 0 ? format_currency($line['credit'] ?? $line['deducted']) : '—' }}</td>
                                     <td class="text-end fw-semibold">{{ format_currency($line['balance']) }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted py-4">No movements on file for this supplier in the current branch scope.</td>
+                                    <td colspan="8" class="text-center text-muted py-4">No movements on file for this supplier in the current branch scope.</td>
                                 </tr>
                             @endforelse
                         </tbody>

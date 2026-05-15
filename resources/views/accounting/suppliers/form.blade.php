@@ -77,6 +77,7 @@
             </div>
         </div>
 
+        {{-- Business & Legal Information & Banking Information (hidden — uncomment when needed)
         <!-- Business & Legal Information Section -->
         <div class="col-12">
             <div class="card radius-10 mb-4">
@@ -163,6 +164,8 @@
                 </div>
             </div>
         </div>
+        --}}
+
     </div>
 
     <hr class="my-4">

@@ -164,6 +164,7 @@
                     </div>
                 </div>
 
+                {{-- Banking Information & System Information (hidden — uncomment when needed)
                 <!-- Banking Information -->
                 <div class="col-md-6 mb-4">
                     <div class="card radius-10">
@@ -250,6 +251,99 @@
                                         </p>
                                     </div>
                                 @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                --}}
+            </div>
+
+
+            <!-- Advance payments history -->
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="card radius-10">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2" style="background-color: #0d9488; color: #fff;">
+                            <h5 class="mb-0"><i class="bx bx-wallet-alt me-2"></i>Advance payments history</h5>
+                            @can('view purchases')
+                            <a href="{{ route('purchases.supplier-advances.statement', Hashids::encode($supplier->id)) }}"
+                               class="btn btn-light btn-sm">
+                                <i class="bx bx-file me-1"></i> Full statement
+                            </a>
+                            @endcan
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center mb-3 border rounded py-3 bg-light g-2">
+                                <div class="col-md-4">
+                                    <div class="text-muted small">Total paid (in)</div>
+                                    <div class="fs-5 fw-bold text-success">{{ format_currency($advanceTotals['paid']) }}</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-muted small">Total deducted (out)</div>
+                                    <div class="fs-5 fw-bold text-danger">{{ format_currency($advanceTotals['deducted']) }}</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-muted small">Current balance</div>
+                                    <div class="fs-5 fw-bold" style="color: #0d9488;">{{ format_currency($advanceTotals['balance']) }}</div>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover table-sm mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Description</th>
+                                            <th>Performed by</th>
+                                            <th class="text-end">Paid</th>
+                                            <th class="text-end">Deducted</th>
+                                            <th class="text-end">Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($advanceLines as $line)
+                                        <tr>
+                                            <td>{{ $line['date']->format('Y-m-d') }}</td>
+                                            <td>
+                                                <div>{{ $line['description'] }}</div>
+                                                @if(!empty($line['reference']))
+                                                    <small class="text-muted">{{ $line['reference'] }}</small>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if(!empty($line['user_id']))
+                                                    <span title="User ID: {{ $line['user_id'] }}">{{ $line['performed_by'] }}</span>
+                                                @else
+                                                    {{ $line['performed_by'] }}
+                                                @endif
+                                            </td>
+                                            <td class="text-end text-success">
+                                                {{ $line['paid'] > 0 ? format_currency($line['paid']) : '—' }}
+                                            </td>
+                                            <td class="text-end text-danger">
+                                                {{ $line['deducted'] > 0 ? format_currency($line['deducted']) : '—' }}
+                                            </td>
+                                            <td class="text-end fw-semibold">{{ format_currency($line['balance']) }}</td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                No advance payments or deductions recorded for this supplier in the current branch scope.
+                                            </td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                    @if($advanceLines->isNotEmpty())
+                                    <tfoot class="table-light">
+                                        <tr class="fw-semibold">
+                                            <td colspan="3" class="text-end">Totals</td>
+                                            <td class="text-end text-success">{{ format_currency($advanceTotals['paid']) }}</td>
+                                            <td class="text-end text-danger">{{ format_currency($advanceTotals['deducted']) }}</td>
+                                            <td class="text-end">{{ format_currency($advanceTotals['balance']) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                    @endif
+                                </table>
                             </div>
                         </div>
                     </div>

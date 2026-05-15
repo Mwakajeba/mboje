@@ -153,7 +153,7 @@
                     <div class="card-body">
                         <div class="card-title d-flex align-items-center">
                             <div><i class="bx bx-grid me-1 font-22 text-primary"></i></div>
-                            <h5 class="mb-0 text-primary">Purchase Flow Management</h5>
+                            <h5 class="mb-0 text-primary">Usimamizi wa Mtiririko wa Ununuzi</h5>
                         </div>
                         <hr>
                         <div class="row">
@@ -169,11 +169,11 @@
                                         <div class="mb-3">
                                             <i class="bx bx-group fs-1 text-primary"></i>
                                         </div>
-                                        <h5 class="card-title">Supplier Master Data</h5>
-                                        <p class="card-text">Register and manage supplier details, contacts, and payment terms.</p>
+                                        <h5 class="card-title">Wasambazaji - Wamachinga <small class="text-muted">(Suppliers)</small></h5>
+                                        <p class="card-text">Usajili na usimamizi wa taarifa za msambazaji, mawasiliano, na masharti ya malipo.</p>
                                         @can('view suppliers')
                                         <a href="{{ route('accounting.suppliers.index') }}" class="btn btn-primary">
-                                            <i class="bx bx-list-ul me-1"></i> Manage Suppliers
+                                            <i class="bx bx-list-ul me-1"></i> Simamia wasambazaji
                                         </a>
                                         @endcan
                                     </div>
@@ -198,11 +198,11 @@
                                         <div class="mb-3">
                                             <i class="bx bx-wallet-alt fs-1" style="color: #0d9488;"></i>
                                         </div>
-                                        <h5 class="card-title">Advance Payments</h5>
-                                        <p class="card-text">Record prepayments to suppliers, track applied amounts and balances, and print statements.</p>
+                                        <h5 class="card-title">Malipo ya Awali - Wamachinga <small class="text-muted">(Advance Payments)</small></h5>
+                                        <p class="card-text">Rekodi malipo ya awali kwa wasambazaji, fuatilia matumizi na salio, na chapisha taarifa.</p>
                                         @can('view purchases')
                                         <a href="{{ route('purchases.supplier-advances.index') }}" class="btn text-white" style="background-color: #0d9488;">
-                                            <i class="bx bx-list-ul me-1"></i> Open advances
+                                            <i class="bx bx-list-ul me-1"></i> Fungua malipo ya awali
                                         </a>
                                         @endcan
                                     </div>
@@ -320,11 +320,11 @@
                                         <div class="mb-3">
                                             <i class="bx bx-dollar-circle fs-1 text-success"></i>
                                         </div>
-                                        <h5 class="card-title">Cash Purchase</h5>
-                                        <p class="card-text">Process immediate cash purchases with instant payment settlement.</p>
+                                        <h5 class="card-title">Ununuzi wa Taslimu <small class="text-muted">(Cash Purchase)</small></h5>
+                                        <p class="card-text">Fanya ununuzi unaolipwa kwa malipo ya awali ya msambazaji na kuandikwa kwenye jarida.</p>
                                         @can('view cash purchases')
                                         <a href="{{ route('purchases.cash-purchases.index') }}" class="btn btn-success">
-                                            <i class="bx bx-list-ul me-1"></i> Manage Cash Purchases
+                                            <i class="bx bx-list-ul me-1"></i> Simamia ununuzi wa taslimu
                                         </a>
                                         @endcan
                                     </div>
@@ -346,16 +346,16 @@
                                         <div class="mb-3">
                                             <i class="bx bx-receipt fs-1 text-danger"></i>
                                         </div>
-                                        <h5 class="card-title">Purchase Invoice</h5>
-                                        <p class="card-text">Create invoices with taxes, post to AP, and manage payables.</p>
+                                        <h5 class="card-title">Manunuzi ya Mkopo <small class="text-muted">(Purchase Invoice)</small></h5>
+                                        <p class="card-text">Tengeneza ankara za ununuzi zenye kodi, posti kwa deni la wasambazaji, na simamia malipo.</p>
                                         @can('view purchase invoices')
                                         <a href="{{ route('purchases.purchase-invoices.index') }}" class="btn btn-danger">
-                                            <i class="bx bx-receipt me-1"></i> Manage Invoices
+                                            <i class="bx bx-receipt me-1"></i> Simamia ankara
                                         </a>
                                         @endcan
                                         @can('create purchase invoices')
                                         <a href="{{ route('purchases.opening-balances.index') }}" class="btn btn-outline-secondary ms-2">
-                                            <i class="bx bx-book-open me-1"></i> Supplier Opening Balance
+                                            <i class="bx bx-book-open me-1"></i> Salio la kufungulia msambazaji
                                         </a>
                                         @endcan
                                     </div>
