@@ -89,6 +89,11 @@ class Receipt extends Model
         return $this->belongsTo(Customer::class, 'payee_id');
     }
 
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class, 'payee_id');
+    }
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);
@@ -256,6 +261,12 @@ class Receipt extends Model
     {
         // Check if GL transactions already exist to avoid duplicates
         if ($this->glTransactions()->exists()) {
+            return;
+        }
+
+        if ($this->reference_type === 'supplier_advance_refund') {
+            $this->createSupplierAdvanceRefundGlTransactions();
+
             return;
         }
 
@@ -492,6 +503,72 @@ class Receipt extends Model
             'Payment Method' => $this->bankAccount ? 'Bank' : ($this->cashDeposit ? 'Cash Deposit' : 'Cash'),
             'Posted By' => auth()->user()->name ?? 'System',
             'Posted At' => now()->format('Y-m-d H:i:s')
+        ]);
+    }
+
+    /**
+     * GL for supplier advance cash refund: Dr bank, Cr supplier advance (from receipt items).
+     */
+    public function createSupplierAdvanceRefundGlTransactions(): void
+    {
+        $this->loadMissing(['bankAccount', 'receiptItems', 'supplier']);
+
+        if (! $this->bankAccount?->chart_account_id) {
+            throw new \Exception('Bank account is required for supplier advance refund receipt.');
+        }
+
+        if ($this->receiptItems->isEmpty()) {
+            throw new \Exception('Receipt has no items for supplier advance refund.');
+        }
+
+        $companyId = $this->branch?->company_id ?? $this->user?->company_id;
+        if ($companyId) {
+            $periodLockService = app(\App\Services\PeriodClosing\PeriodLockService::class);
+            $periodLockService->validateTransactionDate($this->date, $companyId, 'supplier advance refund');
+        }
+
+        $bankChartId = (int) $this->bankAccount->chart_account_id;
+        $supplierId = $this->payee_type === 'supplier' ? $this->payee_id : null;
+        $date = $this->date;
+        $branchId = $this->branch_id;
+        $userId = $this->user_id;
+        $desc = $this->description ?: "Supplier advance refund {$this->reference}";
+        $totalCredit = round((float) $this->receiptItems->sum('amount'), 2);
+
+        GlTransaction::create([
+            'chart_account_id' => $bankChartId,
+            'supplier_id' => $supplierId,
+            'amount' => $totalCredit,
+            'nature' => 'debit',
+            'transaction_id' => $this->id,
+            'transaction_type' => 'receipt',
+            'date' => $date,
+            'description' => $desc.' — Bank',
+            'branch_id' => $branchId,
+            'user_id' => $userId,
+        ]);
+
+        foreach ($this->receiptItems as $item) {
+            GlTransaction::create([
+                'chart_account_id' => $item->chart_account_id,
+                'supplier_id' => $supplierId,
+                'amount' => $item->amount,
+                'nature' => 'credit',
+                'transaction_id' => $this->id,
+                'transaction_type' => 'receipt',
+                'date' => $date,
+                'description' => $item->description ?: ($desc.' — Advance'),
+                'branch_id' => $branchId,
+                'user_id' => $userId,
+            ]);
+        }
+
+        $supplierName = $this->supplier?->name ?? $this->payee_name ?? 'Supplier';
+        $this->logActivity('post', "Posted supplier advance refund receipt {$this->reference} from {$supplierName}", [
+            'Receipt Reference' => $this->reference,
+            'Supplier' => $supplierName,
+            'Amount' => number_format($this->amount, 2),
+            'Bank' => $this->bankAccount->name ?? 'N/A',
         ]);
     }
 

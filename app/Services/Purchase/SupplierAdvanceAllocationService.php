@@ -112,6 +112,33 @@ class SupplierAdvanceAllocationService
         ?int $userId,
         ?string $description = null
     ): void {
+        $this->recordDeductionsForSource(
+            $slices,
+            $supplierId,
+            $companyId,
+            $branchId,
+            $deductionDate,
+            'cash_purchase',
+            $cashPurchaseId,
+            $userId,
+            $description ?? ('Applied to cash purchase #'.$cashPurchaseId)
+        );
+    }
+
+    /**
+     * @param  Collection<int, array{supplier_advance_id: int, debit_chart_account_id: int, amount: float}>  $slices
+     */
+    public function recordDeductionsForSource(
+        Collection $slices,
+        int $supplierId,
+        int $companyId,
+        ?int $branchId,
+        $deductionDate,
+        string $sourceType,
+        int $sourceId,
+        ?int $userId,
+        ?string $description = null
+    ): void {
         foreach ($slices as $slice) {
             SupplierAdvanceDeduction::create([
                 'company_id' => $companyId,
@@ -120,9 +147,9 @@ class SupplierAdvanceAllocationService
                 'supplier_advance_id' => $slice['supplier_advance_id'],
                 'amount' => $slice['amount'],
                 'deduction_date' => $deductionDate,
-                'source_type' => 'cash_purchase',
-                'source_id' => $cashPurchaseId,
-                'description' => $description ?? ('Applied to cash purchase #'.$cashPurchaseId),
+                'source_type' => $sourceType,
+                'source_id' => $sourceId,
+                'description' => $description,
                 'user_id' => $userId,
             ]);
         }

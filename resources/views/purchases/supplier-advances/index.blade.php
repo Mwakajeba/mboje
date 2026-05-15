@@ -129,7 +129,8 @@
             <div class="card-body">
                 <h6 class="text-primary mb-3"><i class="bx bx-pie-chart-alt me-1"></i> Balances by supplier</h6>
                 <p class="text-muted small mb-3">
-                    <strong>Advances</strong> total posted prepayments; <strong>Applied</strong> is amounts offset on purchases; <strong>Balance</strong> is advances minus applied.
+                    <strong>Advances</strong> total posted prepayments; <strong>Applied</strong> is amounts offset on purchases or refunded in cash; <strong>Balance</strong> is advances minus applied.
+                    Use <strong>Pay</strong> when the supplier returns cash (debits bank, credits advance).
                 </p>
                 <div class="table-responsive">
                     <table class="table table-striped table-hover align-middle">
@@ -157,6 +158,14 @@
                                     <td class="text-end fw-semibold">{{ format_currency($bal) }}</td>
                                     <td class="text-end">
                                         <div class="btn-group btn-group-sm" role="group">
+                                            @can('record purchase payment')
+                                                @if($bal > 0.005)
+                                                <a href="{{ route('purchases.supplier-advances.pay', ['encodedSupplierId' => $encSup]) }}"
+                                                   class="btn btn-outline-primary" title="Record cash returned by supplier">
+                                                    <i class="bx bx-money"></i> Pay
+                                                </a>
+                                                @endif
+                                            @endcan
                                             @can('view purchases')
                                             <a href="{{ route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encSup]) }}"
                                                class="btn btn-outline-secondary" title="Statement" target="_blank" rel="noopener">

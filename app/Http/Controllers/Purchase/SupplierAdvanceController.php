@@ -9,7 +9,9 @@ use App\Models\Purchase\SupplierAdvance;
 use App\Models\Purchase\SupplierAdvanceDeduction;
 use App\Models\Supplier;
 use App\Services\BankReconciliationService;
+use App\Services\Purchase\SupplierAdvanceAllocationService;
 use App\Services\Purchase\SupplierAdvanceJournalService;
+use App\Services\Purchase\SupplierAdvanceRefundService;
 use App\Services\Purchase\SupplierAdvanceStatementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +26,9 @@ class SupplierAdvanceController extends Controller
     private const SUPPLIER_ADVANCE_DEBIT_ACCOUNT_CODE_PREFIX = '1100';
 
     public function __construct(
-        private readonly SupplierAdvanceJournalService $advanceJournalService
+        private readonly SupplierAdvanceJournalService $advanceJournalService,
+        private readonly SupplierAdvanceAllocationService $allocationService,
+        private readonly SupplierAdvanceRefundService $refundService
     ) {}
 
     public function index(Request $request)
@@ -484,6 +488,108 @@ class SupplierAdvanceController extends Controller
         return view('purchases.supplier-advances.statement', compact('supplier', 'lines', 'totals'));
     }
 
+    public function pay(string $encodedSupplierId)
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+        $supplier = $this->supplierForEncodedId($encodedSupplierId, $companyId, $branchId);
+
+        $balance = $this->allocationService->balanceForSupplier(
+            $supplier->id,
+            $companyId,
+            $branchId ? (int) $branchId : null
+        );
+
+        if ($balance <= 0) {
+            return redirect()
+                ->route('purchases.supplier-advances.index')
+                ->with('error', 'This supplier has no advance balance to refund.');
+        }
+
+        $bankAccounts = BankAccount::with('chartAccount')
+            ->whereHas('chartAccount.accountClassGroup', function ($query) use ($user) {
+                $query->where('company_id', $user->company_id);
+            })
+            ->where(function ($query) use ($branchId) {
+                $query->where('is_all_branches', true);
+                if ($branchId) {
+                    $query->orWhere('branch_id', $branchId);
+                }
+            })
+            ->orderBy('name')
+            ->get();
+
+        return view('purchases.supplier-advances.pay', compact(
+            'supplier',
+            'balance',
+            'bankAccounts',
+            'encodedSupplierId'
+        ));
+    }
+
+    public function payStore(Request $request, string $encodedSupplierId)
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        $this->mergeNormalizedAmount($request);
+
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'bank_account_id' => 'required|exists:bank_accounts,id',
+            'amount' => 'required|numeric|min:0.01',
+            'description' => 'nullable|string|max:2000',
+            'reference' => 'nullable|string|max:64',
+        ]);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $resolvedBranchId = $user->branch_id
+            ?? (session('branch_id') ?: null)
+            ?? (function_exists('current_branch_id') ? current_branch_id() : null);
+        if (! $resolvedBranchId) {
+            return back()->withInput()->with('error', 'Active branch is not set. Please select a branch and try again.');
+        }
+
+        $supplier = $this->supplierForEncodedId($encodedSupplierId, $companyId, $resolvedBranchId);
+
+        $bankErr = $this->validateBankForBranch($companyId, (int) $resolvedBranchId, (int) $validated['bank_account_id']);
+        if ($bankErr instanceof RedirectResponse) {
+            return $bankErr;
+        }
+
+        $balance = $this->allocationService->balanceForSupplier($supplier->id, $companyId, (int) $resolvedBranchId);
+        if ((float) $validated['amount'] > $balance + 0.05) {
+            return back()->withInput()->withErrors([
+                'amount' => 'Amount cannot exceed supplier advance balance ('.number_format($balance, 2).').',
+            ]);
+        }
+
+        try {
+            $this->refundService->processRefund(
+                $supplier,
+                $companyId,
+                (int) $resolvedBranchId,
+                (int) $validated['bank_account_id'],
+                (float) $validated['amount'],
+                $validated['date'],
+                (int) $user->id,
+                $validated['description'] ?? null,
+                $validated['reference'] ?? null
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('purchases.supplier-advances.index')
+            ->with('success', 'Supplier advance refund recorded. Bank debited and advance balance reduced.');
+    }
+
     private function decodeAdvanceId(string $encodedId): int
     {
         $decoded = Hashids::decode($encodedId);
@@ -601,6 +707,36 @@ class SupplierAdvanceController extends Controller
         return redirect()
             ->route('purchases.supplier-advances.index')
             ->with('success', 'Opening supplier advance updated and journal reposted.');
+    }
+
+    private function supplierForEncodedId(string $encodedSupplierId, int $companyId, ?int $branchId): Supplier
+    {
+        $decoded = Hashids::decode($encodedSupplierId);
+        if (empty($decoded[0])) {
+            abort(404);
+        }
+
+        return Supplier::query()
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->findOrFail((int) $decoded[0]);
+    }
+
+    private function validateBankForBranch(int $companyId, int $branchId, int $bankAccountId): ?RedirectResponse
+    {
+        $bankOk = BankAccount::whereKey($bankAccountId)
+            ->whereHas('chartAccount.accountClassGroup', fn ($q) => $q->where('company_id', $companyId))
+            ->where(function ($query) use ($branchId) {
+                $query->where('is_all_branches', true)
+                    ->orWhere('branch_id', $branchId);
+            })
+            ->exists();
+
+        if (! $bankOk) {
+            return back()->withInput()->withErrors(['bank_account_id' => 'Invalid bank account for this branch or company.']);
+        }
+
+        return null;
     }
 
     private function validateBankAndChartForStore(int $companyId, int $resolvedBranchId, array $validated, ?int $preserveDebitChartAccountId = null): ?RedirectResponse
