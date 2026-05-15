@@ -338,7 +338,7 @@ class SalesProformaController extends Controller
 
             // Create proforma items
             foreach ($request->items as $itemData) {
-                $inventoryItem = InventoryItem::find($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['inventory_item_id']);
                 
                 SalesProformaItem::create([
                     'sales_proforma_id' => $proforma->id,
@@ -583,7 +583,7 @@ class SalesProformaController extends Controller
 
             // Create new proforma items
             foreach ($request->items as $itemData) {
-                $inventoryItem = InventoryItem::find($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['inventory_item_id']);
                 
                 SalesProformaItem::create([
                     'sales_proforma_id' => $proforma->id,
@@ -688,8 +688,7 @@ class SalesProformaController extends Controller
     {
         $user = Auth::user();
         
-        $item = InventoryItem::where('company_id', $user->company_id)
-            ->findOrFail($id);
+        $item = InventoryItem::queryVisibleForSession($user->company_id)->findOrFail($id);
 
         $branchId = session('branch_id') ?? ($user->branch_id ?? null);
         $locationId = session('location_id');
@@ -820,7 +819,7 @@ class SalesProformaController extends Controller
                     // Create order items
                     foreach ($proforma->items as $item) {
                         // Get the inventory item to get additional details
-                        $inventoryItem = \App\Models\Inventory\Item::find($item->inventory_item_id);
+                        $inventoryItem = \App\Models\Inventory\Item::queryVisibleForSession()->find($item->inventory_item_id);
                         
                         \App\Models\Sales\SalesOrderItem::create([
                             'sales_order_id' => $order->id,
@@ -879,7 +878,7 @@ class SalesProformaController extends Controller
 
                     // Create invoice items
                     foreach ($proforma->items as $item) {
-                        $inventoryItem = \App\Models\Inventory\Item::find($item->inventory_item_id);
+                        $inventoryItem = \App\Models\Inventory\Item::queryVisibleForSession()->find($item->inventory_item_id);
                         \App\Models\Sales\SalesInvoiceItem::create([
                             'sales_invoice_id' => $invoice->id,
                             'inventory_item_id' => $item->inventory_item_id,
@@ -946,7 +945,7 @@ class SalesProformaController extends Controller
                     // Optionally create cash sale items if model exists
                     if (class_exists(\App\Models\Sales\CashSaleItem::class)) {
                         foreach ($proforma->items as $item) {
-                            $inventoryItem = \App\Models\Inventory\Item::find($item->inventory_item_id);
+                            $inventoryItem = \App\Models\Inventory\Item::queryVisibleForSession()->find($item->inventory_item_id);
                             \App\Models\Sales\CashSaleItem::create([
                                 'cash_sale_id' => $cashSale->id,
                                 'inventory_item_id' => $item->inventory_item_id,

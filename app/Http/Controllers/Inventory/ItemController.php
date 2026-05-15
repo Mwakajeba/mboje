@@ -64,14 +64,16 @@ class ItemController extends Controller
                 }
             }
         }
+
+        $sessionBranchId = session('branch_id') ? (int) session('branch_id') : null;
         
         if ($request->ajax()) {
-            $items = Item::with(['category', 'stockLevels', 'branchPrices', 'locationPrices'])
+            $items = Item::with(['category', 'stockLevels', 'branchPrices', 'locationPrices', 'visibilityBranches'])
                 ->where('company_id', Auth::user()->company_id)
+                ->visibleInSessionBranch($sessionBranchId)
                 ->select('inventory_items.*');
 
             // Get current session branch/location for price resolution
-            $sessionBranchId = session('branch_id');
             $sessionLocationId = session('location_id');
 
             return DataTables::of($items)
@@ -87,6 +89,13 @@ class ItemController extends Controller
                 })
                 ->addColumn('status_badge', function ($item) {
                     return $item->status_badge;
+                })
+                ->addColumn('branches_scope', function ($item) {
+                    if ($item->visibilityBranches->isEmpty()) {
+                        return '<span class="badge bg-info">All branches</span>';
+                    }
+
+                    return e($item->visibilityBranches->pluck('name')->implode(', '));
                 })
                 ->editColumn('cost_price', function ($item) use ($sessionBranchId, $sessionLocationId) {
                     // Resolve cost price: location → branch → default
@@ -115,7 +124,7 @@ class ItemController extends Controller
                 ->addColumn('actions', function ($item) {
                     return $item->actions;
                 })
-                ->rawColumns(['expiry_tracking_badge', 'status_badge', 'actions'])
+                ->rawColumns(['expiry_tracking_badge', 'status_badge', 'branches_scope', 'actions'])
                 ->make(true);
         }
 
@@ -143,7 +152,9 @@ class ItemController extends Controller
             $outOfStock = $outOfStockItems->count();
         } else {
             // Company-level fallback - get all items and calculate totals
-            $allItems = Item::where('company_id', Auth::user()->company_id)->get();
+            $allItems = Item::where('company_id', Auth::user()->company_id)
+                ->visibleInSessionBranch($sessionBranchId)
+                ->get();
             $totalItems = $allItems->count();
             $inStock = 0;
             $lowStock = 0;
@@ -230,12 +241,20 @@ class ItemController extends Controller
             $prefillCategoryId = $decoded[0] ?? null;
         }
 
-        return view('inventory.items.create', compact('categories', 'locations', 'inventoryAccounts', 'salesAccounts', 'costAccounts', 'vatAccounts', 'withholdingTaxAccounts', 'withholdingTaxExpenseAccounts', 'purchasePayableAccounts', 'discountAccounts', 'discountIncomeAccounts', 'prefillCategoryId'));
+        $assignableBranches = Branch::where('company_id', Auth::user()->company_id)
+            ->whereIn('id', Auth::user()->permittedBranchIds())
+            ->active()
+            ->orderBy('name')
+            ->get();
+
+        return view('inventory.items.create', compact('categories', 'locations', 'inventoryAccounts', 'salesAccounts', 'costAccounts', 'vatAccounts', 'withholdingTaxAccounts', 'withholdingTaxExpenseAccounts', 'purchasePayableAccounts', 'discountAccounts', 'discountIncomeAccounts', 'prefillCategoryId', 'assignableBranches'));
     }
 
     public function store(Request $request)
     {
         $this->authorize('create', Item::class);
+
+        $allowedBranchIds = Auth::user()->permittedBranchIds();
         
         $request->validate([
             'name' => 'required|string|max:255',
@@ -261,6 +280,8 @@ class ItemController extends Controller
             'track_expiry' => 'nullable|boolean',
             'has_different_sales_revenue_account' => 'nullable|boolean',
             'sales_revenue_account_id' => 'nullable|required_if:has_different_sales_revenue_account,1|exists:chart_accounts,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => ['integer', Rule::in($allowedBranchIds)],
         ]);
 
         // Opening balance via items form deprecated; handled via adjustments/opening balance section
@@ -311,6 +332,15 @@ class ItemController extends Controller
                 'has_different_sales_revenue_account' => $request->has('has_different_sales_revenue_account'),
                 'sales_revenue_account_id' => $request->has('has_different_sales_revenue_account') ? $request->sales_revenue_account_id : null,
             ]);
+
+            if (Schema::hasTable('inventory_items_branches')) {
+                $branchIds = collect($request->input('branch_ids', []))
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
+                $item->visibilityBranches()->sync($branchIds);
+            }
 
             // Opening balance transactions/movements will be created from the Opening Balance section
 
@@ -527,10 +557,16 @@ class ItemController extends Controller
         })->get();
 
         $branches = Branch::where('company_id', $companyId)->active()->orderBy('name')->get();
+        $assignableBranches = Branch::where('company_id', $companyId)
+            ->whereIn('id', Auth::user()->permittedBranchIds())
+            ->active()
+            ->orderBy('name')
+            ->get();
+        $item->load('visibilityBranches');
         $branchPricesByBranch = $item->branchPrices()->get()->keyBy('branch_id');
         $locationPricesByLocation = $item->locationPrices()->get()->keyBy('location_id');
 
-        return view('inventory.items.edit', compact('item', 'categories', 'locations', 'inventoryAccounts', 'salesAccounts', 'costAccounts', 'vatAccounts', 'withholdingTaxAccounts', 'withholdingTaxExpenseAccounts', 'purchasePayableAccounts', 'discountAccounts', 'discountIncomeAccounts', 'branches', 'branchPricesByBranch', 'locationPricesByLocation'));
+        return view('inventory.items.edit', compact('item', 'categories', 'locations', 'inventoryAccounts', 'salesAccounts', 'costAccounts', 'vatAccounts', 'withholdingTaxAccounts', 'withholdingTaxExpenseAccounts', 'purchasePayableAccounts', 'discountAccounts', 'discountIncomeAccounts', 'branches', 'assignableBranches', 'branchPricesByBranch', 'locationPricesByLocation'));
     }
 
     public function update(Request $request, $encodedId)
@@ -544,6 +580,8 @@ class ItemController extends Controller
 
         $item = Item::findOrFail($itemId);
         $this->authorize('update', $item);
+
+        $allowedBranchIds = Auth::user()->permittedBranchIds();
         
         $request->validate([
             'name' => 'required|string|max:255',
@@ -572,6 +610,8 @@ class ItemController extends Controller
             'opening_balance_quantity' => 'nullable|numeric|min:0.01',
             'has_different_sales_revenue_account' => 'nullable|boolean',
             'sales_revenue_account_id' => 'nullable|required_if:has_different_sales_revenue_account,1|exists:chart_accounts,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => ['integer', Rule::in($allowedBranchIds)],
         ]);
 
         // Detect if item already has an opening balance set or movement created
@@ -702,6 +742,15 @@ class ItemController extends Controller
                         ]
                     );
                 }
+            }
+
+            if (Schema::hasTable('inventory_items_branches')) {
+                $branchIds = collect($request->input('branch_ids', []))
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
+                $item->visibilityBranches()->sync($branchIds);
             }
 
             DB::commit();
@@ -1131,9 +1180,12 @@ class ItemController extends Controller
         $companyId = Auth::user()->company_id;
         $stockService = new InventoryStockService();
 
+        $sessionBranchId = session('branch_id') ? (int) session('branch_id') : null;
+
         // Get all items for the company
         $items = Item::with('category')
             ->where('company_id', $companyId)
+            ->visibleInSessionBranch($sessionBranchId)
             ->orderBy('name')
             ->get();
 

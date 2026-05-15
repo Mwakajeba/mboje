@@ -24,7 +24,9 @@ class ItemPolicy
         $canView = $user->hasPermissionTo('view inventory items')
             || $user->hasPermissionTo('manage inventory items');
 
-        return $canView && $user->company_id === $item->company_id;
+        return $canView
+            && $user->company_id === $item->company_id
+            && $item->isVisibleToPermittedBranches($user->permittedBranchIds());
     }
 
     /**
@@ -40,8 +42,9 @@ class ItemPolicy
      */
     public function update(User $user, Item $item): bool
     {
-        return $user->hasPermissionTo('manage inventory items') && 
-               $user->company_id === $item->company_id;
+        return $user->hasPermissionTo('manage inventory items')
+            && $user->company_id === $item->company_id
+            && $item->isVisibleToPermittedBranches($user->permittedBranchIds());
     }
 
     /**
@@ -49,8 +52,9 @@ class ItemPolicy
      */
     public function delete(User $user, Item $item): bool
     {
-        return $user->hasPermissionTo('manage inventory items') && 
-               $user->company_id === $item->company_id;
+        return $user->hasPermissionTo('manage inventory items')
+            && $user->company_id === $item->company_id
+            && $item->isVisibleToPermittedBranches($user->permittedBranchIds());
     }
 
     /**
@@ -58,8 +62,9 @@ class ItemPolicy
      */
     public function restore(User $user, Item $item): bool
     {
-        return $user->hasPermissionTo('manage inventory items') && 
-               $user->company_id === $item->company_id;
+        return $user->hasPermissionTo('manage inventory items')
+            && $user->company_id === $item->company_id
+            && $item->isVisibleToPermittedBranches($user->permittedBranchIds());
     }
 
     /**
@@ -67,7 +72,8 @@ class ItemPolicy
      */
     public function forceDelete(User $user, Item $item): bool
     {
-        return $user->hasPermissionTo('manage inventory items') && 
-               $user->company_id === $item->company_id;
+        return $user->hasPermissionTo('manage inventory items')
+            && $user->company_id === $item->company_id
+            && $item->isVisibleToPermittedBranches($user->permittedBranchIds());
     }
 }

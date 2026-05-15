@@ -173,7 +173,7 @@ class DebitNoteController extends Controller
             ->get();
         $warehouses = InventoryLocation::when($branchId, fn ($q) => $q->where('branch_id', $branchId))->orderBy('name')->get();
         $bankAccounts = BankAccount::orderBy('name')->get();
-        $inventoryItems = InventoryItem::with(['category'])->where('company_id', $companyId)->orderBy('name')->get();
+        $inventoryItems = InventoryItem::queryVisibleForSession($companyId)->with(['category'])->orderBy('name')->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($inventoryItems);
         $debitNoteTypes = [
             'return' => 'Return', 'discount' => 'Discount', 'correction' => 'Correction', 'overbilling' => 'Overbilling',
@@ -228,8 +228,7 @@ class DebitNoteController extends Controller
             ->get();
 
         // Get inventory items
-        $inventoryItems = InventoryItem::with(['category'])
-            ->where('company_id', $companyId)
+        $inventoryItems = InventoryItem::queryVisibleForSession($companyId)->with(['category'])
             ->orderBy('name')
             ->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($inventoryItems);
@@ -435,8 +434,7 @@ class DebitNoteController extends Controller
         $bankAccounts = BankAccount::orderBy('name')->get();
 
         // Get inventory items
-        $inventoryItems = InventoryItem::with(['category'])
-            ->where('company_id', $companyId)
+        $inventoryItems = InventoryItem::queryVisibleForSession($companyId)->with(['category'])
             ->orderBy('name')
             ->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($inventoryItems);
@@ -698,7 +696,7 @@ class DebitNoteController extends Controller
     public function getInventoryItem(Request $request)
     {
         $itemId = $request->get('item_id');
-        $item = InventoryItem::with(['category', 'location'])->find($itemId);
+        $item = InventoryItem::queryVisibleForSession()->with(['category', 'location'])->find($itemId);
         
         if (!$item) {
             return response()->json(['success' => false, 'message' => 'Item not found']);

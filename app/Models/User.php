@@ -77,6 +77,30 @@ class User extends Authenticatable
     }
 
     /**
+     * Branch IDs the user may use (pivot branches, or all company branches for admin roles).
+     * Falls back to users.branch_id when no pivot rows exist.
+     *
+     * @return list<int>
+     */
+    public function permittedBranchIds(): array
+    {
+        $isSuper = ($this->hasRole('super-admin') || $this->hasRole('Super Admin') || $this->hasRole('admin'))
+            || (($this->is_admin ?? false) === true);
+
+        if ($isSuper && $this->company) {
+            return $this->company->branches()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        $ids = $this->branches()->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        if ($ids === [] && $this->branch_id) {
+            $ids = [(int) $this->branch_id];
+        }
+
+        return array_values(array_unique($ids));
+    }
+
+    /**
      * Get approval histories where this user is the approver.
      */
     public function approvalHistories(): HasMany

@@ -179,6 +179,35 @@
                                 </div>
                             </div>
 
+                            <!-- Supplier advances -->
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card border-teal position-relative" style="border-color: #0d9488 !important;">
+                                    <div class="card-body text-center">
+                                        @php
+                                            $sadvBranch = session('branch_id') ?? auth()->user()->branch_id;
+                                            $sadvCompany = auth()->user()->company_id;
+                                            $supplierAdvanceCount = \App\Models\Purchase\SupplierAdvance::where('company_id', $sadvCompany)
+                                                ->when($sadvBranch, fn ($q) => $q->where('branch_id', $sadvBranch))
+                                                ->count();
+                                        @endphp
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-teal text-white" style="background-color: #0d9488;">
+                                            {{ $supplierAdvanceCount }}
+                                            <span class="visually-hidden">supplier advances count</span>
+                                        </span>
+                                        <div class="mb-3">
+                                            <i class="bx bx-wallet-alt fs-1" style="color: #0d9488;"></i>
+                                        </div>
+                                        <h5 class="card-title">Supplier Advances</h5>
+                                        <p class="card-text">Record prepayments to suppliers, track applied amounts and balances, and print statements.</p>
+                                        @can('view purchases')
+                                        <a href="{{ route('purchases.supplier-advances.index') }}" class="btn text-white" style="background-color: #0d9488;">
+                                            <i class="bx bx-list-ul me-1"></i> Open advances
+                                        </a>
+                                        @endcan
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- 2. Purchase Requisitions -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-dark position-relative">

@@ -27,6 +27,16 @@ class Branch extends Model
             ->withTimestamps();
     }
 
+    /**
+     * Inventory items explicitly linked to this branch for visibility (pivot).
+     * Items with no rows in the pivot are visible in every branch.
+     */
+    public function inventoryItems()
+    {
+        return $this->belongsToMany(\App\Models\Inventory\Item::class, 'inventory_items_branches', 'branch_id', 'inventory_item_id')
+            ->withTimestamps();
+    }
+
     public function manager()
     {
         return $this->belongsTo(User::class, 'manager_id');

@@ -15,10 +15,36 @@
 <div class="row">
     <div class="col-12">
         <h6 class="text-uppercase">Basic Information</h6>
-        <p class="text-muted mb-2">Items are company-wide and can be stocked at any location.</p>
+        <p class="text-muted mb-2">Choose which branches can see this item in inventory and sales (or leave branch selection empty for <strong>all branches</strong>). Use <strong>Edit</strong> after save for <strong>Prices by branch</strong> and <strong>Prices by location</strong>.</p>
         <hr>
     </div>
 </div>
+
+@if(isset($assignableBranches) && $assignableBranches->isNotEmpty())
+@php
+    $selectedBranchIds = old('branch_ids', isset($item) ? $item->visibilityBranches->pluck('id')->all() : []);
+    if (! is_array($selectedBranchIds)) {
+        $selectedBranchIds = [];
+    }
+@endphp
+<div class="row">
+    <div class="col-12 mb-3">
+        <label class="form-label">Visible in branches</label>
+        <p class="text-muted small mb-1">Leave <strong>none</strong> selected for <strong>all branches</strong>. Otherwise pick one or more branches (from those assigned to you).</p>
+        <select name="branch_ids[]" id="item_visibility_branches" class="form-select select2-multi @error('branch_ids') is-invalid @enderror" multiple="multiple" data-placeholder="All branches">
+            @foreach($assignableBranches as $branch)
+            <option value="{{ $branch->id }}" {{ in_array((int) $branch->id, array_map('intval', $selectedBranchIds), true) ? 'selected' : '' }}>
+                {{ $branch->name }}
+            </option>
+            @endforeach
+        </select>
+        @error('branch_ids') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+        @foreach($errors->get('branch_ids.*') as $msg)
+        <div class="invalid-feedback d-block">{{ $msg }}</div>
+        @endforeach
+    </div>
+</div>
+@endif
 
 <div class="row">
     <!-- Product Type -->

@@ -201,7 +201,7 @@ class CreditNoteController extends Controller
             $warehouses = $warehouses->unique('id')->values();
         }
         $bankAccounts = BankAccount::orderBy('name')->get();
-        $inventoryItems = \App\Models\Inventory\Item::where('company_id', $user->company_id)->orderBy('name')->get();
+        $inventoryItems = \App\Models\Inventory\Item::queryVisibleForSession($user->company_id)->orderBy('name')->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($inventoryItems);
         $items = $inventoryItems;
         $creditNoteTypes = [
@@ -316,7 +316,7 @@ class CreditNoteController extends Controller
             $warehouses = $warehouses->unique('id')->values();
         }
         $bankAccounts = BankAccount::orderBy('name')->get();
-        $inventoryItems = \App\Models\Inventory\Item::where('company_id', $companyId)->orderBy('name')->get();
+        $inventoryItems = \App\Models\Inventory\Item::queryVisibleForSession($companyId)->orderBy('name')->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($inventoryItems);
         $items = $inventoryItems;
 
@@ -609,7 +609,7 @@ class CreditNoteController extends Controller
         $user = Auth::user();
         $customers = Customer::forBranch($user->branch_id)->forCompany($user->company_id)->get();
         $bankAccounts = BankAccount::orderBy('name')->get();
-        $inventoryItems = InventoryItem::where('company_id', $user->company_id)->where('is_active', true)->get();
+        $inventoryItems = InventoryItem::queryVisibleForSession($user->company_id)->where('is_active', true)->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($inventoryItems);
 
         return view('sales.credit-notes.edit', compact('creditNote', 'customers', 'bankAccounts', 'inventoryItems'));
@@ -995,7 +995,7 @@ class CreditNoteController extends Controller
     {
         $this->authorize('create credit notes');
 
-        $item = InventoryItem::findOrFail($id);
+        $item = InventoryItem::queryVisibleForSession()->findOrFail($id);
         $branchId = session('branch_id') ?? (auth()->user()->branch_id ?? null);
         $locationId = session('location_id');
 

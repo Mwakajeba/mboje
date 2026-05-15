@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Inventory\Movement as InventoryMovement;
+use App\Services\Purchase\SupplierAdvanceAllocationService;
 use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,6 +34,7 @@ class CashPurchase extends Model
         'currency',
         'exchange_rate',
         'discount_amount',
+        'supplier_advance_applied_amount',
         'notes',
         'terms_conditions',
         'subtotal',
@@ -49,6 +51,7 @@ class CashPurchase extends Model
         'purchase_date' => 'date',
         'exchange_rate' => 'decimal:6',
         'discount_amount' => 'decimal:2',
+        'supplier_advance_applied_amount' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'vat_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
@@ -225,6 +228,10 @@ class CashPurchase extends Model
         // Remove any existing GL rows for idempotency
         $this->glTransactions()->delete();
 
+        /** @var SupplierAdvanceAllocationService $advanceAllocation */
+        $advanceAllocation = app(SupplierAdvanceAllocationService::class);
+        $advanceAllocation->deleteDeductionsForCashPurchase((int) $this->id);
+
         // Get functional currency and check if conversion is needed
         $functionalCurrency = SystemSetting::getValue('functional_currency', $this->company->functional_currency ?? 'TZS');
         $purchaseCurrency = $this->currency ?? $functionalCurrency;
@@ -345,21 +352,64 @@ class CashPurchase extends Model
         
         // Subtract discount from cash credit (discount reduces what we pay)
         $totalDebits -= ($this->discount_amount ?? 0);
-        
+
+        $advanceSlices = collect();
+
         if ($totalDebits > 0) {
             $totalDebitsLCY = $convertToLCY($totalDebits);
-            $transactions[] = [
-                'chart_account_id' => $creditAccountId,
-                'supplier_id' => $this->supplier_id,
-                'amount' => $totalDebitsLCY,
-                'nature' => 'credit',
-                'transaction_id' => $this->id,
-                'transaction_type' => 'cash_purchase',
-                'date' => $this->purchase_date,
-                'description' => $addCurrencyInfo('Cash/Bank Payment - Cash purchase'),
-                'branch_id' => $this->branch_id,
-                'user_id' => $userId,
-            ];
+            $advanceApplyFCY = round(max(0, min((float) ($this->supplier_advance_applied_amount ?? 0), (float) $totalDebits)), 2);
+            $advanceApplyLCY = $convertToLCY($advanceApplyFCY);
+
+            if ($advanceApplyLCY > 0) {
+                $advanceSlices = $advanceAllocation->allocateFifo(
+                    (int) $this->supplier_id,
+                    (int) $this->company_id,
+                    $this->branch_id,
+                    $advanceApplyLCY
+                );
+                $allocatedSum = round((float) $advanceSlices->sum('amount'), 2);
+                if ($advanceSlices->isEmpty()) {
+                    throw new \RuntimeException('Supplier advance apply amount was set but no supplier advance balance is available.');
+                }
+                if (abs($allocatedSum - $advanceApplyLCY) > 0.05) {
+                    throw new \RuntimeException('Supplier advance balance is insufficient to apply '.number_format($advanceApplyFCY, 2).' in purchase currency.');
+                }
+                foreach ($advanceSlices->pluck('debit_chart_account_id')->unique()->filter() as $advChartId) {
+                    if (\App\Services\BankReconciliationService::isChartAccountInCompletedReconciliation((int) $advChartId, $this->purchase_date)) {
+                        throw new \Exception("Cannot post cash purchase: a supplier advance account is in a completed bank reconciliation for date {$this->purchase_date}.");
+                    }
+                }
+            }
+
+            $bankCreditLCY = round(max(0, $totalDebitsLCY - (float) $advanceSlices->sum('amount')), 2);
+            if ($bankCreditLCY > 0.0001) {
+                $transactions[] = [
+                    'chart_account_id' => $creditAccountId,
+                    'supplier_id' => $this->supplier_id,
+                    'amount' => $bankCreditLCY,
+                    'nature' => 'credit',
+                    'transaction_id' => $this->id,
+                    'transaction_type' => 'cash_purchase',
+                    'date' => $this->purchase_date,
+                    'description' => $addCurrencyInfo('Cash/Bank Payment - Cash purchase'),
+                    'branch_id' => $this->branch_id,
+                    'user_id' => $userId,
+                ];
+            }
+            foreach ($advanceSlices as $slice) {
+                $transactions[] = [
+                    'chart_account_id' => (int) $slice['debit_chart_account_id'],
+                    'supplier_id' => $this->supplier_id,
+                    'amount' => (float) $slice['amount'],
+                    'nature' => 'credit',
+                    'transaction_id' => $this->id,
+                    'transaction_type' => 'cash_purchase',
+                    'date' => $this->purchase_date,
+                    'description' => $addCurrencyInfo('Supplier advance applied - Cash purchase'),
+                    'branch_id' => $this->branch_id,
+                    'user_id' => $userId,
+                ];
+            }
         }
 
         // 4) If discount provided, credit Discount Income (Purchase discount)
@@ -384,7 +434,20 @@ class CashPurchase extends Model
             GlTransaction::create($t);
             $createdCount++;
         }
-        
+
+        if ($advanceSlices->isNotEmpty()) {
+            $advanceAllocation->recordDeductions(
+                $advanceSlices,
+                (int) $this->supplier_id,
+                (int) $this->company_id,
+                $this->branch_id,
+                $this->purchase_date,
+                (int) $this->id,
+                $userId,
+                'Cash purchase #'.$this->id
+            );
+        }
+
         // Log activity for posting to GL
         $supplierName = $this->supplier ? $this->supplier->name : 'N/A';
         $totalAmountLCY = isset($totalAmountLCY) ? $totalAmountLCY : $convertToLCY($this->total_amount ?? 0);
@@ -401,6 +464,7 @@ class CashPurchase extends Model
             'Subtotal' => number_format($this->subtotal ?? 0, 2),
             'VAT Amount' => number_format($this->vat_amount ?? 0, 2),
             'Discount Amount' => number_format($this->discount_amount ?? 0, 2),
+            'Supplier advance applied' => number_format((float) ($this->supplier_advance_applied_amount ?? 0), 2),
             'GL Transactions Created' => $createdCount,
             'Posted By' => auth()->user()->name ?? 'System',
             'Posted At' => now()->format('Y-m-d H:i:s')

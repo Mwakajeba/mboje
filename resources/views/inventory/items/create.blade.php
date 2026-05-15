@@ -68,6 +68,12 @@ document.addEventListener('DOMContentLoaded', function() {
             theme: 'bootstrap-5',
             width: '100%'
         });
+        $('.select2-multi').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'All branches',
+            closeOnSelect: false
+        });
     }
 });
 </script>

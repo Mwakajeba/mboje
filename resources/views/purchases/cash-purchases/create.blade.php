@@ -138,6 +138,26 @@
                         </div>
                     </div>
 
+                    @php $cpFunctionalCurrency = \App\Models\SystemSetting::getValue('functional_currency', auth()->user()->company->functional_currency ?? 'TZS'); @endphp
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="supplier_advance_applied_amount" class="form-label">Apply from supplier advance <span class="text-muted">(optional)</span></label>
+                                <input type="number" step="0.01" min="0" class="form-control" id="supplier_advance_applied_amount" name="supplier_advance_applied_amount" value="{{ old('supplier_advance_applied_amount', 0) }}">
+                                <small class="text-muted">In <strong>purchase currency</strong>. This reduces how much is paid from the bank account. Available advance balance for the selected supplier: <strong><span id="supplier-advance-available">0.00</span> {{ $cpFunctionalCurrency }}</strong> (functional currency).</small>
+                                @error('supplier_advance_applied_amount')
+                                    <div class="text-danger small">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="mb-3 w-100 border rounded p-2 bg-light small">
+                                <div class="fw-semibold mb-1">Settlement preview</div>
+                                <div>Bank pays: <span id="bank-pay-preview">0.00</span></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Items Section -->
                     <div class="card mt-4">
                         <div class="card-header">
@@ -383,13 +403,27 @@ $(document).ready(function() {
     $('.select2-single').select2({ theme: 'bootstrap-5', width: '100%' });
     $('.select2-modal').select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#itemModal') });
 
+    const functionalCurrency = '{{ \App\Models\SystemSetting::getValue("functional_currency", auth()->user()->company->functional_currency ?? "TZS") }}';
+    const supplierAdvanceBalances = @json($supplierAdvanceBalances ?? []);
+
+    function updateAdvanceUi() {
+        const sid = $('#supplier_id').val();
+        let bal = 0;
+        if (sid && supplierAdvanceBalances[sid] !== undefined && supplierAdvanceBalances[sid] !== null) {
+            bal = parseFloat(supplierAdvanceBalances[sid]);
+        }
+        $('#supplier-advance-available').text(isNaN(bal) ? '0.00' : bal.toFixed(2));
+        const total = parseFloat($('#total-amount-input').val()) || 0;
+        const adv = Math.max(0, parseFloat($('#supplier_advance_applied_amount').val()) || 0);
+        $('#bank-pay-preview').text(Math.max(0, total - adv).toFixed(2));
+    }
+    $('#supplier_id').on('change select2:select', updateAdvanceUi);
+    $('#supplier_advance_applied_amount').on('input change', updateAdvanceUi);
+
+    updateAdvanceUi();
+
     $('#add-item').click(function() { $('#itemModal').modal('show'); resetModalForm(); });
 
-
-    // Get functional currency for exchange rate calculations
-    const functionalCurrency = '{{ \App\Models\SystemSetting::getValue("functional_currency", auth()->user()->company->functional_currency ?? "TZS") }}';
-    
-    // Function to convert item price from functional currency to purchase currency
     function convertItemPrice(basePrice, purchaseCurrency, exchangeRate) {
         if (!basePrice || !purchaseCurrency || !exchangeRate) {
             return basePrice;
@@ -745,6 +779,7 @@ $(document).ready(function() {
         else { $('#vat-row').hide(); $('#vat-amount-input').val('0'); }
         $('#total-amount').text(total.toFixed(2));
         $('#total-amount-input').val(total.toFixed(2));
+        updateAdvanceUi();
     }
 
     $('#cash-purchase-form').submit(function(e){

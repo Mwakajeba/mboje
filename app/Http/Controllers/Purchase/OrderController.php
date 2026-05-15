@@ -129,7 +129,7 @@ class OrderController extends Controller
             ->orderBy('name')
             ->get();
 
-        $items = Item::where('company_id', Auth::user()->company_id)
+        $items = Item::queryVisibleForSession()
             ->orderBy('name')
             ->get();
         Item::withResolvedPricesForContext($items);
@@ -346,7 +346,7 @@ class OrderController extends Controller
             ->orderBy('name')
             ->get();
 
-        $inventoryItems = Item::where('company_id', Auth::user()->company_id)
+        $inventoryItems = Item::queryVisibleForSession()
             ->orderBy('name')
             ->get();
         Item::withResolvedPricesForContext($inventoryItems);
@@ -765,7 +765,7 @@ class OrderController extends Controller
             }
         }
 
-        $inventoryItems = InventoryItem::where('company_id', Auth::user()->company_id)
+        $inventoryItems = InventoryItem::queryVisibleForSession()
             ->orderBy('name')
             ->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($inventoryItems);
@@ -1097,7 +1097,7 @@ class OrderController extends Controller
         $warehouses = \Illuminate\Support\Facades\Schema::hasTable('warehouses')
             ? \App\Models\Warehouse::where('branch_id', auth()->user()->branch_id)->orderBy('name')->get()
             : collect();
-        $inventoryItems = InventoryItem::where('company_id', auth()->user()->company_id)
+        $inventoryItems = InventoryItem::queryVisibleForSession()
             ->orderBy('name')
             ->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($inventoryItems);
@@ -1302,7 +1302,7 @@ class OrderController extends Controller
             ->orderBy('name')
             ->get();
 
-        $items = Item::where('company_id', Auth::user()->company_id)
+        $items = Item::queryVisibleForSession()
             ->orderBy('name')
             ->get();
 
@@ -1348,7 +1348,7 @@ class OrderController extends Controller
             ->where('status', 'active')
             ->orderBy('name')
             ->get();
-        $items = Item::where('company_id', $user->company_id)->orderBy('name')->get();
+        $items = Item::queryVisibleForSession($user->company_id)->orderBy('name')->get();
 
         $prefillItems = $invoice->items->map(function ($line) {
             $item = $line->inventoryItem;
@@ -1403,7 +1403,7 @@ class OrderController extends Controller
             ];
         })->values();
 
-        $inventoryItems = InventoryItem::where('company_id', $user->company_id)->orderBy('name')->get();
+        $inventoryItems = InventoryItem::queryVisibleForSession($user->company_id)->orderBy('name')->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($inventoryItems);
         $suppliers = Supplier::where('company_id', $user->company_id)->where('status', 'active')->orderBy('name')->get();
 
@@ -1439,7 +1439,7 @@ class OrderController extends Controller
             ->orderBy('name')
             ->get();
 
-        $items = Item::where('company_id', $user->company_id)
+        $items = Item::queryVisibleForSession($user->company_id)
             ->orderBy('name')
             ->get();
         Item::withResolvedPricesForContext($items);
@@ -1453,7 +1453,7 @@ class OrderController extends Controller
             if ($suggestedQty <= 0) {
                 $suggestedQty = 1;
             }
-            $item = Item::find($lsi['item_id'] ?? null);
+            $item = Item::queryVisibleForSession()->find($lsi['item_id'] ?? null);
             $costPrice = $item ? $item->getCostPriceForBranchOrLocation($branchId, $locationId) : ($lsi['cost_price'] ?? 0);
 
             return [

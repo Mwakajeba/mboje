@@ -82,7 +82,7 @@ class PurchaseRequisitionController extends Controller
         $branchId = session('branch_id') ?? $user->branch_id ?? null;
 
         // Active inventory items for selection
-        $items = \App\Models\Inventory\Item::forCompany($user->company_id)
+        $items = \App\Models\Inventory\Item::queryVisibleForSession($user->company_id)
             ->active()
             ->orderBy('name')
             ->get();

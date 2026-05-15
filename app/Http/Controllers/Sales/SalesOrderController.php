@@ -292,7 +292,7 @@ class SalesOrderController extends Controller
 
             // Create order items
             foreach ($request->items as $itemData) {
-                $inventoryItem = InventoryItem::find($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['inventory_item_id']);
                 
                 SalesOrderItem::create([
                     'sales_order_id' => $order->id,
@@ -492,7 +492,7 @@ class SalesOrderController extends Controller
             $order->items()->delete();
 
             foreach ($request->items as $itemData) {
-                $inventoryItem = InventoryItem::find($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['inventory_item_id']);
                 
                 SalesOrderItem::create([
                     'sales_order_id' => $order->id,
@@ -570,7 +570,7 @@ class SalesOrderController extends Controller
      */
     public function getItemDetails($id)
     {
-        $item = InventoryItem::findOrFail($id);
+        $item = InventoryItem::queryVisibleForSession()->findOrFail($id);
         $branchId = session('branch_id') ?? (auth()->user()->branch_id ?? null);
         $locationId = session('location_id');
 

@@ -1432,6 +1432,17 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
     Route::post('opening-balances', [\App\Http\Controllers\Purchase\OpeningBalanceController::class, 'store'])->name('opening-balances.store');
     Route::get('opening-balances/{encodedId}', [\App\Http\Controllers\Purchase\OpeningBalanceController::class, 'show'])->name('opening-balances.show');
 
+    // Supplier advances (prepayments to suppliers)
+    Route::prefix('supplier-advances')->name('supplier-advances.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'store'])->name('store');
+        Route::get('/statement/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'statement'])->name('statement');
+        Route::get('/{encodedId}/edit', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'edit'])->name('edit');
+        Route::put('/{encodedId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'update'])->name('update');
+        Route::delete('/{encodedId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'destroy'])->name('destroy');
+    });
+
     // Debit Notes (copy-from-invoice before create to avoid conflict)
     Route::prefix('debit-notes')->name('debit-notes.')->group(function () {
         Route::get('/create-from-invoice/{invoiceEncodedId}', [\App\Http\Controllers\Purchase\DebitNoteController::class, 'createFromInvoice'])->name('create-from-invoice');

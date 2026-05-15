@@ -45,3 +45,22 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script nonce="{{ $cspNonce ?? '' }}">
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('.select2-single').select2({
+            theme: 'bootstrap-5',
+            width: '100%'
+        });
+        $('.select2-multi').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'All branches',
+            closeOnSelect: false
+        });
+    }
+});
+</script>
+@endpush

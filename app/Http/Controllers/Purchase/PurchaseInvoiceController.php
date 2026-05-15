@@ -169,7 +169,7 @@ class PurchaseInvoiceController extends Controller
         $suppliers = Supplier::where('company_id', $user->company_id)
             ->orderBy('name')
             ->get();
-        $items = InventoryItem::where('company_id', $user->company_id)->orderBy('name')->get();
+        $items = InventoryItem::queryVisibleForSession($user->company_id)->orderBy('name')->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($items);
 
         $prefill = null;
@@ -872,7 +872,7 @@ class PurchaseInvoiceController extends Controller
             ->when(Auth::user()->branch_id, function($q){ $q->where('branch_id', Auth::user()->branch_id); })
             ->orderBy('name')
             ->get();
-        $items = InventoryItem::where('company_id', Auth::user()->company_id)->orderBy('name')->get();
+        $items = InventoryItem::queryVisibleForSession()->orderBy('name')->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($items);
         $user = Auth::user();
         $users = \App\Models\User::where('company_id', $user->company_id)->orderBy('name')->get(['id', 'name', 'email']);

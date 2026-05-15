@@ -268,7 +268,7 @@ class DeliveryController extends Controller
             $totalWeight = 0;
 
             foreach ($request->items as $itemData) {
-                $inventoryItem = InventoryItem::find($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['inventory_item_id']);
                 
                 $deliveryItem = DeliveryItem::create([
                     'delivery_id' => $delivery->id,
@@ -479,7 +479,7 @@ class DeliveryController extends Controller
             $totalWeight = 0;
 
             foreach ($request->items as $itemData) {
-                $inventoryItem = InventoryItem::find($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['inventory_item_id']);
                 
                 $deliveryItem = DeliveryItem::create([
                     'delivery_id' => $delivery->id,

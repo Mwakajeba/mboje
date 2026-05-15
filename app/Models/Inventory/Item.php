@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\ChartAccount;
 use App\Models\Branch;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 
 class Item extends Model
 {
@@ -109,6 +111,28 @@ class Item extends Model
     public function branchPrices()
     {
         return $this->hasMany(ItemBranchPrice::class);
+    }
+
+    /**
+     * Branches where this item is visible. Empty = visible in all branches of the company.
+     */
+    public function visibilityBranches()
+    {
+        return $this->belongsToMany(Branch::class, 'inventory_items_branches', 'inventory_item_id', 'branch_id')
+            ->withTimestamps();
+    }
+
+    /**
+     * Items for the given company (defaults to auth user's) visible in the current session branch.
+     */
+    public static function queryVisibleForSession(?int $companyId = null): Builder
+    {
+        $companyId = $companyId ?? (int) (Auth::user()?->company_id ?? 0);
+        $branchId = session('branch_id') ? (int) session('branch_id') : null;
+
+        return static::query()
+            ->where('company_id', $companyId)
+            ->visibleInSessionBranch($branchId);
     }
 
     /**
@@ -255,7 +279,7 @@ class Item extends Model
                 continue;
             }
             $itemId = $itemData['inventory_item_id'] ?? $itemData['item_id'] ?? null;
-            $inv = $itemId ? self::query()->find($itemId) : null;
+            $inv = $itemId ? self::queryVisibleForSession()->find($itemId) : null;
             if (!$inv || !$inv->has_wholesale) {
                 $errors['items.'.$index.'.price_tier'] = [
                     'Wholesale is not enabled for this item. Enable it on the inventory item or choose retail.',
@@ -303,16 +327,60 @@ class Item extends Model
         return $query->where('is_active', true);
     }
 
-    public function scopeForBranch($query, $branchId)
+    /**
+     * Items visible in the given branch session: no pivot rows (all branches) OR pivot includes this branch.
+     */
+    public function scopeVisibleInSessionBranch($query, ?int $branchId)
     {
-        // FIXED: Items are now global (not branch-specific), so we filter by company instead
-        // This maintains backward compatibility while fixing the column error
-        // Updated to fix branch_id column not found error
+        if (! $branchId) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($branchId) {
+            $q->whereDoesntHave('visibilityBranches')
+                ->orWhereHas('visibilityBranches', function ($b) use ($branchId) {
+                    $b->where('branches.id', $branchId);
+                });
+        });
+    }
+
+    /**
+     * True when the item has no branch restrictions or includes $branchId.
+     */
+    public function isVisibleInBranch(?int $branchId): bool
+    {
+        if (! $branchId) {
+            return true;
+        }
+
+        return ! $this->visibilityBranches()->exists()
+            || $this->visibilityBranches()->where('branches.id', $branchId)->exists();
+    }
+
+    /**
+     * True when the user shares at least one permitted branch with the item's visibility set,
+     * or the item is unrestricted (no pivot rows).
+     */
+    public function isVisibleToPermittedBranches(array $permittedBranchIds): bool
+    {
+        if (! $this->visibilityBranches()->exists()) {
+            return true;
+        }
+        if ($permittedBranchIds === []) {
+            return false;
+        }
+
+        return $this->visibilityBranches()->whereIn('branches.id', $permittedBranchIds)->exists();
+    }
+
+    public function scopeForBranch($query, $branchId = null)
+    {
         $user = auth()->user();
         if ($user && $user->company_id) {
-            return $query->where('company_id', $user->company_id);
+            $query->where('inventory_items.company_id', $user->company_id);
         }
-        return $query;
+
+        return $query->visibleInSessionBranch($branchId ? (int) $branchId : null);
     }
 
     public function scopeForCompany($query, $companyId)

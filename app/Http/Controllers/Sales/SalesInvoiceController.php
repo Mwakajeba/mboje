@@ -442,7 +442,7 @@ class SalesInvoiceController extends Controller
         $validator = \Validator::make($request->all(), []);
 
         foreach ($request->items as $index => $itemData) {
-            $inventoryItem = InventoryItem::find($itemData['inventory_item_id']);
+            $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['inventory_item_id']);
             // Skip stock validation for service items or items that don't track stock
             if ($inventoryItem && 
                 $inventoryItem->item_type !== 'service' && 
@@ -570,7 +570,7 @@ class SalesInvoiceController extends Controller
 
                 // Create invoice items from consolidated data
                 foreach ($consolidatedItems as $itemData) {
-                $inventoryItem = InventoryItem::find($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['inventory_item_id']);
 
                 // Calculate line total before creating the item
                 $quantity = $itemData['quantity'];
@@ -1050,7 +1050,7 @@ class SalesInvoiceController extends Controller
 
         $stockService = new \App\Services\InventoryStockService();
         foreach ($request->items as $index => $itemData) {
-            $inventoryItem = InventoryItem::find($itemData['inventory_item_id']);
+            $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['inventory_item_id']);
             // Skip stock validation for service items or items that don't track stock
             if ($inventoryItem && 
                 $inventoryItem->item_type !== 'service' && 
@@ -1237,7 +1237,7 @@ class SalesInvoiceController extends Controller
 
                 // Create new invoice items from consolidated data
             foreach ($consolidatedItems as $itemData) {
-                $inventoryItem = InventoryItem::find($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['inventory_item_id']);
 
                 // Calculate line total before creating the item
                 $quantity = $itemData['quantity'];
@@ -1579,7 +1579,7 @@ class SalesInvoiceController extends Controller
                 $invoiceItem->save();
 
                 // Create inventory movement for stock out (only for products)
-                $inventoryItem = InventoryItem::find($orderItem->inventory_item_id);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->find($orderItem->inventory_item_id);
                 if ($inventoryItem && $inventoryItem->track_stock && $inventoryItem->item_type === 'product') {
                     // Get stock as of invoice date (for backdated invoices, this ensures correct balance calculation)
                     // Use the invoice's created_at timestamp to exclude same-day transactions that happened after this invoice
@@ -1723,7 +1723,7 @@ class SalesInvoiceController extends Controller
      */
     public function getInventoryItem($itemId)
     {
-        $item = InventoryItem::findOrFail($itemId);
+        $item = InventoryItem::queryVisibleForSession()->findOrFail($itemId);
         $branchId = session('branch_id') ?? (auth()->user()->branch_id ?? null);
         $locationId = session('location_id');
 

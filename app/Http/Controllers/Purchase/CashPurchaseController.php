@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Purchase;
 use App\Http\Controllers\Controller;
 use App\Models\Purchase\CashPurchase;
 use App\Models\Purchase\CashPurchaseItem;
+use App\Models\Purchase\SupplierAdvanceDeduction;
 use App\Models\Supplier;
 use App\Models\Inventory\Item as InventoryItem;
 use App\Models\BankAccount;
@@ -16,6 +17,7 @@ use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Models\SystemSetting;
 use App\Services\FxTransactionRateService;
+use App\Services\Purchase\SupplierAdvanceAllocationService;
 use App\Models\GlTransaction;
 use App\Models\Inventory\Movement as InventoryMovement;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -78,7 +80,7 @@ class CashPurchaseController extends Controller
     public function create()
     {
         $suppliers = Supplier::where('company_id', Auth::user()->company_id)->orderBy('name')->get();
-        $items = InventoryItem::where('company_id', Auth::user()->company_id)->orderBy('name')->get();
+        $items = InventoryItem::queryVisibleForSession()->orderBy('name')->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($items);
         // Limit bank accounts by branch scope (all branches or current branch)
         $user = Auth::user();
@@ -91,7 +93,14 @@ class CashPurchaseController extends Controller
                 }
             })
             ->get();
-        return view('purchases.cash-purchases.create', compact('suppliers','items','bankAccounts'));
+
+        $allocationService = app(SupplierAdvanceAllocationService::class);
+        $supplierAdvanceBalances = [];
+        foreach ($suppliers as $s) {
+            $supplierAdvanceBalances[$s->id] = round($allocationService->balanceForSupplier((int) $s->id, (int) $user->company_id, $branchId), 2);
+        }
+
+        return view('purchases.cash-purchases.create', compact('suppliers', 'items', 'bankAccounts', 'supplierAdvanceBalances'));
     }
 
     public function store(Request $request)
@@ -104,6 +113,7 @@ class CashPurchaseController extends Controller
             'currency' => 'nullable|string|max:3',
             'exchange_rate' => 'nullable|numeric|min:0.000001',
             'discount_amount' => 'nullable|numeric|min:0',
+            'supplier_advance_applied_amount' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.inventory_item_id' => 'nullable|exists:inventory_items,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
@@ -157,6 +167,7 @@ class CashPurchaseController extends Controller
                 'exchange_rate' => $exchangeRate,
                 'fx_rate_used' => $fxRateUsed,
                 'discount_amount' => $request->discount_amount ?? 0,
+                'supplier_advance_applied_amount' => (float) ($request->supplier_advance_applied_amount ?? 0),
                 'notes' => $request->notes,
                 'terms_conditions' => $request->terms_conditions,
                 'attachment' => $attachmentPath,
@@ -172,7 +183,7 @@ class CashPurchaseController extends Controller
                     throw new \RuntimeException('Inventory item is required.');
                 }
 
-                $item = InventoryItem::findOrFail($inventoryItemId);
+                $item = InventoryItem::queryVisibleForSession()->findOrFail($inventoryItemId);
 
                 $row = new CashPurchaseItem([
                     'inventory_item_id' => $inventoryItemId,
@@ -189,13 +200,29 @@ class CashPurchaseController extends Controller
 
             $purchase->updateTotals();
             $purchase->updateInventory();
+
+            $applyFcy = (float) ($purchase->supplier_advance_applied_amount ?? 0);
+            if ($applyFcy > (float) $purchase->total_amount + 0.02) {
+                throw new \RuntimeException('Supplier advance amount cannot exceed the cash purchase total.');
+            }
+            $applyLcy = ($purchaseCurrency !== $functionalCurrency && (float) $exchangeRate != 1.0)
+                ? round($applyFcy * (float) $exchangeRate, 2)
+                : $applyFcy;
+            $allocationService = app(SupplierAdvanceAllocationService::class);
+            $advBal = $allocationService->balanceForSupplier((int) $purchase->supplier_id, (int) $companyId, (int) $resolvedBranchId);
+            if ($applyLcy - $advBal > 0.05) {
+                throw new \RuntimeException('Supplier advance apply exceeds available balance ('.number_format($advBal, 2).' in functional currency).');
+            }
+
             $purchase->createDoubleEntryTransactions();
+
+            $bankPayFcy = max(0, round((float) $purchase->total_amount - $applyFcy, 2));
 
             // Create payment record for this cash purchase
             $payment = Payment::create([
                 'reference' => (string) $purchase->id,
                 'reference_type' => 'cash_purchase',
-                'amount' => (float) $purchase->total_amount,
+                'amount' => $bankPayFcy,
                 'date' => $purchase->purchase_date,
                 'description' => 'Cash purchase payment',
                 'bank_account_id' => $purchase->payment_method === 'bank' ? $purchase->bank_account_id : null,
@@ -216,7 +243,7 @@ class CashPurchaseController extends Controller
             PaymentItem::create([
                 'payment_id' => $payment->id,
                 'chart_account_id' => $paymentAccountId,
-                'amount' => (float) $purchase->total_amount,
+                'amount' => $bankPayFcy,
                 'description' => 'Cash purchase payment',
             ]);
 
@@ -243,7 +270,7 @@ class CashPurchaseController extends Controller
         abort_unless($id, 404);
         $purchase = CashPurchase::with(['items.inventoryItem'])->findOrFail($id);
         $suppliers = Supplier::where('company_id', Auth::user()->company_id)->orderBy('name')->get();
-        $items = InventoryItem::where('company_id', Auth::user()->company_id)->orderBy('name')->get();
+        $items = InventoryItem::queryVisibleForSession()->orderBy('name')->get();
         \App\Models\Inventory\Item::withResolvedPricesForContext($items);
         // Limit bank accounts by branch scope (all branches or current branch)
         $user = Auth::user();
@@ -256,7 +283,25 @@ class CashPurchaseController extends Controller
                 }
             })
             ->get();
-        return view('purchases.cash-purchases.edit', compact('purchase','suppliers','items','bankAccounts'));
+
+        $allocationService = app(SupplierAdvanceAllocationService::class);
+        $functionalCurrency = SystemSetting::getValue('functional_currency', $user->company->functional_currency ?? 'TZS');
+        $supplierAdvanceBalances = [];
+        foreach ($suppliers as $s) {
+            $b = round($allocationService->balanceForSupplier((int) $s->id, (int) $user->company_id, $branchId), 2);
+            if ((int) $s->id === (int) $purchase->supplier_id) {
+                $pc = $purchase->currency ?? $functionalCurrency;
+                $ex = (float) ($purchase->exchange_rate ?? 1.0);
+                $applyFcy = (float) ($purchase->supplier_advance_applied_amount ?? 0);
+                $applyLcy = ($pc !== $functionalCurrency && $ex != 1.0)
+                    ? round($applyFcy * $ex, 2)
+                    : $applyFcy;
+                $b = round($b + $applyLcy, 2);
+            }
+            $supplierAdvanceBalances[$s->id] = $b;
+        }
+
+        return view('purchases.cash-purchases.edit', compact('purchase', 'suppliers', 'items', 'bankAccounts', 'supplierAdvanceBalances'));
     }
 
     public function update(Request $request, string $encodedId)
@@ -271,6 +316,7 @@ class CashPurchaseController extends Controller
             'payment_method' => 'required|in:bank',
             'bank_account_id' => 'required|exists:bank_accounts,id',
             'discount_amount' => 'nullable|numeric|min:0',
+            'supplier_advance_applied_amount' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
             'terms_conditions' => 'nullable|string',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
@@ -286,12 +332,22 @@ class CashPurchaseController extends Controller
 
         DB::beginTransaction();
         try {
+            $functionalCurrency = SystemSetting::getValue('functional_currency', Auth::user()->company->functional_currency ?? 'TZS');
+            $priorSupplierId = (int) $purchase->supplier_id;
+            $previousApplyFcy = (float) ($purchase->supplier_advance_applied_amount ?? 0);
+            $pcBefore = $purchase->currency ?? $functionalCurrency;
+            $exBefore = (float) ($purchase->exchange_rate ?? 1.0);
+            $previousApplyLcy = ($pcBefore !== $functionalCurrency && $exBefore != 1.0)
+                ? round($previousApplyFcy * $exBefore, 2)
+                : $previousApplyFcy;
+
             $updateData = [
                 'supplier_id' => $request->supplier_id,
                 'purchase_date' => $request->purchase_date,
                 'payment_method' => $request->payment_method,
                 'bank_account_id' => $request->bank_account_id,
                 'discount_amount' => $request->discount_amount ?? 0,
+                'supplier_advance_applied_amount' => (float) ($request->supplier_advance_applied_amount ?? 0),
                 'notes' => $request->notes,
                 'terms_conditions' => $request->terms_conditions,
                 'updated_by' => Auth::id(),
@@ -318,7 +374,7 @@ class CashPurchaseController extends Controller
                     throw new \RuntimeException('Inventory item is required.');
                 }
 
-                $item = InventoryItem::findOrFail($inventoryItemId);
+                $item = InventoryItem::queryVisibleForSession()->findOrFail($inventoryItemId);
 
                 $row = new CashPurchaseItem([
                     'inventory_item_id' => $inventoryItemId,
@@ -337,7 +393,27 @@ class CashPurchaseController extends Controller
 
             $purchase->updateTotals();
             $purchase->updateInventory();
+
+            $purchaseCurrency = $purchase->currency ?? $functionalCurrency;
+            $exchangeRate = (float) ($purchase->exchange_rate ?? 1.0);
+            $applyFcy = (float) ($purchase->supplier_advance_applied_amount ?? 0);
+            if ($applyFcy > (float) $purchase->total_amount + 0.02) {
+                throw new \RuntimeException('Supplier advance amount cannot exceed the cash purchase total.');
+            }
+            $applyLcy = ($purchaseCurrency !== $functionalCurrency && $exchangeRate != 1.0)
+                ? round($applyFcy * $exchangeRate, 2)
+                : $applyFcy;
+            $allocationService = app(SupplierAdvanceAllocationService::class);
+            $advBal = $allocationService->balanceForSupplier((int) $purchase->supplier_id, (int) $purchase->company_id, (int) $purchase->branch_id);
+            $releaseLcy = ((int) $purchase->supplier_id === $priorSupplierId) ? $previousApplyLcy : 0.0;
+            $maxApplyLcy = $advBal + $releaseLcy;
+            if ($applyLcy - $maxApplyLcy > 0.05) {
+                throw new \RuntimeException('Supplier advance apply exceeds available balance ('.number_format($maxApplyLcy, 2).' in functional currency).');
+            }
+
             $purchase->createDoubleEntryTransactions();
+
+            $bankPayFcy = max(0, round((float) $purchase->total_amount - $applyFcy, 2));
 
             // Upsert payment record for this cash purchase
             $payment = Payment::updateOrCreate(
@@ -346,7 +422,7 @@ class CashPurchaseController extends Controller
                     'reference_type' => 'cash_purchase',
                 ],
                 [
-                    'amount' => (float) $purchase->total_amount,
+                    'amount' => $bankPayFcy,
                     'date' => $purchase->purchase_date,
                     'description' => 'Cash purchase payment',
                     'bank_account_id' => $purchase->payment_method === 'bank' ? $purchase->bank_account_id : null,
@@ -369,7 +445,7 @@ class CashPurchaseController extends Controller
                 ['payment_id' => $payment->id],
                 [
                     'chart_account_id' => $paymentAccountId,
-                    'amount' => (float) $purchase->total_amount,
+                    'amount' => $bankPayFcy,
                     'description' => 'Cash purchase payment',
                 ]
             );
@@ -399,6 +475,10 @@ class CashPurchaseController extends Controller
             // delete GL transactions for this purchase
             GlTransaction::where('transaction_type', 'cash_purchase')
                 ->where('transaction_id', $purchase->id)
+                ->delete();
+
+            SupplierAdvanceDeduction::where('source_type', 'cash_purchase')
+                ->where('source_id', $purchase->id)
                 ->delete();
 
             // delete related payments and their items

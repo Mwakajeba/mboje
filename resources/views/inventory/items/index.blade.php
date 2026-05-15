@@ -95,6 +95,7 @@
                                         <th>Name</th>
                                         <th>Code</th>
                                         <th>Category</th>
+                                        <th>Branch visibility</th>
                                         <th>Cost Price</th>
                                         <th>Selling Price</th>
                                         <th>Current Stock</th>
@@ -221,6 +222,7 @@
                 {data: 'name', name: 'name'},
                 {data: 'code', name: 'code'},
                 {data: 'category_name', name: 'category.name'},
+                {data: 'branches_scope', name: 'branches_scope', orderable: false, searchable: false},
                 {data: 'cost_price', name: 'cost_price'},
                 {data: 'unit_price', name: 'unit_price'},
                 {data: 'current_stock', name: 'current_stock', orderable: false, searchable: false},

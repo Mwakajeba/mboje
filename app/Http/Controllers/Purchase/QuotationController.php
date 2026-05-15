@@ -86,7 +86,7 @@ class QuotationController extends Controller
             ->where('status', 'active')
             ->orderBy('name')
             ->get();
-        $items = Item::where('company_id', $user->company_id)->orderBy('name')->get();
+        $items = Item::queryVisibleForSession($user->company_id)->orderBy('name')->get();
         Item::withResolvedPricesForContext($items);
         $requisition = null;
         $requisitionItems = [];
@@ -108,7 +108,7 @@ class QuotationController extends Controller
             ->orderBy('name')
             ->get();
 
-        $items = Item::where('company_id', Auth::user()->company_id)
+        $items = Item::queryVisibleForSession()
             ->orderBy('name')
             ->get();
         Item::withResolvedPricesForContext($items);
@@ -398,7 +398,7 @@ class QuotationController extends Controller
             ->orderBy('name')
             ->get();
 
-        $items = Item::where('company_id', Auth::user()->company_id)
+        $items = Item::queryVisibleForSession()
             ->orderBy('name')
             ->get();
         Item::withResolvedPricesForContext($items);

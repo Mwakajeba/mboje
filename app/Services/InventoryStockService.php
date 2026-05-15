@@ -281,6 +281,13 @@ class InventoryStockService
                 $join->on('inventory_items.id', '=', 'stock.item_id');
             })
             ->select('inventory_items.*', DB::raw('COALESCE(stock.current_stock, 0) as location_current_stock'))
+            ->when($locationId, function ($q) use ($locationId) {
+                $branchId = \App\Models\InventoryLocation::where('id', $locationId)->value('branch_id');
+                $q->visibleInSessionBranch($branchId ? (int) $branchId : null);
+            }, function ($q) {
+                $bid = session('branch_id') ? (int) session('branch_id') : null;
+                $q->visibleInSessionBranch($bid);
+            })
             ->where(function ($query) {
                 $query->whereRaw('COALESCE(stock.current_stock, 0) <= inventory_items.reorder_level')
                     ->orWhereRaw('COALESCE(stock.current_stock, 0) <= inventory_items.minimum_stock');
@@ -348,9 +355,13 @@ class InventoryStockService
      */
     public function getItemsWithStockAtLocation($companyId, $locationId)
     {
+        $branchId = \App\Models\InventoryLocation::where('id', $locationId)->value('branch_id');
+        $branchId = $branchId ? (int) $branchId : (session('branch_id') ? (int) session('branch_id') : null);
+
         return Item::where('company_id', $companyId)
             ->where('is_active', true)
             ->where('track_stock', true)
+            ->visibleInSessionBranch($branchId)
             ->whereHas('movements', function ($query) use ($locationId) {
                 $query->where('location_id', $locationId);
             })
@@ -368,8 +379,11 @@ class InventoryStockService
      */
     public function getAvailableItemsForSales($companyId, $locationId)
     {
+        $branchId = session('branch_id') ? (int) session('branch_id') : null;
+
         return Item::where('company_id', $companyId)
             ->where('is_active', true)
+            ->visibleInSessionBranch($branchId)
             ->get()
             ->filter(function ($item) use ($locationId) {
                 // For services or non-stock-tracked items, always include them

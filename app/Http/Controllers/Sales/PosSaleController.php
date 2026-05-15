@@ -90,9 +90,9 @@ class PosSaleController extends Controller
     public function getItemDetails(Request $request)
     {
         $itemId = $request->input('item_id');
-        $item = InventoryItem::find($itemId);
+        $item = InventoryItem::queryVisibleForSession()->find($itemId);
 
-        if (!$item) {
+        if (! $item) {
             return response()->json(['error' => 'Item not found'], 404);
         }
 
@@ -242,7 +242,7 @@ class PosSaleController extends Controller
 
             // Create POS sale items
             foreach ($request->items as $itemData) {
-                $inventoryItem = InventoryItem::find($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['inventory_item_id']);
                 $requestedQuantity = $itemData['quantity'];
                 
                 // Skip stock validation for service items or items that don't track stock
@@ -564,7 +564,7 @@ class PosSaleController extends Controller
             $stockService = new \App\Services\InventoryStockService();
             foreach ($request->items as $itemData) {
                 // Get inventory item details
-                $inventoryItem = InventoryItem::find($itemData['item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->find($itemData['item_id']);
                 
                 if (!$inventoryItem) {
                     throw new \Exception("Inventory item not found: " . $itemData['item_id']);

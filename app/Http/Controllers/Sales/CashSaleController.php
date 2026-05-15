@@ -217,7 +217,7 @@ class CashSaleController extends Controller
             ]);
 
             foreach ($request->items as $itemData) {
-                $inventoryItem = InventoryItem::findOrFail($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->findOrFail($itemData['inventory_item_id']);
                 $requestedQuantity = $itemData['quantity'];
                 $availableStock = 0;
 
@@ -482,7 +482,7 @@ class CashSaleController extends Controller
             
             // Validate all items first to prevent partial updates
             foreach ($request->items as $itemData) {
-                $inventoryItem = InventoryItem::findOrFail($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->findOrFail($itemData['inventory_item_id']);
                 
                 // Skip stock validation for service items or items that don't track stock
                 if ($inventoryItem &&
@@ -535,7 +535,7 @@ class CashSaleController extends Controller
             
             // Now create items after validation passes
             foreach ($request->items as $itemData) {
-                $inventoryItem = InventoryItem::findOrFail($itemData['inventory_item_id']);
+                $inventoryItem = InventoryItem::queryVisibleForSession()->findOrFail($itemData['inventory_item_id']);
                 
                 // Get stock info for item record (for display purposes)
                 $availableStock = 0;
@@ -735,7 +735,7 @@ class CashSaleController extends Controller
             return response()->json(['error' => 'Invalid item ID'], 422);
         }
 
-        $item = InventoryItem::findOrFail($itemId);
+        $item = InventoryItem::queryVisibleForSession()->findOrFail($itemId);
         $branchId = session('branch_id') ?? (Auth::user()->branch_id ?? null);
         $locationId = session('location_id');
 

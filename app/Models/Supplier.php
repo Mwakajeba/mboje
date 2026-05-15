@@ -64,6 +64,16 @@ class Supplier extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public function supplierAdvances()
+    {
+        return $this->hasMany(\App\Models\Purchase\SupplierAdvance::class);
+    }
+
+    public function supplierAdvanceDeductions()
+    {
+        return $this->hasMany(\App\Models\Purchase\SupplierAdvanceDeduction::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', self::STATUS_ACTIVE);
