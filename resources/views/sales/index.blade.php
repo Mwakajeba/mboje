@@ -203,7 +203,7 @@
                     <div class="card-body">
                         <div class="card-title d-flex align-items-center">
                             <div><i class="bx bx-grid me-1 font-22 text-primary"></i></div>
-                            <h5 class="mb-0 text-primary">Sales Flow Management</h5>
+                            <h5 class="mb-0 text-primary">Usimamizi wa Mtiririko wa Mauzo</h5>
                         </div>
                         <hr>
                         <div class="row">
@@ -219,11 +219,11 @@
                                         <div class="mb-3">
                                             <i class="bx bx-group fs-1 text-primary"></i>
                                         </div>
-                                        <h5 class="card-title">Customer Master Data</h5>
-                                        <p class="card-text">Register and manage customer details, contacts, and credit terms.</p>
+                                        <h5 class="card-title">Taarifa za Wateja <small class="text-muted">(Customer Master Data)</small></h5>
+                                        <p class="card-text">Usajili na usimamizi wa taarifa za wateja, mawasiliano, na masharti ya mkopo.</p>
                                         @can('view customers')
                                         <a href="{{ route('customers.index') }}" class="btn btn-primary">
-                                            <i class="bx bx-list-ul me-1"></i> Manage Customers
+                                            <i class="bx bx-list-ul me-1"></i> Simamia wateja
                                         </a>
                                         @endcan
                                     </div>
@@ -313,16 +313,16 @@
                                         <div class="mb-3">
                                             <i class="bx bx-receipt fs-1 text-danger"></i>
                                         </div>
-                                        <h5 class="card-title">Sales Invoice</h5>
-                                        <p class="card-text">Create invoices with taxes, post to AR, and recognize revenue.</p>
+                                        <h5 class="card-title">Ankara ya Mauzo <small class="text-muted">(Sales Invoice)</small></h5>
+                                        <p class="card-text">Tengeneza ankara za mauzo zenye kodi, posti kwa deni la wateja, na thibitisha mapato.</p>
                                         @can('view sales invoices')
                                         <a href="{{ route('sales.invoices.index') }}" class="btn btn-danger">
-                                            <i class="bx bx-receipt me-1"></i> Manage Invoices
+                                            <i class="bx bx-receipt me-1"></i> Simamia ankara za mauzo
                                         </a>
                                         @endcan
                                         @can('create sales invoices')
                                         <a href="{{ route('sales.opening-balances.index') }}" class="btn btn-outline-secondary ms-2">
-                                            <i class="bx bx-book-open me-1"></i> Invoice Opening Balance
+                                            <i class="bx bx-book-open me-1"></i> Salio la kufungulia ankara
                                         </a>
                                         @endcan
                                     </div>
@@ -366,11 +366,11 @@
                                         <div class="mb-3">
                                             <i class="bx bx-dollar-circle fs-1 text-success"></i>
                                         </div>
-                                        <h5 class="card-title">Cash Sales</h5>
-                                        <p class="card-text">Process immediate cash transactions with instant payment collection.</p>
+                                        <h5 class="card-title">Mauzo ya Taslimu <small class="text-muted">(Cash Sales)</small></h5>
+                                        <p class="card-text">Fanya mauzo yanayolipwa papo hapo na ukusanyaji wa malipo ya haraka.</p>
                                         @can('view cash sales')
                                         <a href="{{ route('sales.cash-sales.index') }}" class="btn btn-success">
-                                            <i class="bx bx-list-ul me-1"></i> Manage Cash Sales
+                                            <i class="bx bx-list-ul me-1"></i> Simamia mauzo ya taslimu
                                         </a>
                                         @endcan
                                     </div>
@@ -389,10 +389,10 @@
                                         <div class="mb-3">
                                             <i class="bx bx-credit-card fs-1 text-info"></i>
                                         </div>
-                                        <h5 class="card-title">POS Sales</h5>
-                                        <p class="card-text">Point of sale transactions with multiple payment methods.</p>
+                                        <h5 class="card-title">Mauzo ya POS <small class="text-muted">(POS Sales)</small></h5>
+                                        <p class="card-text">Miamala ya point of sale kwa njia mbalimbali za malipo.</p>
                                         <a href="{{ route('sales.pos-sales.index') }}" class="btn btn-info">
-                                            <i class="bx bx-list-ul me-1"></i> Manage POS Sales
+                                            <i class="bx bx-list-ul me-1"></i> Simamia mauzo ya POS
                                         </a>
                                     </div>
                                 </div>
@@ -410,10 +410,10 @@
                                         <div class="mb-3">
                                             <i class="bx bx-list-ul fs-1 text-dark"></i>
                                         </div>
-                                        <h5 class="card-title">SALES POS LIST</h5>
-                                        <p class="card-text">View, edit, and manage all POS sales transactions with full control.</p>
+                                        <h5 class="card-title">Orodha ya Mauzo ya POS <small class="text-muted">(Sales POS List)</small></h5>
+                                        <p class="card-text">Angalia, hariri, na simamia miamala yote ya POS kwa udhibiti kamili.</p>
                                         <a href="{{ route('sales.pos.list') }}" class="btn btn-dark">
-                                            <i class="bx bx-list-ul me-1"></i> View POS List
+                                            <i class="bx bx-list-ul me-1"></i> Fungua orodha ya POS
                                         </a>
                                     </div>
                                 </div>
