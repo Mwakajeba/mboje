@@ -114,7 +114,7 @@
                                 <input type="text" inputmode="decimal" id="amount" name="amount" autocomplete="off"
                                        class="form-control @error('amount') is-invalid @enderror"
                                        value="{{ old('amount') }}" required placeholder="0.00">
-                                <small class="text-muted">Thousands separated by commas (e.g. 1,234.56).</small>
+                                <small class="text-muted">Thousands separated by commas as you type (e.g. 1,234.56).</small>
                                 @error('amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
@@ -162,10 +162,27 @@
         intp = intp.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         return intp + dec;
     }
-    $amt.on('blur', function () {
-        if (stripCommas(this.value) === '') return;
-        this.value = formatAmountDisplay(this.value);
+    function applyFormat() {
+        if (stripCommas($amt.val()) === '') return;
+        $amt.val(formatAmountDisplay($amt.val()));
+    }
+
+    $amt.on('input', function () {
+        var node = this;
+        var before = node.value;
+        var formatted = formatAmountDisplay(before);
+        if (formatted !== before) {
+            node.value = formatted;
+            var len = node.value.length;
+            node.setSelectionRange(len, len);
+        }
     });
+    $amt.on('blur', applyFormat);
+
+    if (stripCommas($amt.val()) !== '') {
+        applyFormat();
+    }
+
     $form.on('submit', function () { $amt.val(stripCommas($amt.val())); });
 })();
 </script>
