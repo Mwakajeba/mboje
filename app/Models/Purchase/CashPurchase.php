@@ -407,7 +407,7 @@ class CashPurchase extends Model
             $this->purchase_date,
             (int) $this->id,
             $userId,
-            'Cash purchase #'.$this->id
+            $this->supplierAdvanceDeductionDescription()
         );
 
         $glCount = GlTransaction::where('transaction_type', 'journal')
@@ -442,6 +442,18 @@ class CashPurchase extends Model
             $this->saveQuietly();
         }
         $this->glTransactions()->delete();
+    }
+
+    /**
+     * Text stored on supplier advance deduction rows (supplier advance statement).
+     */
+    public function supplierAdvanceDeductionDescription(): string
+    {
+        $custom = trim((string) ($this->notes ?? ''));
+
+        return $custom !== ''
+            ? $custom
+            : 'Cash purchase #'.$this->id;
     }
 
 }

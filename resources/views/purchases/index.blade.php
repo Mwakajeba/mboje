@@ -209,6 +209,25 @@
                                 </div>
                             </div>
 
+                            <!-- Supplier Advance Statement (Hesabu) -->
+                            @can('view purchases')
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card border-info position-relative h-100">
+                                    <div class="card-body text-center d-flex flex-column">
+                                        <div class="mb-3">
+                                            <i class="bx bx-file fs-1 text-info"></i>
+                                        </div>
+                                        <h5 class="card-title">Hesabu ya Malipo ya Awali <small class="text-muted">(Supplier Advance Statement)</small></h5>
+                                        <p class="card-text flex-grow-1">Chagua msambazaji na tarehe ili kuona hesabu yenye salio la kufungua, miamala, na salio la kufunga.</p>
+                                        <button type="button" class="btn btn-info text-white mt-auto" data-bs-toggle="modal" data-bs-target="#supplierAdvanceStatementModal">
+                                            <i class="bx bx-search-alt me-1"></i> Fungua hesabu
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            @endcan
+
+
                             {{-- 2. Purchase Requisitions (hidden — uncomment when needed)
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-dark position-relative">
@@ -510,6 +529,50 @@
         --}}
     </div>
 </div>
+
+@can('view purchases')
+<div class="modal fade" id="supplierAdvanceStatementModal" tabindex="-1" aria-labelledby="supplierAdvanceStatementModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title text-white" id="supplierAdvanceStatementModalLabel">
+                    <i class="bx bx-file me-1"></i> Hesabu ya malipo ya awali
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Chagua msambazaji na kipindi cha tarehe. Hesabu itaanza na <strong>salio la kufungua</strong>, kisha miamala ya kipindi.</p>
+                <div class="mb-3">
+                    <label for="sadv_statement_supplier_id" class="form-label fw-bold">Msambazaji <span class="text-danger">*</span></label>
+                    <select id="sadv_statement_supplier_id" class="form-select select2-single" required>
+                        <option value=""></option>
+                        @foreach($suppliers as $s)
+                            <option value="{{ $s->id }}">{{ $s->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="sadv_statement_from_date" class="form-label fw-bold">Kutoka tarehe <span class="text-danger">*</span></label>
+                        <input type="date" id="sadv_statement_from_date" class="form-control" value="{{ date('Y-m-01') }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="sadv_statement_to_date" class="form-label fw-bold">Hadi tarehe <span class="text-danger">*</span></label>
+                        <input type="date" id="sadv_statement_to_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Funga</button>
+                <button type="button" class="btn btn-info text-white" id="btnOpenSupplierAdvanceStatement">
+                    <i class="bx bx-show me-1"></i> Angalia hesabu
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endcan
+
 @endsection
 
 @push('styles')
@@ -561,6 +624,46 @@
 @push('scripts')
 <script nonce="{{ $cspNonce ?? '' }}">
     $(document).ready(function() {
+    @can('view purchases')
+    var supplierAdvanceStatementEnc = @json($suppliers->mapWithKeys(fn ($s) => [ (string) $s->id => \Vinkla\Hashids\Facades\Hashids::encode($s->id) ]));
+    var supplierAdvanceStatementUrl = @json(route('purchases.supplier-advances.statement', ['encodedSupplierId' => '__ENC__']));
+
+    $('#supplierAdvanceStatementModal').on('shown.bs.modal', function () {
+        var $sel = $('#sadv_statement_supplier_id');
+        if ($sel.length && !$sel.hasClass('select2-hidden-accessible') && $.fn.select2) {
+            $sel.select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#supplierAdvanceStatementModal') });
+        }
+    });
+
+    $('#btnOpenSupplierAdvanceStatement').on('click', function () {
+        var supplierId = $('#sadv_statement_supplier_id').val();
+        var fromDate = $('#sadv_statement_from_date').val();
+        var toDate = $('#sadv_statement_to_date').val();
+        if (!supplierId) {
+            alert('Chagua msambazaji.');
+            return;
+        }
+        if (!fromDate || !toDate) {
+            alert('Chagua tarehe za kuanzia na mwisho.');
+            return;
+        }
+        if (fromDate > toDate) {
+            alert('Tarehe ya kuanzia haiwezi kuwa baada ya tarehe ya mwisho.');
+            return;
+        }
+        var enc = supplierAdvanceStatementEnc[supplierId];
+        if (!enc) {
+            alert('Msambazaji hajapatikana.');
+            return;
+        }
+        var url = supplierAdvanceStatementUrl.replace('__ENC__', enc)
+            + '?from_date=' + encodeURIComponent(fromDate)
+            + '&to_date=' + encodeURIComponent(toDate);
+        window.open(url, '_blank');
+    });
+    @endcan
+
+
         // Initialize DataTable for recent quotations
         if ($('#recent-quotations-table').length) {
             $('#recent-quotations-table').DataTable({

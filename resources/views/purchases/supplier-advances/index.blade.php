@@ -14,7 +14,7 @@
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <h6 class="mb-0 text-uppercase">Supplier advances</h6>
             <div class="d-flex flex-wrap gap-2">
-                @if(request()->boolean('all'))
+                @if($showAll)
                     <a href="{{ route('purchases.supplier-advances.index') }}" class="btn btn-outline-secondary btn-sm">Show suppliers with activity only (summary)</a>
                 @else
                     <a href="{{ route('purchases.supplier-advances.index', ['all' => 1]) }}" class="btn btn-outline-secondary btn-sm">Show all suppliers (summary)</a>
@@ -51,7 +51,7 @@
                     Each row is one posted advance (debit advance account; credit bank/cash or retained earnings for opening balance). Use actions to edit, delete, or open the supplier's full statement.
                 </p>
                 <div class="table-responsive">
-                    <table class="table table-striped table-hover align-middle">
+                    <table id="supplier-advances-table" class="table table-striped table-hover align-middle w-100">
                         <thead class="table-light">
                             <tr>
                                 <th>Date</th>
@@ -63,63 +63,7 @@
                                 <th class="text-end text-nowrap">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @forelse($advances as $advance)
-                                @php $enc = \Vinkla\Hashids\Facades\Hashids::encode($advance->id); $encSup = \Vinkla\Hashids\Facades\Hashids::encode($advance->supplier_id); @endphp
-                                <tr>
-                                    <td>{{ $advance->advance_date->format('Y-m-d') }}</td>
-                                    <td>{{ $advance->reference }}</td>
-                                    <td>{{ $advance->supplier->name ?? '—' }}</td>
-                                    <td class="small">
-                                        @if($advance->debitChartAccount)
-                                            {{ $advance->debitChartAccount->account_code }} — {{ $advance->debitChartAccount->account_name }}
-                                        @else
-                                            —
-                                        @endif
-                                    </td>
-                                    <td class="small">
-                                        @if($advance->isOpeningJournalAdvance())
-                                            <span class="text-muted">Retained earnings (journal #{{ $advance->journal_id }})</span>
-                                        @else
-                                            {{ $advance->bankAccount->name ?? '—' }}
-                                        @endif
-                                    </td>
-                                    <td class="text-end">{{ format_currency((float) $advance->amount) }}</td>
-                                    <td class="text-end">
-                                        <div class="btn-group btn-group-sm" role="group" aria-label="Actions">
-                                            @can('record purchase payment')
-                                            <a href="{{ route('purchases.supplier-advances.edit', $enc) }}" class="btn btn-outline-primary" title="Edit">
-                                                <i class="bx bx-edit-alt"></i>
-                                            </a>
-                                            <form action="{{ route('purchases.supplier-advances.destroy', $enc) }}" method="post" class="d-inline"
-                                                  onsubmit="return confirm('Delete this advance? Posted GL entries for this voucher will be removed.');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-outline-danger" title="Delete">
-                                                    <i class="bx bx-trash"></i>
-                                                </button>
-                                            </form>
-                                            @endcan
-                                            @can('view purchases')
-                                            <a href="{{ route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encSup]) }}"
-                                               class="btn btn-outline-secondary" title="Statement" target="_blank" rel="noopener">
-                                                <i class="bx bx-file"></i>
-                                            </a>
-                                            @endcan
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="7" class="text-center text-muted py-4">
-                                        No supplier advances in this branch yet.
-                                        @can('record purchase payment')
-                                            <a href="{{ route('purchases.supplier-advances.create') }}">Record a new advance</a>.
-                                        @endcan
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
+                        <tbody></tbody>
                     </table>
                 </div>
             </div>
@@ -133,7 +77,7 @@
                     <strong>Pay</strong> = cash returned (bank). <strong>Expense</strong> = charge expense accounts against advance.
                 </p>
                 <div class="table-responsive">
-                    <table class="table table-striped table-hover align-middle">
+                    <table id="supplier-advance-balances-table" class="table table-striped table-hover align-middle w-100">
                         <thead class="table-light">
                             <tr>
                                 <th>Supplier</th>
@@ -143,48 +87,7 @@
                                 <th class="text-end text-nowrap">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @forelse($suppliers as $supplier)
-                                @php
-                                    $adv = (float) ($supplier->advances_total ?? 0);
-                                    $app = (float) ($supplier->applied_total ?? 0);
-                                    $bal = $adv - $app;
-                                    $encSup = \Vinkla\Hashids\Facades\Hashids::encode($supplier->id);
-                                @endphp
-                                <tr>
-                                    <td>{{ $supplier->name }}</td>
-                                    <td class="text-end">{{ format_currency($adv) }}</td>
-                                    <td class="text-end">{{ format_currency($app) }}</td>
-                                    <td class="text-end fw-semibold">{{ format_currency($bal) }}</td>
-                                    <td class="text-end">
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            @can('record purchase payment')
-                                                @if($bal > 0.005)
-                                                <a href="{{ route('purchases.supplier-advances.pay', ['encodedSupplierId' => $encSup]) }}"
-                                                   class="btn btn-outline-primary" title="Record cash returned by supplier">
-                                                    <i class="bx bx-money"></i> Pay
-                                                </a>
-                                                <a href="{{ route('purchases.supplier-advances.expense', ['encodedSupplierId' => $encSup]) }}"
-                                                   class="btn btn-outline-warning" title="Apply advance to expense accounts">
-                                                    <i class="bx bx-receipt"></i> Expense
-                                                </a>
-                                                @endif
-                                            @endcan
-                                            @can('view purchases')
-                                            <a href="{{ route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encSup]) }}"
-                                               class="btn btn-outline-secondary" title="Statement" target="_blank" rel="noopener">
-                                                <i class="bx bx-file"></i> Statement
-                                            </a>
-                                            @endcan
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">No supplier advance activity in this summary.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
+                        <tbody></tbody>
                     </table>
                 </div>
             </div>
@@ -192,3 +95,80 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script nonce="{{ $cspNonce ?? '' }}">
+$(document).ready(function () {
+    var indexUrl = @json(route('purchases.supplier-advances.index'));
+    var showAllSuppliers = @json($showAll);
+
+    var dtLang = {
+        processing: '<div class="spinner-border text-primary spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div>',
+        search: 'Search:',
+        lengthMenu: 'Show _MENU_ entries',
+        info: 'Showing _START_ to _END_ of _TOTAL_ entries',
+        infoEmpty: 'Showing 0 to 0 of 0 entries',
+        infoFiltered: '(filtered from _MAX_ total entries)',
+        emptyTable: 'No records found',
+        zeroRecords: 'No matching records found'
+    };
+
+    $('#supplier-advances-table').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: indexUrl,
+            data: function (d) {
+                d.table = 'advances';
+            }
+        },
+        columns: [
+            { data: 'advance_date_formatted', name: 'advance_date', searchable: false },
+            { data: 'reference', name: 'reference', searchable: false },
+            { data: 'supplier_name', name: 'supplier_name', searchable: true },
+            { data: 'debit_account', name: 'debit_account', orderable: false, searchable: false },
+            { data: 'credit_account', name: 'credit_account', orderable: false, searchable: false },
+            { data: 'amount_formatted', name: 'amount', className: 'text-end', searchable: false },
+            { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-end text-nowrap' }
+        ],
+        order: [[0, 'desc']],
+        pageLength: 25,
+        language: Object.assign({}, dtLang, {
+            emptyTable: @json('No supplier advances in this branch yet.'),
+            searchPlaceholder: 'Search supplier…'
+        }),
+        initComplete: function () {
+            $(this.api().table().container()).find('.dataTables_filter input').attr('placeholder', 'Search supplier…');
+        }
+    });
+
+    $('#supplier-advance-balances-table').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: indexUrl,
+            data: function (d) {
+                d.table = 'balances';
+                d.show_all = showAllSuppliers ? 1 : 0;
+            }
+        },
+        columns: [
+            { data: 'name', name: 'name', searchable: true },
+            { data: 'advances_formatted', name: 'advances_total', className: 'text-end', searchable: false, orderable: true },
+            { data: 'applied_formatted', name: 'applied_total', className: 'text-end', searchable: false, orderable: true },
+            { data: 'balance_formatted', name: 'balance_formatted', className: 'text-end', searchable: false, orderable: true },
+            { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-end text-nowrap' }
+        ],
+        order: [[0, 'asc']],
+        pageLength: 25,
+        language: Object.assign({}, dtLang, {
+            emptyTable: 'No supplier advance activity in this summary.',
+            searchPlaceholder: 'Search supplier…'
+        }),
+        initComplete: function () {
+            $(this.api().table().container()).find('.dataTables_filter input').attr('placeholder', 'Search supplier…');
+        }
+    });
+});
+</script>
+@endpush

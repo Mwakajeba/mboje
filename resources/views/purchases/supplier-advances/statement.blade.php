@@ -28,22 +28,46 @@
                     @if($supplier->tin_number)
                         <small class="text-muted">TIN: {{ $supplier->tin_number }}</small>
                     @endif
-                    <p class="text-muted small mb-0 mt-2">Generated {{ now()->format('Y-m-d H:i') }}</p>
+                    @if(!empty($period))
+                        <p class="text-muted small mb-0 mt-2">
+                            Period: <strong>{{ $period['from'] }}</strong> to <strong>{{ $period['to'] }}</strong>
+                        </p>
+                    @endif
+                    <p class="text-muted small mb-0 mt-1">Generated {{ now()->format('Y-m-d H:i') }}</p>
                 </div>
 
-                <div class="row text-center mb-4 border rounded py-3 bg-light">
-                    <div class="col-md-4">
-                        <div class="text-muted small">Total advances</div>
-                        <div class="fs-5 fw-bold">{{ format_currency($totals['advances']) }}</div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="text-muted small">Applied</div>
-                        <div class="fs-5 fw-bold">{{ format_currency($totals['applied']) }}</div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="text-muted small">Balance</div>
-                        <div class="fs-5 fw-bold text-primary">{{ format_currency($totals['balance']) }}</div>
-                    </div>
+                <div class="row text-center mb-4 border rounded py-3 bg-light g-2">
+                    @if(!empty($period) && isset($totals['opening_balance']))
+                        <div class="col-md-3 col-6">
+                            <div class="text-muted small">Opening balance</div>
+                            <div class="fs-5 fw-bold">{{ format_currency($totals['opening_balance']) }}</div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="text-muted small">Advances (period)</div>
+                            <div class="fs-5 fw-bold">{{ format_currency($totals['advances']) }}</div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="text-muted small">Applied (period)</div>
+                            <div class="fs-5 fw-bold">{{ format_currency($totals['applied']) }}</div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="text-muted small">Closing balance</div>
+                            <div class="fs-5 fw-bold text-primary">{{ format_currency($totals['closing_balance'] ?? $totals['balance']) }}</div>
+                        </div>
+                    @else
+                        <div class="col-md-4">
+                            <div class="text-muted small">Total advances</div>
+                            <div class="fs-5 fw-bold">{{ format_currency($totals['advances']) }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">Applied</div>
+                            <div class="fs-5 fw-bold">{{ format_currency($totals['applied']) }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">Balance</div>
+                            <div class="fs-5 fw-bold text-primary">{{ format_currency($totals['balance']) }}</div>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="table-responsive">
@@ -62,9 +86,17 @@
                         </thead>
                         <tbody>
                             @forelse($lines as $line)
-                                <tr>
+                                <tr class="{{ !empty($line['is_opening']) ? 'table-secondary' : '' }}">
                                     <td>{{ $line['date']->format('Y-m-d') }}</td>
-                                    <td>{{ $line['type'] === 'advance' ? 'Advance' : 'Applied' }}</td>
+                                    <td>
+                                        @if(($line['type'] ?? '') === 'opening')
+                                            Opening
+                                        @elseif(($line['type'] ?? '') === 'advance')
+                                            Advance
+                                        @else
+                                            Applied
+                                        @endif
+                                    </td>
                                     <td>{{ $line['reference'] }}</td>
                                     <td>{{ $line['description'] }}</td>
                                     <td>{{ $line['performed_by'] ?? '—' }}</td>

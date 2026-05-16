@@ -71,6 +71,22 @@
                     </div>
 
                     <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control @error('notes') is-invalid @enderror"
+                                          id="description" name="notes" rows="2"
+                                          maxlength="500"
+                                          placeholder="e.g. Office supplies — appears on supplier advance statement">{{ old('notes') }}</textarea>
+                                @error('notes')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="text-muted">Optional. Shown on the supplier advance statement when this purchase uses advance balance.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label for="currency" class="form-label">Currency</label>
@@ -189,21 +205,15 @@
                         </div>
                     </div>
 
-                    <!-- Notes, Terms and Attachment -->
+                    <!-- Terms and Attachment -->
                     <div class="row mt-4">
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="notes" class="form-label">Notes</label>
-                                <textarea class="form-control" id="notes" name="notes" rows="4" placeholder="Additional notes for this cash purchase...">{{ old('notes') }}</textarea>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="terms_conditions" class="form-label">Terms & Conditions</label>
                                 <textarea class="form-control" id="terms_conditions" name="terms_conditions" rows="4" placeholder="Terms and conditions...">{{ old('terms_conditions') }}</textarea>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="attachment" class="form-label">Attachment (optional)</label>
                                 <input type="file" class="form-control @error('attachment') is-invalid @enderror"

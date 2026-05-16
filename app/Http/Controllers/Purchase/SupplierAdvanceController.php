@@ -41,34 +41,17 @@ class SupplierAdvanceController extends Controller
         $companyId = (int) $user->company_id;
         $branchId = session('branch_id') ?? $user->branch_id;
 
-        $advances = SupplierAdvance::query()
-            ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->with(['supplier', 'debitChartAccount', 'bankAccount', 'journal'])
-            ->orderByDesc('advance_date')
-            ->orderByDesc('id')
-            ->get();
+        if ($request->ajax()) {
+            if ($request->input('table') === 'balances') {
+                return $this->balancesDataTable($request, $companyId, $branchId);
+            }
 
-        $suppliers = Supplier::where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->withSum(['supplierAdvances as advances_total' => function ($q) use ($companyId, $branchId) {
-                $q->where('company_id', $companyId)
-                    ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
-            }], 'amount')
-            ->withSum(['supplierAdvanceDeductions as applied_total' => function ($q) use ($companyId, $branchId) {
-                $q->where('company_id', $companyId)
-                    ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
-            }], 'amount')
-            ->orderBy('name')
-            ->get();
-
-        if (! $request->boolean('all')) {
-            $suppliers = $suppliers->filter(function ($s) {
-                return ((float) ($s->advances_total ?? 0)) > 0 || ((float) ($s->applied_total ?? 0)) > 0;
-            })->values();
+            return $this->advancesDataTable($request, $companyId, $branchId);
         }
 
-        return view('purchases.supplier-advances.index', compact('advances', 'suppliers', 'branchId'));
+        $showAll = $request->boolean('all');
+
+        return view('purchases.supplier-advances.index', compact('showAll'));
     }
 
     public function create()
@@ -457,7 +440,7 @@ class SupplierAdvanceController extends Controller
             ->with('success', 'Supplier advance deleted and GL entries removed.');
     }
 
-    public function statement(string $encodedSupplierId)
+    public function statement(Request $request, string $encodedSupplierId)
     {
         abort_unless(Auth::user()->can('view purchases'), 403);
 
@@ -473,11 +456,31 @@ class SupplierAdvanceController extends Controller
 
         $supplier = Supplier::where('company_id', $companyId)->findOrFail($supplierId);
 
-        $statement = app(SupplierAdvanceStatementService::class)->buildForSupplier(
-            $supplier->id,
-            $companyId,
-            $branchId ? (int) $branchId : null
-        );
+        $service = app(SupplierAdvanceStatementService::class);
+        $fromDate = $request->query('from_date');
+        $toDate = $request->query('to_date');
+
+        if ($fromDate && $toDate) {
+            try {
+                $statement = $service->buildForSupplierPeriod(
+                    $supplier->id,
+                    $companyId,
+                    $branchId ? (int) $branchId : null,
+                    $fromDate,
+                    $toDate
+                );
+            } catch (\InvalidArgumentException $e) {
+                return redirect()
+                    ->route('purchases.index')
+                    ->with('error', $e->getMessage());
+            }
+        } else {
+            $statement = $service->buildForSupplier(
+                $supplier->id,
+                $companyId,
+                $branchId ? (int) $branchId : null
+            );
+        }
 
         $lines = $statement['lines']->map(function (array $line) {
             $line['debit'] = $line['paid'];
@@ -486,8 +489,10 @@ class SupplierAdvanceController extends Controller
             return $line;
         });
         $totals = $statement['totals'];
+        $period = $statement['period'] ?? null;
+        $openingBalance = $statement['opening_balance'] ?? ($totals['opening_balance'] ?? null);
 
-        return view('purchases.supplier-advances.statement', compact('supplier', 'lines', 'totals'));
+        return view('purchases.supplier-advances.statement', compact('supplier', 'lines', 'totals', 'period', 'openingBalance'));
     }
 
     public function pay(string $encodedSupplierId)
@@ -971,5 +976,152 @@ class SupplierAdvanceController extends Controller
         if (BankReconciliationService::isChartAccountInCompletedReconciliation($chartAccountId, $transactionDate)) {
             throw new \RuntimeException('Cannot change or delete: a chart account used on this voucher is in a completed bank reconciliation for this date.');
         }
+    }
+
+    private function advancesDataTable(Request $request, int $companyId, ?int $branchId)
+    {
+        $user = Auth::user();
+        $canRecord = $user->can('record purchase payment');
+        $canView = $user->can('view purchases');
+
+        $query = SupplierAdvance::query()
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->with(['supplier', 'debitChartAccount', 'bankAccount', 'journal'])
+            ->select('supplier_advances.*');
+
+        return datatables($query)
+            ->filter(function ($query) {
+                $keyword = trim((string) request()->input('search.value', ''));
+                if ($keyword === '') {
+                    return;
+                }
+                $like = '%'.addcslashes($keyword, '%_\\').'%';
+                $query->whereHas('supplier', fn ($q) => $q->where('name', 'like', $like));
+            }, true)
+            ->addColumn('advance_date_formatted', fn (SupplierAdvance $a) => $a->advance_date?->format('Y-m-d') ?? '—')
+            ->addColumn('supplier_name', fn (SupplierAdvance $a) => $a->supplier->name ?? '—')
+            ->addColumn('debit_account', function (SupplierAdvance $a) {
+                if (! $a->debitChartAccount) {
+                    return '—';
+                }
+
+                return e($a->debitChartAccount->account_code.' — '.$a->debitChartAccount->account_name);
+            })
+            ->addColumn('credit_account', function (SupplierAdvance $a) {
+                if ($a->isOpeningJournalAdvance()) {
+                    return '<span class="text-muted">Retained earnings (journal #'.$a->journal_id.')</span>';
+                }
+
+                return e($a->bankAccount->name ?? '—');
+            })
+            ->addColumn('amount_formatted', fn (SupplierAdvance $a) => format_currency((float) $a->amount))
+            ->addColumn('actions', function (SupplierAdvance $a) use ($canRecord, $canView) {
+                $enc = Hashids::encode($a->id);
+                $encSup = Hashids::encode($a->supplier_id);
+                $html = '<div class="btn-group btn-group-sm" role="group">';
+                if ($canRecord) {
+                    $html .= '<a href="'.route('purchases.supplier-advances.edit', $enc).'" class="btn btn-outline-primary" title="Edit"><i class="bx bx-edit-alt"></i></a>';
+                    $html .= '<form action="'.route('purchases.supplier-advances.destroy', $enc).'" method="post" class="d-inline" onsubmit="return confirm(\'Delete this advance? Posted GL entries for this voucher will be removed.\');">';
+                    $html .= csrf_field().method_field('DELETE');
+                    $html .= '<button type="submit" class="btn btn-outline-danger" title="Delete"><i class="bx bx-trash"></i></button></form>';
+                }
+                if ($canView) {
+                    $html .= '<a href="'.route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-secondary" title="Statement" target="_blank" rel="noopener"><i class="bx bx-file"></i></a>';
+                }
+                $html .= '</div>';
+
+                return $html;
+            })
+            ->orderColumn('supplier_name', function ($query, $order) {
+                $query->orderBy(
+                    Supplier::select('name')
+                        ->whereColumn('suppliers.id', 'supplier_advances.supplier_id')
+                        ->limit(1),
+                    $order
+                );
+            })
+            ->rawColumns(['credit_account', 'actions'])
+            ->make(true);
+    }
+
+    private function balancesDataTable(Request $request, int $companyId, ?int $branchId)
+    {
+        $user = Auth::user();
+        $canRecord = $user->can('record purchase payment');
+        $canView = $user->can('view purchases');
+        $showAll = $request->boolean('show_all');
+
+        $query = Supplier::query()
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->withSum(['supplierAdvances as advances_total' => function ($q) use ($companyId, $branchId) {
+                $q->where('company_id', $companyId)
+                    ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
+            }], 'amount')
+            ->withSum(['supplierAdvanceDeductions as applied_total' => function ($q) use ($companyId, $branchId) {
+                $q->where('company_id', $companyId)
+                    ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
+            }], 'amount');
+
+        if (! $showAll) {
+            $query->where(function ($q) use ($companyId, $branchId) {
+                $q->whereHas('supplierAdvances', function ($a) use ($companyId, $branchId) {
+                    $a->where('company_id', $companyId)
+                        ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
+                })->orWhereHas('supplierAdvanceDeductions', function ($d) use ($companyId, $branchId) {
+                    $d->where('company_id', $companyId)
+                        ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
+                });
+            });
+        }
+
+        return datatables($query)
+            ->filter(function ($query) {
+                $keyword = trim((string) request()->input('search.value', ''));
+                if ($keyword === '') {
+                    return;
+                }
+                $like = '%'.addcslashes($keyword, '%_\\').'%';
+                $query->where('suppliers.name', 'like', $like);
+            }, true)
+            ->addColumn('advances_formatted', fn (Supplier $s) => format_currency((float) ($s->advances_total ?? 0)))
+            ->addColumn('applied_formatted', fn (Supplier $s) => format_currency((float) ($s->applied_total ?? 0)))
+            ->addColumn('balance_formatted', function (Supplier $s) {
+                $bal = (float) ($s->advances_total ?? 0) - (float) ($s->applied_total ?? 0);
+
+                return '<span class="fw-semibold">'.format_currency($bal).'</span>';
+            })
+            ->addColumn('balance_raw', function (Supplier $s) {
+                return (float) ($s->advances_total ?? 0) - (float) ($s->applied_total ?? 0);
+            })
+            ->addColumn('actions', function (Supplier $s) use ($canRecord, $canView) {
+                $adv = (float) ($s->advances_total ?? 0);
+                $app = (float) ($s->applied_total ?? 0);
+                $bal = $adv - $app;
+                $encSup = Hashids::encode($s->id);
+                $html = '<div class="btn-group btn-group-sm" role="group">';
+                if ($canRecord && $bal > 0.005) {
+                    $html .= '<a href="'.route('purchases.supplier-advances.pay', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-primary" title="Record cash returned by supplier"><i class="bx bx-money"></i> Pay</a>';
+                    $html .= '<a href="'.route('purchases.supplier-advances.expense', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-warning" title="Apply advance to expense accounts"><i class="bx bx-receipt"></i> Expense</a>';
+                }
+                if ($canView) {
+                    $html .= '<a href="'.route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-secondary" title="Statement" target="_blank" rel="noopener"><i class="bx bx-file"></i> Statement</a>';
+                }
+                $html .= '</div>';
+
+                return $html;
+            })
+            ->orderColumn('advances_formatted', function ($query, $order) {
+                $query->orderBy('advances_total', $order);
+            })
+            ->orderColumn('applied_formatted', function ($query, $order) {
+                $query->orderBy('applied_total', $order);
+            })
+            ->orderColumn('balance_formatted', function ($query, $order) {
+                $query->orderByRaw('(COALESCE(advances_total, 0) - COALESCE(applied_total, 0)) '.$order);
+            })
+            ->rawColumns(['balance_formatted', 'actions'])
+            ->make(true);
     }
 }

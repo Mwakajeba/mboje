@@ -289,7 +289,7 @@
                         <h6 class="mb-2"><i class="bx bx-note me-2"></i>Notes & Terms</h6>
                         @if($purchase->notes)
                         <div class="mb-2">
-                            <label class="form-label text-muted small">Notes</label>
+                            <label class="form-label text-muted small">Description</label>
                             <p class="mb-0">{{ $purchase->notes }}</p>
                         </div>
                         @endif
