@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Supplier Advances')
+@section('title', 'Hesabu za Wasambazaji')
 
 @section('content')
 <div class="page-wrapper">
@@ -8,11 +8,11 @@
         <x-breadcrumbs-with-icons :links="[
             ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Purchase Management', 'url' => route('purchases.index'), 'icon' => 'bx bx-purchase-tag'],
-            ['label' => 'Supplier Advances', 'url' => '#', 'icon' => 'bx bx-wallet-alt']
+            ['label' => 'Hesabu za Wasambazaji', 'url' => '#', 'icon' => 'bx bx-wallet-alt']
         ]" />
 
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-            <h6 class="mb-0 text-uppercase">Supplier advances</h6>
+            <h6 class="mb-0 text-uppercase">Hesabu za Wasambazaji</h6>
             <div class="d-flex flex-wrap gap-2">
                 @if($showAll)
                     <a href="{{ route('purchases.supplier-advances.index') }}" class="btn btn-outline-secondary btn-sm">Show suppliers with activity only (summary)</a>
@@ -24,7 +24,7 @@
                     <i class="bx bx-book-open me-1"></i> Opening balance advance payment
                 </a>
                 <a href="{{ route('purchases.supplier-advances.create') }}" class="btn btn-primary btn-sm">
-                    <i class="bx bx-plus me-1"></i> Add new advance
+                    <i class="bx bx-plus me-1"></i> Ingiza Malipo
                 </a>
                 @endcan
             </div>
@@ -46,21 +46,20 @@
 
         <div class="card radius-10 mb-4">
             <div class="card-body">
-                <h6 class="text-primary mb-3"><i class="bx bx-receipt me-1"></i> Advance vouchers</h6>
+                <h6 class="text-primary mb-3"><i class="bx bx-pie-chart-alt me-1"></i> Hesabu za Malipo</h6>
                 <p class="text-muted small mb-3">
-                    Each row is one posted advance (debit advance account; credit bank/cash or retained earnings for opening balance). Use actions to edit, delete, or open the supplier's full statement.
+                    <strong>Malipo ya awali</strong> ni jumla ya malipo yaliyochapishwa; <strong>Matumizi</strong> ni kiasi kilichotumika kwenye ununuzi, matumizi, au marejesho; <strong>Salio</strong> ni malipo ya awali minus matumizi.
+                    <strong>Lipa</strong> = fedha zilirudishwa (benki). <strong>Gharama</strong> = toa matumizi kutoka salio la awali.
                 </p>
                 <div class="table-responsive">
-                    <table id="supplier-advances-table" class="table table-striped table-hover align-middle w-100">
+                    <table id="supplier-advance-balances-table" class="table table-striped table-hover align-middle w-100">
                         <thead class="table-light">
                             <tr>
-                                <th>Date</th>
-                                <th>Reference</th>
-                                <th>Supplier</th>
-                                <th>Debit account</th>
-                                <th>Credit account</th>
-                                <th class="text-end">Amount</th>
-                                <th class="text-end text-nowrap">Actions</th>
+                                <th>Msambazaji</th>
+                                <th class="text-end">Malipo ya awali</th>
+                                <th class="text-end">Matumizi</th>
+                                <th class="text-end">Salio</th>
+                                <th class="text-end text-nowrap">Vitendo</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -71,20 +70,21 @@
 
         <div class="card radius-10">
             <div class="card-body">
-                <h6 class="text-primary mb-3"><i class="bx bx-pie-chart-alt me-1"></i> Balances by supplier</h6>
+                <h6 class="text-primary mb-3"><i class="bx bx-receipt me-1"></i> Miamala</h6>
                 <p class="text-muted small mb-3">
-                    <strong>Advances</strong> total posted prepayments; <strong>Applied</strong> is amounts offset on purchases, expenses, or refunds; <strong>Balance</strong> is advances minus applied.
-                    <strong>Pay</strong> = cash returned (bank). <strong>Expense</strong> = charge expense accounts against advance.
+                    Kila mstari ni malipo ya awali yaliyochapishwa. Tumia vitendo kuhariri, kufuta, au kuona hesabu kamili ya msambazaji.
                 </p>
                 <div class="table-responsive">
-                    <table id="supplier-advance-balances-table" class="table table-striped table-hover align-middle w-100">
+                    <table id="supplier-advances-table" class="table table-striped table-hover align-middle w-100">
                         <thead class="table-light">
                             <tr>
-                                <th>Supplier</th>
-                                <th class="text-end">Advances</th>
-                                <th class="text-end">Applied</th>
-                                <th class="text-end">Balance</th>
-                                <th class="text-end text-nowrap">Actions</th>
+                                <th>Tarehe</th>
+                                <th>Marejeleo</th>
+                                <th>Msambazaji</th>
+                                <th>Akaunti ya deni</th>
+                                <th>Akaunti ya mkopo</th>
+                                <th class="text-end">Kiasi</th>
+                                <th class="text-end text-nowrap">Vitendo</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -113,6 +113,34 @@ $(document).ready(function () {
         zeroRecords: 'No matching records found'
     };
 
+    $('#supplier-advance-balances-table').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: indexUrl,
+            data: function (d) {
+                d.table = 'balances';
+                d.show_all = showAllSuppliers ? 1 : 0;
+            }
+        },
+        columns: [
+            { data: 'name', name: 'name', searchable: true },
+            { data: 'advances_formatted', name: 'advances_total', className: 'text-end', searchable: false, orderable: true },
+            { data: 'applied_formatted', name: 'applied_total', className: 'text-end', searchable: false, orderable: true },
+            { data: 'balance_formatted', name: 'balance_formatted', className: 'text-end', searchable: false, orderable: true },
+            { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-end text-nowrap' }
+        ],
+        order: [[0, 'asc']],
+        pageLength: 25,
+        language: Object.assign({}, dtLang, {
+            emptyTable: 'Hakuna salio la malipo ya awali kwa msambazaji.',
+            searchPlaceholder: 'Tafuta msambazaji…'
+        }),
+        initComplete: function () {
+            $(this.api().table().container()).find('.dataTables_filter input').attr('placeholder', 'Tafuta msambazaji…');
+        }
+    });
+
     $('#supplier-advances-table').DataTable({
         processing: true,
         serverSide: true,
@@ -134,39 +162,11 @@ $(document).ready(function () {
         order: [[0, 'desc']],
         pageLength: 25,
         language: Object.assign({}, dtLang, {
-            emptyTable: @json('No supplier advances in this branch yet.'),
-            searchPlaceholder: 'Search supplier…'
+            emptyTable: @json('Hakuna miamala ya malipo ya awali katika tawi hili.'),
+            searchPlaceholder: 'Tafuta msambazaji…'
         }),
         initComplete: function () {
-            $(this.api().table().container()).find('.dataTables_filter input').attr('placeholder', 'Search supplier…');
-        }
-    });
-
-    $('#supplier-advance-balances-table').DataTable({
-        processing: true,
-        serverSide: true,
-        ajax: {
-            url: indexUrl,
-            data: function (d) {
-                d.table = 'balances';
-                d.show_all = showAllSuppliers ? 1 : 0;
-            }
-        },
-        columns: [
-            { data: 'name', name: 'name', searchable: true },
-            { data: 'advances_formatted', name: 'advances_total', className: 'text-end', searchable: false, orderable: true },
-            { data: 'applied_formatted', name: 'applied_total', className: 'text-end', searchable: false, orderable: true },
-            { data: 'balance_formatted', name: 'balance_formatted', className: 'text-end', searchable: false, orderable: true },
-            { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-end text-nowrap' }
-        ],
-        order: [[0, 'asc']],
-        pageLength: 25,
-        language: Object.assign({}, dtLang, {
-            emptyTable: 'No supplier advance activity in this summary.',
-            searchPlaceholder: 'Search supplier…'
-        }),
-        initComplete: function () {
-            $(this.api().table().container()).find('.dataTables_filter input').attr('placeholder', 'Search supplier…');
+            $(this.api().table().container()).find('.dataTables_filter input').attr('placeholder', 'Tafuta msambazaji…');
         }
     });
 });

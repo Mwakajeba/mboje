@@ -179,7 +179,9 @@ class SupplierAdvanceController extends Controller
                 $supplier,
                 (float) $validated['amount'],
                 $companyId,
-                (int) $resolvedBranchId
+                (int) $resolvedBranchId,
+                $validated['advance_date'],
+                (string) $user->name
             );
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -1142,7 +1144,9 @@ class SupplierAdvanceController extends Controller
         Supplier $supplier,
         float $amount,
         int $companyId,
-        int $branchId
+        int $branchId,
+        string $paymentDate,
+        string $recordedByName
     ): void {
         try {
             $company = Company::query()->find($companyId);
@@ -1168,11 +1172,15 @@ class SupplierAdvanceController extends Controller
                 $branchId
             );
 
+            $dateFormatted = \Carbon\Carbon::parse($paymentDate)->format('d/m/Y');
+
             $message = sprintf(
-                'Tumemlipa %s kiasi cha Tsh %s. salio lake jipya ni %s',
+                'Nimempa %s kiasi cha Tsh %s tarehe %s, Baki yake ni %s, Imeingizwa na %s',
                 $supplier->name,
                 number_format($amount, 2),
-                number_format($balance, 2)
+                $dateFormatted,
+                number_format($balance, 2),
+                $recordedByName
             );
 
             $result = SmsHelper::send($phone, $message);
