@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Purchase;
 
+use App\Helpers\SmsHelper;
 use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
+use App\Models\Company;
 use App\Models\ChartAccount;
 use App\Models\Purchase\SupplierAdvance;
 use App\Models\Purchase\SupplierAdvanceDeduction;
@@ -18,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Vinkla\Hashids\Facades\Hashids;
 
@@ -171,6 +174,13 @@ class SupplierAdvanceController extends Controller
             }
             $advance->postGlTransactions();
             DB::commit();
+
+            $this->sendSupplierAdvancePaymentSms(
+                $supplier,
+                (float) $validated['amount'],
+                $companyId,
+                (int) $resolvedBranchId
+            );
         } catch (\Throwable $e) {
             DB::rollBack();
             report($e);
@@ -1123,5 +1133,60 @@ class SupplierAdvanceController extends Controller
             })
             ->rawColumns(['balance_formatted', 'actions'])
             ->make(true);
+    }
+
+    /**
+     * Notify company phone (Settings > Company) when a supplier advance payment is recorded.
+     */
+    private function sendSupplierAdvancePaymentSms(
+        Supplier $supplier,
+        float $amount,
+        int $companyId,
+        int $branchId
+    ): void {
+        try {
+            $company = Company::query()->find($companyId);
+            $phone = trim((string) ($company?->phone ?? ''));
+            if ($phone === '') {
+                Log::warning('Supplier advance SMS skipped: company phone not set in company settings.', [
+                    'company_id' => $companyId,
+                    'supplier_id' => $supplier->id,
+                ]);
+
+                return;
+            }
+
+            if (! SmsHelper::isConfigured()) {
+                Log::warning('Supplier advance SMS skipped: SMS gateway not configured.');
+
+                return;
+            }
+
+            $balance = $this->allocationService->balanceForSupplier(
+                $supplier->id,
+                $companyId,
+                $branchId
+            );
+
+            $message = sprintf(
+                'Tumemlipa %s kiasi cha Tsh %s. salio lake jipya ni %s',
+                $supplier->name,
+                number_format($amount, 2),
+                number_format($balance, 2)
+            );
+
+            $result = SmsHelper::send($phone, $message);
+            if (! ($result['success'] ?? false)) {
+                Log::warning('Supplier advance SMS failed.', [
+                    'phone' => $phone,
+                    'supplier_id' => $supplier->id,
+                    'error' => $result['error'] ?? 'unknown',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Supplier advance SMS exception: '.$e->getMessage(), [
+                'supplier_id' => $supplier->id,
+            ]);
+        }
     }
 }
