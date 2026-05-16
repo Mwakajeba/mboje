@@ -62,6 +62,42 @@
                             </div>
                             @endcan
 
+                            <!-- Inventory Value -->
+                            @canany(['view inventory items', 'manage inventory items'])
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <a href="{{ session('location_id') ? route('inventory.value.show', session('location_id')) : route('inventory.value.index') }}" class="text-decoration-none text-body">
+                                <div class="card border-teal position-relative h-100">
+                                    <div class="card-body text-center">
+                                        @if(isset($inventoryValueAtLocation) && $inventoryValueAtLocation !== null)
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-teal text-white" title="Cost value at current location">
+                                            {{ number_format($inventoryValueAtLocation, 0) }}
+                                            <span class="visually-hidden">inventory value</span>
+                                        </span>
+                                        @endif
+                                        <div class="mb-3">
+                                            <i class="bx bx-dollar-circle fs-1 text-teal"></i>
+                                        </div>
+                                        <h5 class="card-title">Thamani ya Bidhaa <small class="text-muted">(Inventory Value)</small></h5>
+                                        <p class="card-text">Current stock by location with total cost and selling value per item.</p>
+                                        <span class="btn btn-teal">
+                                            <i class="bx bx-bar-chart-alt-2 me-1"></i>
+                                            @if(session('location_id'))
+                                                View at this location
+                                            @else
+                                                Choose location
+                                            @endif
+                                        </span>
+                                        @if(isset($inventoryValueCurrency) && isset($inventoryValueAtLocation))
+                                        <p class="small text-muted mt-2 mb-0">
+                                            Location cost total: {{ number_format($inventoryValueAtLocation, 2) }} {{ $inventoryValueCurrency }}
+                                        </p>
+                                        @endif
+                                    </div>
+                                </div>
+                                </a>
+                            </div>
+                            @endcanany
+
                             <!-- Items Management -->
                             @can('manage inventory items')
                             <div class="col-md-6 col-lg-4 mb-4">
@@ -133,7 +169,7 @@
                             </div>
                             @endcan
 
-                            <!-- Transfers Management -->
+                            {{-- Branch Transfers (hidden)
                             @can('view inventory transfer')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-info position-relative">
@@ -155,8 +191,9 @@
                                 </div>
                             </div>
                             @endcan
+                            --}}
 
-                            <!-- Write-offs Management -->
+                            {{-- Write-offs & Stock-outs (hidden)
                             @can('view inventory write-offs')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-dark position-relative">
@@ -178,6 +215,7 @@
                                 </div>
                             </div>
                             @endcan
+                            --}}
 
                             <!-- Transfer Requests Management -->
                           
@@ -223,7 +261,7 @@
                             </div>
                             @endcan
 
-                            <!-- Inventory Count -->
+                            {{-- Stock Taking/Count (hidden)
                             @can('manage inventory locations')
                              <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-purple position-relative">
@@ -243,8 +281,9 @@
                                         </a>
                                     </div>
                                 </div>
-                            </div> 
-                             @endcan 
+                            </div>
+                             @endcan
+                            --}}
 
                             <!-- Inventory Settings -->
                             @can('manage inventory settings')
@@ -407,6 +446,20 @@
     .border-danger { border-color: #dc3545 !important; }
     .border-secondary { border-color: #6c757d !important; }
     .border-purple { border-color: #6f42c1 !important; }
+    .border-teal { border-color: #20c997 !important; }
+
+    .text-teal { color: #20c997 !important; }
+    .bg-teal { background-color: #20c997 !important; }
+    .btn-teal {
+        background-color: #20c997;
+        border-color: #20c997;
+        color: #fff;
+    }
+    .btn-teal:hover {
+        background-color: #1aa179;
+        border-color: #1aa179;
+        color: #fff;
+    }
     
     .text-purple { color: #6f42c1 !important; }
     .bg-purple { background-color: #6f42c1 !important; }

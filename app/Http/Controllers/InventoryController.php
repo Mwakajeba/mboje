@@ -7,6 +7,7 @@ use App\Models\Inventory\Category;
 use App\Models\Inventory\Item;
 use App\Models\Inventory\Movement;
 use App\Models\InventoryLocation;
+use App\Services\InventoryValueService;
 
 class InventoryController extends Controller
 {
@@ -98,6 +99,17 @@ class InventoryController extends Controller
             ->whereIn('status', ['draft', 'frozen', 'counting', 'completed'])
             ->count();
 
+        $inventoryValueAtLocation = null;
+        $inventoryValueCurrency = null;
+        if ($loginLocationId) {
+            $valueService = app(InventoryValueService::class);
+            $inventoryValueCurrency = $valueService->functionalCurrency();
+            $inventoryValueAtLocation = $valueService->totalCostValueAtLocation(
+                (int) $loginLocationId,
+                (int) auth()->user()->company_id
+            );
+        }
+
         return view('inventory.index', compact(
             'categoriesCount',
             'itemsCount', 
@@ -107,7 +119,9 @@ class InventoryController extends Controller
             'transfersCount',
             'writeOffsCount',
             'recentMovements',
-            'countSessionsCount'
+            'countSessionsCount',
+            'inventoryValueAtLocation',
+            'inventoryValueCurrency'
         ));
     }
 }

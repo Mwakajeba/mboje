@@ -1038,6 +1038,9 @@ Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'company.sco
     // Inventory Management Dashboard
     Route::get('/', [InventoryController::class, 'index'])->name('index');
 
+    Route::get('/value', [App\Http\Controllers\Inventory\InventoryValueController::class, 'index'])->name('value.index');
+    Route::get('/value/location/{locationId}', [App\Http\Controllers\Inventory\InventoryValueController::class, 'show'])->name('value.show');
+
     // Inventory Items
     Route::get('/items', [ItemController::class, 'index'])->name('items.index');
     Route::get('/items/create', [ItemController::class, 'create'])->name('items.create');

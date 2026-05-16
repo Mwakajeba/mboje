@@ -217,8 +217,8 @@
                                         <div class="mb-3">
                                             <i class="bx bx-file fs-1 text-info"></i>
                                         </div>
-                                        <h5 class="card-title">Hesabu ya Malipo ya Awali <small class="text-muted">(Supplier Advance Statement)</small></h5>
-                                        <p class="card-text flex-grow-1">Chagua msambazaji na tarehe ili kuona hesabu yenye salio la kufungua, miamala, na salio la kufunga.</p>
+                                        <h5 class="card-title">Hesabu za Fedha</h5>
+                                        <p class="card-text flex-grow-1">Chagua msambazaji/mfanyakazi na tarehe: salio la kufungua, malipo yote ya awali, matumizi yote, na salio la kufunga.</p>
                                         <button type="button" class="btn btn-info text-white mt-auto" data-bs-toggle="modal" data-bs-target="#supplierAdvanceStatementModal">
                                             <i class="bx bx-search-alt me-1"></i> Fungua hesabu
                                         </button>
@@ -536,18 +536,18 @@
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title text-white" id="supplierAdvanceStatementModalLabel">
-                    <i class="bx bx-file me-1"></i> Hesabu ya malipo ya awali
+                    <i class="bx bx-file me-1"></i> Hesabu za Fedha
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted small">Chagua msambazaji na kipindi cha tarehe. Hesabu itaanza na <strong>salio la kufungua</strong>, kisha miamala ya kipindi.</p>
+                <p class="text-muted small">Chagua msambazaji/mfanyakazi na kipindi cha tarehe. Hesabu: <strong>salio la kufungua</strong>, kisha malipo yote ya awali, kisha matumizi yote, na <strong>salio la kufunga</strong>.</p>
                 <div class="mb-3">
-                    <label for="sadv_statement_supplier_id" class="form-label fw-bold">Msambazaji <span class="text-danger">*</span></label>
-                    <select id="sadv_statement_supplier_id" class="form-select select2-single" required>
+                    <label for="sadv_statement_supplier_id" class="form-label fw-bold">Msambazaji / Mfanyakazi <span class="text-danger">*</span></label>
+                    <select id="sadv_statement_supplier_id" class="form-select sadv-statement-supplier-select" required>
                         <option value=""></option>
                         @foreach($suppliers as $s)
-                            <option value="{{ $s->id }}">{{ $s->name }}</option>
+                            <option value="{{ $s->id }}" data-encoded="{{ \Vinkla\Hashids\Facades\Hashids::encode($s->id) }}">{{ $s->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -625,22 +625,34 @@
 <script nonce="{{ $cspNonce ?? '' }}">
     $(document).ready(function() {
     @can('view purchases')
-    var supplierAdvanceStatementEnc = @json($suppliers->mapWithKeys(fn ($s) => [ (string) $s->id => \Vinkla\Hashids\Facades\Hashids::encode($s->id) ]));
-    var supplierAdvanceStatementUrl = @json(route('purchases.supplier-advances.statement', ['encodedSupplierId' => '__ENC__']));
+    var supplierAdvanceStatementBaseUrl = @json(url('purchases/supplier-advances/statement'));
 
-    $('#supplierAdvanceStatementModal').on('shown.bs.modal', function () {
+    function initSupplierAdvanceStatementSelect() {
         var $sel = $('#sadv_statement_supplier_id');
-        if ($sel.length && !$sel.hasClass('select2-hidden-accessible') && $.fn.select2) {
-            $sel.select2({ theme: 'bootstrap-5', width: '100%', dropdownParent: $('#supplierAdvanceStatementModal') });
+        if (!$sel.length || !$.fn.select2) {
+            return;
         }
-    });
+        if ($sel.hasClass('select2-hidden-accessible')) {
+            $sel.select2('destroy');
+        }
+        $sel.select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Tafuta msambazaji au mfanyakazi…',
+            allowClear: true,
+            dropdownParent: $('#supplierAdvanceStatementModal')
+        });
+    }
+
+    $('#supplierAdvanceStatementModal').on('shown.bs.modal', initSupplierAdvanceStatementSelect);
 
     $('#btnOpenSupplierAdvanceStatement').on('click', function () {
-        var supplierId = $('#sadv_statement_supplier_id').val();
+        var $sel = $('#sadv_statement_supplier_id');
+        var supplierId = $sel.val();
         var fromDate = $('#sadv_statement_from_date').val();
         var toDate = $('#sadv_statement_to_date').val();
         if (!supplierId) {
-            alert('Chagua msambazaji.');
+            alert('Chagua msambazaji / mfanyakazi.');
             return;
         }
         if (!fromDate || !toDate) {
@@ -651,12 +663,12 @@
             alert('Tarehe ya kuanzia haiwezi kuwa baada ya tarehe ya mwisho.');
             return;
         }
-        var enc = supplierAdvanceStatementEnc[supplierId];
+        var enc = $sel.find('option:selected').data('encoded');
         if (!enc) {
-            alert('Msambazaji hajapatikana.');
+            alert('Msambazaji / mfanyakazi hajapatikana.');
             return;
         }
-        var url = supplierAdvanceStatementUrl.replace('__ENC__', enc)
+        var url = supplierAdvanceStatementBaseUrl + '/' + encodeURIComponent(enc)
             + '?from_date=' + encodeURIComponent(fromDate)
             + '&to_date=' + encodeURIComponent(toDate);
         window.open(url, '_blank');

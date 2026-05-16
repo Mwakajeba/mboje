@@ -34,25 +34,14 @@ class SupplierAdvanceStatementService
             ->orderBy('id')
             ->get();
 
-        $lines = collect();
-
-        foreach ($advances as $advance) {
-            $lines->push($this->mapAdvanceLine($advance));
-        }
-
-        foreach ($deductions as $deduction) {
-            $lines->push($this->mapDeductionLine($deduction));
-        }
-
-        $lines = $lines->sortBy('sort')->values();
-
-        $running = 0.0;
-        $lines = $lines->map(function (array $line) use (&$running) {
-            $running += $line['paid'] - $line['deducted'];
-            $line['balance'] = round($running, 2);
-
-            return $line;
-        })->values();
+        $lines = $this->assembleGroupedLines(
+            $advances->map(fn ($advance) => $this->mapAdvanceLine($advance)),
+            $deductions->map(fn ($deduction) => $this->mapDeductionLine($deduction)),
+            includeOpening: false,
+            includeClosing: true,
+            openingBalance: 0.0,
+            closingBalance: null,
+        );
 
         $totalPaid = (float) $advances->sum('amount');
         $totalDeducted = (float) $deductions->sum('amount');
@@ -87,7 +76,7 @@ class SupplierAdvanceStatementService
         $from = Carbon::parse($fromDate)->startOfDay();
         $to = Carbon::parse($toDate)->endOfDay();
         if ($from->gt($to)) {
-            throw new \InvalidArgumentException('From date cannot be after to date.');
+            throw new \InvalidArgumentException('Tarehe ya kuanzia haiwezi kuwa baada ya tarehe ya mwisho.');
         }
 
         $fromStr = $from->toDateString();
@@ -123,47 +112,20 @@ class SupplierAdvanceStatementService
             ->orderBy('id')
             ->get();
 
-        $lines = collect();
-
-        $lines->push([
-            'date' => $from->copy(),
-            'sort' => $fromStr.'-O-00000000',
-            'type' => 'opening',
-            'reference' => '—',
-            'description' => 'Opening balance',
-            'paid' => 0.0,
-            'deducted' => 0.0,
-            'performed_by' => '—',
-            'user_id' => null,
-            'is_opening' => true,
-        ]);
-
-        foreach ($advances as $advance) {
-            $lines->push($this->mapAdvanceLine($advance));
-        }
-
-        foreach ($deductions as $deduction) {
-            $lines->push($this->mapDeductionLine($deduction));
-        }
-
-        $lines = $lines->sortBy('sort')->values();
-
-        $running = $openingBalance;
-        $lines = $lines->map(function (array $line) use (&$running) {
-            if (! empty($line['is_opening'])) {
-                $line['balance'] = round($running, 2);
-
-                return $line;
-            }
-            $running += $line['paid'] - $line['deducted'];
-            $line['balance'] = round($running, 2);
-
-            return $line;
-        })->values();
-
         $periodPaid = (float) $advances->sum('amount');
         $periodDeducted = (float) $deductions->sum('amount');
         $closingBalance = round($openingBalance + $periodPaid - $periodDeducted, 2);
+
+        $lines = $this->assembleGroupedLines(
+            $advances->map(fn ($advance) => $this->mapAdvanceLine($advance)),
+            $deductions->map(fn ($deduction) => $this->mapDeductionLine($deduction)),
+            includeOpening: true,
+            includeClosing: true,
+            openingBalance: $openingBalance,
+            closingBalance: $closingBalance,
+            openingDate: $from,
+            closingDate: $to,
+        );
 
         return [
             'lines' => $lines,
@@ -182,6 +144,82 @@ class SupplierAdvanceStatementService
                 'to' => $toStr,
             ],
         ];
+    }
+
+    /**
+     * Order: opening → all advances → all applied (deductions) → closing balance.
+     *
+     * @param  Collection<int, array<string, mixed>>  $advanceLines
+     * @param  Collection<int, array<string, mixed>>  $deductionLines
+     */
+    private function assembleGroupedLines(
+        Collection $advanceLines,
+        Collection $deductionLines,
+        bool $includeOpening,
+        bool $includeClosing,
+        float $openingBalance,
+        ?float $closingBalance = null,
+        ?Carbon $openingDate = null,
+        ?Carbon $closingDate = null,
+    ): Collection {
+        $lines = collect();
+
+        if ($includeOpening) {
+            $openDate = $openingDate ?? Carbon::today();
+            $lines->push([
+                'date' => $openDate->copy(),
+                'sort' => $openDate->toDateString().'-O-00000000',
+                'type' => 'opening',
+                'reference' => '—',
+                'description' => 'Salio la kufungua',
+                'paid' => 0.0,
+                'deducted' => 0.0,
+                'performed_by' => '—',
+                'user_id' => null,
+                'is_opening' => true,
+            ]);
+        }
+
+        foreach ($advanceLines->sortBy('sort')->values() as $line) {
+            $lines->push($line);
+        }
+
+        foreach ($deductionLines->sortBy('sort')->values() as $line) {
+            $lines->push($line);
+        }
+
+        $running = $openingBalance;
+        $lines = $lines->map(function (array $line) use (&$running) {
+            if (! empty($line['is_opening'])) {
+                $line['balance'] = round($running, 2);
+
+                return $line;
+            }
+            $running += $line['paid'] - $line['deducted'];
+            $line['balance'] = round($running, 2);
+
+            return $line;
+        });
+
+        if ($includeClosing) {
+            $closeDate = $closingDate ?? Carbon::today();
+            $finalBalance = $closingBalance ?? round($running, 2);
+            $lines->push([
+                'date' => $closeDate->copy(),
+                'sort' => $closeDate->toDateString().'-C-99999999',
+                'type' => 'closing',
+                'reference' => '—',
+                'description' => 'Salio la kufunga',
+                'paid' => 0.0,
+                'deducted' => 0.0,
+                'performed_by' => '—',
+                'user_id' => null,
+                'is_closing' => true,
+                'balance' => round($finalBalance, 2),
+            ]);
+        }
+
+        return $lines->values();
     }
 
     private function mapAdvanceLine(SupplierAdvance $advance): array
@@ -226,10 +264,10 @@ class SupplierAdvanceStatementService
     private function defaultDeductionDescription(SupplierAdvanceDeduction $deduction): string
     {
         return match ($deduction->source_type) {
-            'cash_purchase' => 'Applied to cash purchase #'.($deduction->source_id ?? ''),
-            'supplier_advance_refund' => 'Cash returned by supplier (receipt #'.($deduction->source_id ?? '').')',
-            'supplier_advance_expense' => 'Applied to expense (journal #'.($deduction->source_id ?? '').')',
-            default => 'Advance applied',
+            'cash_purchase' => 'Matumizi kwa ununuzi wa cash #'.($deduction->source_id ?? ''),
+            'supplier_advance_refund' => 'Fedha zilirudishwa na msambazaji (risiti #'.($deduction->source_id ?? '').')',
+            'supplier_advance_expense' => 'Matumizi (jarida #'.($deduction->source_id ?? '').')',
+            default => 'Malipo ya awali yametumika',
         };
     }
 }
