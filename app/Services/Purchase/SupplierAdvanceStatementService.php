@@ -34,20 +34,25 @@ class SupplierAdvanceStatementService
             ->orderBy('id')
             ->get();
 
-        $lines = $this->assembleGroupedLines(
-            $advances->map(fn ($advance) => $this->mapAdvanceLine($advance)),
-            $deductions->map(fn ($deduction) => $this->mapDeductionLine($deduction)),
+        $advanceLines = $advances->map(fn ($advance) => $this->mapAdvanceLine($advance));
+        $deductionLines = $deductions->map(fn ($deduction) => $this->mapDeductionLine($deduction));
+        $closingBalance = round((float) $advanceLines->sum('paid') - (float) $deductionLines->sum('deducted'), 2);
+
+        $sections = $this->buildStructuredSections(
+            $advanceLines,
+            $deductionLines,
+            openingBalance: 0.0,
+            closingBalance: $closingBalance,
             includeOpening: false,
             includeClosing: true,
-            openingBalance: 0.0,
-            closingBalance: null,
+            closingDate: Carbon::today(),
         );
 
         $totalPaid = (float) $advances->sum('amount');
         $totalDeducted = (float) $deductions->sum('amount');
 
-        return [
-            'lines' => $lines,
+        return array_merge($sections, [
+            'lines' => $this->flattenSectionsToLines($sections),
             'totals' => [
                 'paid' => round($totalPaid, 2),
                 'deducted' => round($totalDeducted, 2),
@@ -58,7 +63,7 @@ class SupplierAdvanceStatementService
             ],
             'opening_balance' => null,
             'period' => null,
-        ];
+        ]);
     }
 
     /**
@@ -116,19 +121,22 @@ class SupplierAdvanceStatementService
         $periodDeducted = (float) $deductions->sum('amount');
         $closingBalance = round($openingBalance + $periodPaid - $periodDeducted, 2);
 
-        $lines = $this->assembleGroupedLines(
-            $advances->map(fn ($advance) => $this->mapAdvanceLine($advance)),
-            $deductions->map(fn ($deduction) => $this->mapDeductionLine($deduction)),
-            includeOpening: true,
-            includeClosing: true,
+        $advanceLines = $advances->map(fn ($advance) => $this->mapAdvanceLine($advance));
+        $deductionLines = $deductions->map(fn ($deduction) => $this->mapDeductionLine($deduction));
+
+        $sections = $this->buildStructuredSections(
+            $advanceLines,
+            $deductionLines,
             openingBalance: $openingBalance,
             closingBalance: $closingBalance,
+            includeOpening: true,
+            includeClosing: true,
             openingDate: $from,
             closingDate: $to,
         );
 
-        return [
-            'lines' => $lines,
+        return array_merge($sections, [
+            'lines' => $this->flattenSectionsToLines($sections),
             'totals' => [
                 'paid' => round($periodPaid, 2),
                 'deducted' => round($periodDeducted, 2),
@@ -143,80 +151,109 @@ class SupplierAdvanceStatementService
                 'from' => $fromStr,
                 'to' => $toStr,
             ],
+        ]);
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $advanceLines
+     * @param  Collection<int, array<string, mixed>>  $deductionLines
+     * @return array{opening_row: ?array, malipo_lines: Collection, matumizi_lines: Collection, closing_row: ?array}
+     */
+    private function buildStructuredSections(
+        Collection $advanceLines,
+        Collection $deductionLines,
+        float $openingBalance,
+        ?float $closingBalance,
+        bool $includeOpening,
+        bool $includeClosing,
+        ?Carbon $openingDate = null,
+        ?Carbon $closingDate = null,
+    ): array {
+        $openingRow = null;
+        if ($includeOpening) {
+            $openDate = $openingDate ?? Carbon::today();
+            $openingRow = [
+                'date' => $openDate->copy(),
+                'description' => 'Salio la kufungua',
+                'balance' => round($openingBalance, 2),
+                'is_opening' => true,
+            ];
+        }
+
+        $malipoSorted = $advanceLines->sortBy('sort')->values();
+        $matumiziSorted = $deductionLines->sortBy('sort')->values();
+
+        $malipoLines = $this->applyRunningBalance($malipoSorted, $openingBalance);
+        $balanceAfterMalipo = round(
+            $openingBalance + (float) $malipoSorted->sum('paid'),
+            2
+        );
+        $matumiziLines = $this->applyRunningBalance($matumiziSorted, $balanceAfterMalipo);
+
+        $closingRow = null;
+        if ($includeClosing) {
+            $closeDate = $closingDate ?? Carbon::today();
+            $finalBalance = $closingBalance ?? round(
+                $balanceAfterMalipo - (float) $matumiziSorted->sum('deducted'),
+                2
+            );
+            $closingRow = [
+                'date' => $closeDate->copy(),
+                'description' => 'Salio la kufunga/Baki',
+                'balance' => round($finalBalance, 2),
+                'is_closing' => true,
+            ];
+        }
+
+        return [
+            'opening_row' => $openingRow,
+            'malipo_lines' => $malipoLines,
+            'matumizi_lines' => $matumiziLines,
+            'closing_row' => $closingRow,
         ];
     }
 
     /**
-     * Order: opening → all advances → all applied (deductions) → closing balance.
-     *
-     * @param  Collection<int, array<string, mixed>>  $advanceLines
-     * @param  Collection<int, array<string, mixed>>  $deductionLines
+     * @param  Collection<int, array<string, mixed>>  $lines
+     * @return Collection<int, array<string, mixed>>
      */
-    private function assembleGroupedLines(
-        Collection $advanceLines,
-        Collection $deductionLines,
-        bool $includeOpening,
-        bool $includeClosing,
-        float $openingBalance,
-        ?float $closingBalance = null,
-        ?Carbon $openingDate = null,
-        ?Carbon $closingDate = null,
-    ): Collection {
-        $lines = collect();
+    private function applyRunningBalance(Collection $lines, float $startBalance): Collection
+    {
+        $running = $startBalance;
 
-        if ($includeOpening) {
-            $openDate = $openingDate ?? Carbon::today();
-            $lines->push([
-                'date' => $openDate->copy(),
-                'sort' => $openDate->toDateString().'-O-00000000',
-                'type' => 'opening',
-                'reference' => '—',
-                'description' => 'Salio la kufungua',
-                'paid' => 0.0,
-                'deducted' => 0.0,
-                'performed_by' => '—',
-                'user_id' => null,
-                'is_opening' => true,
-            ]);
-        }
-
-        foreach ($advanceLines->sortBy('sort')->values() as $line) {
-            $lines->push($line);
-        }
-
-        foreach ($deductionLines->sortBy('sort')->values() as $line) {
-            $lines->push($line);
-        }
-
-        $running = $openingBalance;
-        $lines = $lines->map(function (array $line) use (&$running) {
-            if (! empty($line['is_opening'])) {
-                $line['balance'] = round($running, 2);
-
-                return $line;
-            }
-            $running += $line['paid'] - $line['deducted'];
+        return $lines->map(function (array $line) use (&$running) {
+            $running += (float) ($line['paid'] ?? 0) - (float) ($line['deducted'] ?? 0);
             $line['balance'] = round($running, 2);
 
             return $line;
-        });
+        })->values();
+    }
 
-        if ($includeClosing) {
-            $closeDate = $closingDate ?? Carbon::today();
-            $finalBalance = $closingBalance ?? round($running, 2);
-            $lines->push([
-                'date' => $closeDate->copy(),
-                'sort' => $closeDate->toDateString().'-C-99999999',
-                'type' => 'closing',
-                'reference' => '—',
-                'description' => 'Salio la kufunga',
-                'paid' => 0.0,
-                'deducted' => 0.0,
-                'performed_by' => '—',
-                'user_id' => null,
-                'is_closing' => true,
-                'balance' => round($finalBalance, 2),
-            ]);
+    /**
+     * @param  array{opening_row: ?array, malipo_lines: Collection, matumizi_lines: Collection, closing_row: ?array}  $sections
+     */
+    private function flattenSectionsToLines(array $sections): Collection
+    {
+        $lines = collect();
+        if (! empty($sections['opening_row'])) {
+            $row = $sections['opening_row'];
+            $row['paid'] = 0.0;
+            $row['deducted'] = 0.0;
+            $row['performed_by'] = '—';
+            $lines->push($row);
+        }
+        foreach ($sections['malipo_lines'] as $line) {
+            $lines->push($line);
+        }
+        foreach ($sections['matumizi_lines'] as $line) {
+            $lines->push($line);
+        }
+        if (! empty($sections['closing_row'])) {
+            $row = $sections['closing_row'];
+            $row['paid'] = 0.0;
+            $row['deducted'] = 0.0;
+            $row['performed_by'] = '—';
+            $lines->push($row);
         }
 
         return $lines->values();
@@ -229,7 +266,7 @@ class SupplierAdvanceStatementService
             'sort' => $advance->advance_date->format('Y-m-d').'-A-'.str_pad((string) $advance->id, 8, '0', STR_PAD_LEFT),
             'type' => 'advance',
             'reference' => $advance->reference ?: ('SADV-'.$advance->id),
-            'description' => $advance->description ?: 'Advance payment',
+            'description' => $advance->description ?: 'Malipo ya awali',
             'paid' => (float) $advance->amount,
             'deducted' => 0.0,
             'performed_by' => $advance->user?->name ?? '—',

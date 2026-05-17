@@ -1,24 +1,24 @@
 @extends('layouts.main')
 
-@section('title', 'Refund Supplier Advance')
+@section('title', 'Lipa — Malipo ya Awali')
 
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Purchase Management', 'url' => route('purchases.index'), 'icon' => 'bx bx-purchase-tag'],
-            ['label' => 'Supplier Advances', 'url' => route('purchases.supplier-advances.index'), 'icon' => 'bx bx-wallet-alt'],
-            ['label' => 'Refund advance', 'url' => '#', 'icon' => 'bx bx-money']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Usimamizi wa Manunuzi', 'url' => route('purchases.index'), 'icon' => 'bx bx-purchase-tag'],
+            ['label' => 'Hesabu za Wasambazaji', 'url' => route('purchases.supplier-advances.index'), 'icon' => 'bx bx-wallet-alt'],
+            ['label' => 'Lipa', 'url' => '#', 'icon' => 'bx bx-money']
         ]" />
 
-        <h6 class="mb-0 text-uppercase">Supplier advance refund (cash returned)</h6>
+        <h6 class="mb-0 text-uppercase">Lipa (fedha zilirudishwa)</h6>
         <hr />
 
         <div class="card radius-10">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0 text-white"><i class="bx bx-money me-2"></i>Record cash returned by supplier</h5>
-                <p class="mb-0 opacity-75 small">Posts a receipt: debit bank/cash, credit supplier advance account(s). Reduces the advance balance.</p>
+                <h5 class="mb-0 text-white"><i class="bx bx-money me-2"></i>Rekodi fedha zilirudishwa na msambazaji</h5>
+                <p class="mb-0 opacity-75 small">Inaandika risiti: debit benki/fedha, credit malipo ya awali ya msambazaji. Inapunguza salio la malipo ya awali.</p>
             </div>
             <div class="card-body">
                 @if($errors->any())
@@ -31,19 +31,19 @@
                 @endif
 
                 <div class="alert alert-info mb-4">
-                    <strong>Supplier:</strong> {{ $supplier->name }}<br>
-                    <strong>Available advance balance:</strong> {{ format_currency($balance) }}
+                    <strong>Msambazaji:</strong> {{ $supplier->name }}<br>
+                    <strong>Salio la malipo ya awali:</strong> {{ format_currency($balance) }}
                 </div>
 
                 <form id="supplier-advance-pay-form" action="{{ route('purchases.supplier-advances.pay.store', ['encodedSupplierId' => $encodedSupplierId]) }}" method="post">
                     @csrf
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Supplier</label>
+                            <label class="form-label fw-bold">Msambazaji</label>
                             <input type="text" class="form-control" value="{{ $supplier->name }}" readonly disabled>
                         </div>
                         <div class="col-md-6">
-                            <label for="date" class="form-label fw-bold">Date <span class="text-danger">*</span></label>
+                            <label for="date" class="form-label fw-bold">Tarehe <span class="text-danger">*</span></label>
                             <input type="date" id="date" name="date" class="form-control @error('date') is-invalid @enderror"
                                    value="{{ old('date', date('Y-m-d')) }}" required>
                             @error('date')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -52,7 +52,7 @@
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="bank_account_id" class="form-label fw-bold">Bank / cash account (debited) <span class="text-danger">*</span></label>
+                            <label for="bank_account_id" class="form-label fw-bold">Akaunti ya benki / fedha (debit) <span class="text-danger">*</span></label>
                             <select id="bank_account_id" name="bank_account_id" class="form-select select2-single @error('bank_account_id') is-invalid @enderror" required>
                                 <option value=""></option>
                                 @foreach($bankAccounts as $b)
@@ -62,37 +62,37 @@
                             @error('bank_account_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-6">
-                            <label for="amount" class="form-label fw-bold">Amount received <span class="text-danger">*</span></label>
+                            <label for="amount" class="form-label fw-bold">Kiasi kilichopokelewa <span class="text-danger">*</span></label>
                             <input type="text" inputmode="decimal" id="amount" name="amount" autocomplete="off"
                                    class="form-control @error('amount') is-invalid @enderror"
                                    value="{{ old('amount') }}" required
                                    data-max-balance="{{ number_format($balance, 2, '.', '') }}"
                                    placeholder="0.00">
-                            <small class="text-muted d-block">Thousands separated by commas as you type (e.g. 1,234.56). Max {{ format_currency($balance) }}.</small>
+                            <small class="text-muted d-block">Tumia koma kwa maelfu unapoandika (mf. 1,234.56). Kiwango cha juu {{ format_currency($balance) }}.</small>
                             @error('amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="reference" class="form-label fw-bold">Reference (optional)</label>
+                            <label for="reference" class="form-label fw-bold">Marejeleo (si lazima)</label>
                             <input type="text" id="reference" name="reference" class="form-control @error('reference') is-invalid @enderror"
-                                   value="{{ old('reference') }}" maxlength="64" placeholder="Leave blank to auto-generate">
+                                   value="{{ old('reference') }}" maxlength="64" placeholder="Itatengenezwa kiotomatiki ikiwa tupu">
                             @error('reference')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-6">
-                            <label for="description" class="form-label fw-bold">Description (optional)</label>
+                            <label for="description" class="form-label fw-bold">Maelezo <span class="text-danger">*</span></label>
                             <input type="text" id="description" name="description" class="form-control @error('description') is-invalid @enderror"
-                                   value="{{ old('description') }}" maxlength="2000" placeholder="e.g. Cash returned by supplier">
+                                   value="{{ old('description') }}" maxlength="2000" required placeholder="mf. Fedha zimerudishwa na msambazaji">
                             @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
-                            <i class="bx bx-check me-1"></i> Post refund
+                            <i class="bx bx-check me-1"></i> Hifadhi Lipa
                         </button>
-                        <a href="{{ route('purchases.supplier-advances.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="{{ route('purchases.supplier-advances.index') }}" class="btn btn-outline-secondary">Ghairi</a>
                     </div>
                 </form>
             </div>
@@ -109,6 +109,10 @@
     if (!$form.length || !$amt.length) return;
 
     var maxBalance = parseFloat($amt.data('max-balance')) || 0;
+
+    if (typeof $.fn.select2 !== 'undefined') {
+        $('#bank_account_id').select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'Chagua akaunti ya benki…' });
+    }
 
     function stripCommas(v) { return String(v || '').replace(/,/g, ''); }
     function formatAmountDisplay(v) {

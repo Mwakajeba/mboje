@@ -36,19 +36,19 @@ class SupplierAdvanceJournalService
         $amount = round((float) $advance->amount, 2);
 
         if ($amount <= 0) {
-            throw new \RuntimeException('Advance amount must be greater than zero.');
+            throw new \RuntimeException('Kiasi cha malipo ya awali lazima kiwe zaidi ya sifuri.');
         }
 
         $retainedEarningsId = $this->resolveRetainedEarningsAccountId($companyId);
         if (! $retainedEarningsId) {
             throw new \RuntimeException(
-                'Retained earnings account is not configured. Set retained_earnings_account_id in Settings.'
+                'Akaunti ya mapato yaliyohifadhiwa haijasanidiwa. Weka retained_earnings_account_id kwenye mipangilio.'
             );
         }
 
         $debitId = (int) $advance->debit_chart_account_id;
         if ($debitId === $retainedEarningsId) {
-            throw new \RuntimeException('Advance account cannot be the same as the retained earnings account.');
+            throw new \RuntimeException('Akaunti ya malipo ya awali haiwezi kuwa sawa na akaunti ya mapato yaliyohifadhiwa.');
         }
 
         $periodLockService = app(\App\Services\PeriodClosing\PeriodLockService::class);

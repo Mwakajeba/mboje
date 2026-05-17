@@ -32,35 +32,35 @@ class SupplierAdvanceExpenseService
     ): Journal {
         $total = round(collect($lineItems)->sum(fn ($row) => (float) ($row['amount'] ?? 0)), 2);
         if ($total <= 0) {
-            throw new \RuntimeException('Total expense amount must be greater than zero.');
+            throw new \RuntimeException('Jumla ya matumizi lazima iwe zaidi ya sifuri.');
         }
 
         $balance = $this->allocationService->balanceForSupplier($supplier->id, $companyId, $branchId);
         if ($total > $balance + 0.05) {
             throw new \RuntimeException(
-                'Total exceeds supplier advance balance ('.number_format($balance, 2).').'
+                'Jumla inazidi salio la malipo ya awali ('.number_format($balance, 2).').'
             );
         }
 
         $slices = $this->allocationService->allocateFifo($supplier->id, $companyId, $branchId, $total);
         $allocated = round((float) $slices->sum('amount'), 2);
         if ($slices->isEmpty() || abs($allocated - $total) > 0.05) {
-            throw new \RuntimeException('Could not allocate expense across supplier advances (insufficient balance).');
+            throw new \RuntimeException('Imeshindikana kugawa matumizi kwenye malipo ya awali (salio halitoshi).');
         }
 
         foreach ($lineItems as $row) {
             $chartId = (int) ($row['chart_account_id'] ?? 0);
             if ($chartId <= 0) {
-                throw new \RuntimeException('Each line must have an expense account.');
+                throw new \RuntimeException('Kila mstari lazima uwe na akaunti ya matumizi.');
             }
             if (BankReconciliationService::isChartAccountInCompletedReconciliation($chartId, $date)) {
-                throw new \RuntimeException('Cannot post: an expense account is in a completed reconciliation for this date.');
+                throw new \RuntimeException('Haiwezekani kuandika: akaunti ya matumizi iko kwenye upatanisho ulio kamilika kwa tarehe hii.');
             }
         }
 
         foreach ($slices->pluck('debit_chart_account_id')->unique() as $chartId) {
             if (BankReconciliationService::isChartAccountInCompletedReconciliation((int) $chartId, $date)) {
-                throw new \RuntimeException('Cannot post: a supplier advance account is in a completed reconciliation for this date.');
+                throw new \RuntimeException('Haiwezekani kuandika: akaunti ya malipo ya awali iko kwenye upatanisho ulio kamilika kwa tarehe hii.');
             }
         }
 

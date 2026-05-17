@@ -14,17 +14,12 @@
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <h6 class="mb-0 text-uppercase">Hesabu za Wasambazaji</h6>
             <div class="d-flex flex-wrap gap-2">
-                @if($showAll)
-                    <a href="{{ route('purchases.supplier-advances.index') }}" class="btn btn-outline-secondary btn-sm">Show suppliers with activity only (summary)</a>
-                @else
-                    <a href="{{ route('purchases.supplier-advances.index', ['all' => 1]) }}" class="btn btn-outline-secondary btn-sm">Show all suppliers (summary)</a>
-                @endif
                 @can('record purchase payment')
                 <a href="{{ route('purchases.supplier-advances.opening-advance.create') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bx bx-book-open me-1"></i> Opening balance advance payment
+                    <i class="bx bx-book-open me-1"></i> Ingiza Malipo Ya Nyuma
                 </a>
                 <a href="{{ route('purchases.supplier-advances.create') }}" class="btn btn-primary btn-sm">
-                    <i class="bx bx-plus me-1"></i> Ingiza Malipo
+                    <i class="bx bx-plus me-1"></i> Ingiza Malipo Mapya
                 </a>
                 @endcan
             </div>
@@ -49,7 +44,7 @@
                 <h6 class="text-primary mb-3"><i class="bx bx-pie-chart-alt me-1"></i> Hesabu za Malipo</h6>
                 <p class="text-muted small mb-3">
                     <strong>Malipo ya awali</strong> ni jumla ya malipo yaliyochapishwa; <strong>Matumizi</strong> ni kiasi kilichotumika kwenye ununuzi, matumizi, au marejesho; <strong>Salio</strong> ni malipo ya awali minus matumizi.
-                    <strong>Lipa</strong> = fedha zilirudishwa (benki). <strong>Gharama</strong> = toa matumizi kutoka salio la awali.
+                    <strong>Lipa</strong> = fedha zilirudishwa (benki). <strong>Weka Matumizi</strong> = toa matumizi kutoka salio la awali.
                 </p>
                 <div class="table-responsive">
                     <table id="supplier-advance-balances-table" class="table table-striped table-hover align-middle w-100">
@@ -100,7 +95,6 @@
 <script nonce="{{ $cspNonce ?? '' }}">
 $(document).ready(function () {
     var indexUrl = @json(route('purchases.supplier-advances.index'));
-    var showAllSuppliers = @json($showAll);
 
     var dtLang = {
         processing: '<div class="spinner-border text-primary spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div>',
@@ -120,7 +114,6 @@ $(document).ready(function () {
             url: indexUrl,
             data: function (d) {
                 d.table = 'balances';
-                d.show_all = showAllSuppliers ? 1 : 0;
             }
         },
         columns: [

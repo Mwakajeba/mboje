@@ -15,6 +15,7 @@ use App\Services\Purchase\SupplierAdvanceAllocationService;
 use App\Services\Purchase\SupplierAdvanceJournalService;
 use App\Services\Purchase\SupplierAdvanceExpenseService;
 use App\Services\Purchase\SupplierAdvanceRefundService;
+use App\Services\InventoryValueService;
 use App\Services\Purchase\SupplierAdvanceStatementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -52,9 +53,7 @@ class SupplierAdvanceController extends Controller
             return $this->advancesDataTable($request, $companyId, $branchId);
         }
 
-        $showAll = $request->boolean('all');
-
-        return view('purchases.supplier-advances.index', compact('showAll'));
+        return view('purchases.supplier-advances.index');
     }
 
     public function create()
@@ -126,9 +125,27 @@ class SupplierAdvanceController extends Controller
             'bank_account_id' => 'required|exists:bank_accounts,id',
             'debit_chart_account_id' => 'required|exists:chart_accounts,id',
             'amount' => 'required|numeric|min:0.01',
-            'description' => 'nullable|string|max:2000',
+            'description' => 'required|string|max:2000',
             'reference' => 'nullable|string|max:64',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'sms_message_type' => 'required|in:malipo,mauzo',
+        ], [
+            'supplier_id.required' => 'Chagua msambazaji.',
+            'supplier_id.exists' => 'Msambazaji aliyechaguliwa haipo.',
+            'advance_date.required' => 'Tarehe inahitajika.',
+            'advance_date.date' => 'Tarehe si sahihi.',
+            'bank_account_id.required' => 'Chagua akaunti ya benki / fedha.',
+            'bank_account_id.exists' => 'Akaunti ya benki iliyochaguliwa haipo.',
+            'debit_chart_account_id.required' => 'Chagua akaunti ya chati ya malipo ya awali.',
+            'debit_chart_account_id.exists' => 'Akaunti ya chati iliyochaguliwa haipo.',
+            'amount.required' => 'Kiasi kinahitajika.',
+            'amount.numeric' => 'Kiasi lazima kiwe nambari.',
+            'amount.min' => 'Kiasi lazima kiwe zaidi ya sifuri.',
+            'description.required' => 'Maelezo yanahitajika.',
+            'attachment.mimes' => 'Kiambatisho lazima kiwe PDF au picha.',
+            'attachment.max' => 'Kiambatisho hakiwezi kuzidi 5 MB.',
+            'sms_message_type.required' => 'Chagua aina ya ujumbe wa SMS (Malipo au Mauzo).',
+            'sms_message_type.in' => 'Aina ya ujumbe wa SMS si sahihi.',
         ]);
 
         $user = Auth::user();
@@ -137,7 +154,7 @@ class SupplierAdvanceController extends Controller
             ?? (session('branch_id') ?: null)
             ?? (function_exists('current_branch_id') ? current_branch_id() : null);
         if (! $resolvedBranchId) {
-            return back()->withInput()->with('error', 'Active branch is not set. Please select a branch and try again.');
+            return back()->withInput()->with('error', 'Tawi halijachaguliwa. Chagua tawi kisha jaribu tena.');
         }
 
         $supplier = Supplier::where('company_id', $companyId)->findOrFail($validated['supplier_id']);
@@ -181,7 +198,8 @@ class SupplierAdvanceController extends Controller
                 $companyId,
                 (int) $resolvedBranchId,
                 $validated['advance_date'],
-                (string) $user->name
+                (string) $user->name,
+                $validated['sms_message_type']
             );
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -192,7 +210,7 @@ class SupplierAdvanceController extends Controller
 
         return redirect()
             ->route('purchases.supplier-advances.index')
-            ->with('success', 'Supplier advance recorded and posted to the general ledger.');
+            ->with('success', 'Malipo mapya yamehifadhiwa na yameandikwa kwenye jarida kuu.');
     }
 
     public function storeOpening(Request $request)
@@ -206,9 +224,22 @@ class SupplierAdvanceController extends Controller
             'advance_date' => 'required|date',
             'debit_chart_account_id' => 'required|exists:chart_accounts,id',
             'amount' => 'required|numeric|min:0.01',
-            'description' => 'nullable|string|max:2000',
+            'description' => 'required|string|max:2000',
             'reference' => 'nullable|string|max:64',
             'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ], [
+            'supplier_id.required' => 'Chagua msambazaji.',
+            'supplier_id.exists' => 'Msambazaji aliyechaguliwa haipo.',
+            'advance_date.required' => 'Tarehe inahitajika.',
+            'advance_date.date' => 'Tarehe si sahihi.',
+            'debit_chart_account_id.required' => 'Chagua akaunti ya chati ya malipo ya awali.',
+            'debit_chart_account_id.exists' => 'Akaunti ya chati iliyochaguliwa haipo.',
+            'amount.required' => 'Kiasi kinahitajika.',
+            'amount.numeric' => 'Kiasi lazima kiwe nambari.',
+            'amount.min' => 'Kiasi lazima kiwe zaidi ya sifuri.',
+            'description.required' => 'Maelezo yanahitajika.',
+            'attachment.mimes' => 'Kiambatisho lazima kiwe PDF au picha.',
+            'attachment.max' => 'Kiambatisho hakiwezi kuzidi 5 MB.',
         ]);
 
         $user = Auth::user();
@@ -217,7 +248,7 @@ class SupplierAdvanceController extends Controller
             ?? (session('branch_id') ?: null)
             ?? (function_exists('current_branch_id') ? current_branch_id() : null);
         if (! $resolvedBranchId) {
-            return back()->withInput()->with('error', 'Active branch is not set. Please select a branch and try again.');
+            return back()->withInput()->with('error', 'Tawi halijachaguliwa. Chagua tawi kisha jaribu tena.');
         }
 
         $supplier = Supplier::where('company_id', $companyId)->findOrFail($validated['supplier_id']);
@@ -263,7 +294,7 @@ class SupplierAdvanceController extends Controller
 
         return redirect()
             ->route('purchases.supplier-advances.index')
-            ->with('success', 'Opening balance advance payment posted via journal and general ledger.');
+            ->with('success', 'Malipo ya nyuma yamehifadhiwa na yameandikwa kupitia jarida na jarida kuu.');
     }
 
     public function edit(string $encodedId)
@@ -494,17 +525,63 @@ class SupplierAdvanceController extends Controller
             );
         }
 
-        $lines = $statement['lines']->map(function (array $line) {
-            $line['debit'] = $line['paid'];
-            $line['credit'] = $line['deducted'];
+        $malipoLines = collect($statement['malipo_lines'] ?? [])->map(function (array $line) {
+            $line['paid'] = (float) ($line['paid'] ?? 0);
+            $line['deducted'] = (float) ($line['deducted'] ?? 0);
 
             return $line;
         });
+        $matumiziLines = collect($statement['matumizi_lines'] ?? [])->map(function (array $line) {
+            $line['paid'] = (float) ($line['paid'] ?? 0);
+            $line['deducted'] = (float) ($line['deducted'] ?? 0);
+
+            return $line;
+        });
+
         $totals = $statement['totals'];
         $period = $statement['period'] ?? null;
         $openingBalance = $statement['opening_balance'] ?? ($totals['opening_balance'] ?? null);
+        $openingRow = $statement['opening_row'] ?? null;
+        $closingRow = $statement['closing_row'] ?? null;
 
-        return view('purchases.supplier-advances.statement', compact('supplier', 'lines', 'totals', 'period', 'openingBalance'));
+        $malipoTotal = round((float) $malipoLines->sum('paid'), 2);
+        $matumiziTotal = round((float) $matumiziLines->sum('deducted'), 2);
+
+        $stockRows = [];
+        $stockTotals = [
+            'items_count' => 0,
+            'total_quantity' => 0.0,
+            'total_selling' => 0.0,
+        ];
+        $stockLocationName = null;
+
+        $locationId = session('location_id') ? (int) session('location_id') : null;
+        if ($locationId) {
+            $stockDetail = app(InventoryValueService::class)->buildLocationDetail($locationId, $companyId);
+            $stockRows = $stockDetail['rows'];
+            $stockTotals = [
+                'items_count' => $stockDetail['totals']['items_count'],
+                'total_quantity' => $stockDetail['totals']['total_quantity'],
+                'total_selling' => $stockDetail['totals']['total_selling'],
+            ];
+            $stockLocationName = $stockDetail['location']->name ?? null;
+        }
+
+        return view('purchases.supplier-advances.statement', compact(
+            'supplier',
+            'totals',
+            'period',
+            'openingBalance',
+            'openingRow',
+            'malipoLines',
+            'matumiziLines',
+            'closingRow',
+            'malipoTotal',
+            'matumiziTotal',
+            'stockRows',
+            'stockTotals',
+            'stockLocationName'
+        ));
     }
 
     public function pay(string $encodedSupplierId)
@@ -525,7 +602,7 @@ class SupplierAdvanceController extends Controller
         if ($balance <= 0) {
             return redirect()
                 ->route('purchases.supplier-advances.index')
-                ->with('error', 'This supplier has no advance balance to refund.');
+                ->with('error', 'Msambazaji huyu hana salio la malipo ya awali la kulipia.');
         }
 
         $bankAccounts = BankAccount::with('chartAccount')
@@ -559,8 +636,17 @@ class SupplierAdvanceController extends Controller
             'date' => 'required|date',
             'bank_account_id' => 'required|exists:bank_accounts,id',
             'amount' => 'required|numeric|min:0.01',
-            'description' => 'nullable|string|max:2000',
+            'description' => 'required|string|max:2000',
             'reference' => 'nullable|string|max:64',
+        ], [
+            'date.required' => 'Tarehe inahitajika.',
+            'date.date' => 'Tarehe si sahihi.',
+            'bank_account_id.required' => 'Chagua akaunti ya benki / fedha.',
+            'bank_account_id.exists' => 'Akaunti ya benki iliyochaguliwa haipo.',
+            'amount.required' => 'Kiasi kinahitajika.',
+            'amount.numeric' => 'Kiasi lazima kiwe nambari.',
+            'amount.min' => 'Kiasi lazima kiwe zaidi ya sifuri.',
+            'description.required' => 'Maelezo yanahitajika.',
         ]);
 
         $user = Auth::user();
@@ -569,7 +655,7 @@ class SupplierAdvanceController extends Controller
             ?? (session('branch_id') ?: null)
             ?? (function_exists('current_branch_id') ? current_branch_id() : null);
         if (! $resolvedBranchId) {
-            return back()->withInput()->with('error', 'Active branch is not set. Please select a branch and try again.');
+            return back()->withInput()->with('error', 'Tawi halijachaguliwa. Chagua tawi kisha jaribu tena.');
         }
 
         $supplier = $this->supplierForEncodedId($encodedSupplierId, $companyId, $resolvedBranchId);
@@ -582,7 +668,7 @@ class SupplierAdvanceController extends Controller
         $balance = $this->allocationService->balanceForSupplier($supplier->id, $companyId, (int) $resolvedBranchId);
         if ((float) $validated['amount'] > $balance + 0.05) {
             return back()->withInput()->withErrors([
-                'amount' => 'Amount cannot exceed supplier advance balance ('.number_format($balance, 2).').',
+                'amount' => 'Kiasi hakiwezi kuzidi salio la malipo ya awali ('.number_format($balance, 2).').',
             ]);
         }
 
@@ -606,7 +692,7 @@ class SupplierAdvanceController extends Controller
 
         return redirect()
             ->route('purchases.supplier-advances.index')
-            ->with('success', 'Supplier advance refund recorded. Bank debited and advance balance reduced.');
+            ->with('success', 'Malipo yamehifadhiwa. Benki imeongezwa na salio la malipo ya awali limepungua.');
     }
 
     public function expense(string $encodedSupplierId)
@@ -627,7 +713,7 @@ class SupplierAdvanceController extends Controller
         if ($balance <= 0) {
             return redirect()
                 ->route('purchases.supplier-advances.index')
-                ->with('error', 'This supplier has no advance balance to apply to expenses.');
+                ->with('error', 'Msambazaji huyu hana salio la malipo ya awali la kutumia kwa matumizi.');
         }
 
         $expenseAccounts = $this->expenseChartAccounts($companyId);
@@ -648,12 +734,23 @@ class SupplierAdvanceController extends Controller
 
         $validated = $request->validate([
             'date' => 'required|date',
-            'description' => 'nullable|string|max:2000',
+            'description' => 'required|string|max:2000',
             'reference' => 'nullable|string|max:64',
             'line_items' => 'required|array|min:1',
             'line_items.*.chart_account_id' => 'required|exists:chart_accounts,id',
             'line_items.*.amount' => 'required|numeric|min:0.01',
             'line_items.*.description' => 'nullable|string|max:500',
+        ], [
+            'date.required' => 'Tarehe inahitajika.',
+            'date.date' => 'Tarehe si sahihi.',
+            'description.required' => 'Maelezo yanahitajika.',
+            'line_items.required' => 'Ongeza angalau mstari mmoja wa matumizi.',
+            'line_items.min' => 'Ongeza angalau mstari mmoja wa matumizi.',
+            'line_items.*.chart_account_id.required' => 'Chagua akaunti ya matumizi kwa kila mstari.',
+            'line_items.*.chart_account_id.exists' => 'Akaunti ya matumizi iliyochaguliwa haipo.',
+            'line_items.*.amount.required' => 'Kiasi kinahitajika kwa kila mstari.',
+            'line_items.*.amount.numeric' => 'Kiasi lazima kiwe nambari.',
+            'line_items.*.amount.min' => 'Kiasi lazima kiwe zaidi ya sifuri.',
         ]);
 
         $user = Auth::user();
@@ -662,7 +759,7 @@ class SupplierAdvanceController extends Controller
             ?? (session('branch_id') ?: null)
             ?? (function_exists('current_branch_id') ? current_branch_id() : null);
         if (! $resolvedBranchId) {
-            return back()->withInput()->with('error', 'Active branch is not set. Please select a branch and try again.');
+            return back()->withInput()->with('error', 'Tawi halijachaguliwa. Chagua tawi kisha jaribu tena.');
         }
 
         $supplier = $this->supplierForEncodedId($encodedSupplierId, $companyId, $resolvedBranchId);
@@ -672,7 +769,7 @@ class SupplierAdvanceController extends Controller
             $chartId = (int) $row['chart_account_id'];
             if (! $this->expenseChartAccountIsAllowed($companyId, $chartId)) {
                 return back()->withInput()->withErrors([
-                    'line_items' => 'One or more selected accounts are not valid expense accounts for this company.',
+                    'line_items' => 'Akaunti moja au zaidi haziruhusiwi kama akaunti za matumizi kwa kampuni hii.',
                 ]);
             }
             $lineItems[] = [
@@ -686,7 +783,7 @@ class SupplierAdvanceController extends Controller
         $balance = $this->allocationService->balanceForSupplier($supplier->id, $companyId, (int) $resolvedBranchId);
         if ($total > $balance + 0.05) {
             return back()->withInput()->withErrors([
-                'line_items' => 'Total cannot exceed supplier advance balance ('.number_format($balance, 2).').',
+                'line_items' => 'Jumla haiwezi kuzidi salio la malipo ya awali ('.number_format($balance, 2).').',
             ]);
         }
 
@@ -709,7 +806,7 @@ class SupplierAdvanceController extends Controller
 
         return redirect()
             ->route('purchases.supplier-advances.index')
-            ->with('success', 'Supplier advance expense journal posted. Expense debited and advance balance reduced.');
+            ->with('success', 'Matumizi yamewekwa. Jarida limeandikwa na salio la malipo ya awali limepungua.');
     }
 
     private function decodeAdvanceId(string $encodedId): int
@@ -744,20 +841,20 @@ class SupplierAdvanceController extends Controller
     {
         if (! $this->debitChartAccountIsAllowedForSupplierAdvance($companyId, $debitChartAccountId)) {
             return back()->withInput()->withErrors([
-                'debit_chart_account_id' => 'Selected account must be a chart account with code starting '.self::SUPPLIER_ADVANCE_DEBIT_ACCOUNT_CODE_PREFIX.'.',
+                'debit_chart_account_id' => 'Akaunti lazima iwe na msimbo unaanza na '.self::SUPPLIER_ADVANCE_DEBIT_ACCOUNT_CODE_PREFIX.'.',
             ]);
         }
 
         $retainedId = $this->advanceJournalService->resolveRetainedEarningsAccountId($companyId);
         if (! $retainedId) {
             return back()->withInput()->withErrors([
-                'error' => 'Retained earnings account is not configured. Set retained_earnings_account_id in Settings.',
+                'error' => 'Akaunti ya mapato yaliyohifadhiwa haijasanidiwa. Weka retained_earnings_account_id kwenye mipangilio.',
             ]);
         }
 
         if ($debitChartAccountId === $retainedId) {
             return back()->withInput()->withErrors([
-                'debit_chart_account_id' => 'Advance account cannot be the same as the retained earnings account.',
+                'debit_chart_account_id' => 'Akaunti ya malipo ya awali haiwezi kuwa sawa na akaunti ya mapato yaliyohifadhiwa.',
             ]);
         }
 
@@ -855,7 +952,7 @@ class SupplierAdvanceController extends Controller
             ->exists();
 
         if (! $bankOk) {
-            return back()->withInput()->withErrors(['bank_account_id' => 'Invalid bank account for this branch or company.']);
+            return back()->withInput()->withErrors(['bank_account_id' => 'Akaunti ya benki si sahihi kwa tawi au kampuni hii.']);
         }
 
         return null;
@@ -871,7 +968,7 @@ class SupplierAdvanceController extends Controller
             })
             ->exists();
         if (! $bankOk) {
-            return back()->withInput()->withErrors(['bank_account_id' => 'Invalid bank account for this branch or company.']);
+            return back()->withInput()->withErrors(['bank_account_id' => 'Akaunti ya benki si sahihi kwa tawi au kampuni hii.']);
         }
 
         $debitId = (int) $validated['debit_chart_account_id'];
@@ -883,12 +980,12 @@ class SupplierAdvanceController extends Controller
             $chartOk = $this->debitChartAccountIsAllowedForSupplierAdvance($companyId, $debitId);
         }
         if (! $chartOk) {
-            return back()->withInput()->withErrors(['debit_chart_account_id' => 'Selected account must be a chart account with code starting '.self::SUPPLIER_ADVANCE_DEBIT_ACCOUNT_CODE_PREFIX.'.']);
+            return back()->withInput()->withErrors(['debit_chart_account_id' => 'Akaunti lazima iwe na msimbo unaanza na '.self::SUPPLIER_ADVANCE_DEBIT_ACCOUNT_CODE_PREFIX.'.']);
         }
 
         $bankAccount = BankAccount::with('chartAccount')->find($validated['bank_account_id']);
         if ($bankAccount && (int) $bankAccount->chart_account_id === (int) $validated['debit_chart_account_id']) {
-            return back()->withInput()->withErrors(['debit_chart_account_id' => 'Advance account cannot be the same as the selected bank ledger account.']);
+            return back()->withInput()->withErrors(['debit_chart_account_id' => 'Akaunti ya malipo ya awali haiwezi kuwa sawa na akaunti ya benki iliyochaguliwa.']);
         }
 
         return null;
@@ -1114,8 +1211,8 @@ class SupplierAdvanceController extends Controller
                 $encSup = Hashids::encode($s->id);
                 $html = '<div class="btn-group btn-group-sm" role="group">';
                 if ($canRecord && $bal > 0.005) {
-                    $html .= '<a href="'.route('purchases.supplier-advances.pay', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-primary" title="Record cash returned by supplier"><i class="bx bx-money"></i> Pay</a>';
-                    $html .= '<a href="'.route('purchases.supplier-advances.expense', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-warning" title="Apply advance to expense accounts"><i class="bx bx-receipt"></i> Expense</a>';
+                    $html .= '<a href="'.route('purchases.supplier-advances.pay', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-primary" title="Rekodi fedha zilirudishwa na msambazaji"><i class="bx bx-money"></i> Lipa</a>';
+                    $html .= '<a href="'.route('purchases.supplier-advances.expense', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-warning" title="Tumia salio la malipo ya awali kwa matumizi"><i class="bx bx-receipt"></i> Weka Matumizi</a>';
                 }
                 if ($canView) {
                     $html .= '<a href="'.route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-secondary" title="Statement" target="_blank" rel="noopener"><i class="bx bx-file"></i> Statement</a>';
@@ -1146,7 +1243,8 @@ class SupplierAdvanceController extends Controller
         int $companyId,
         int $branchId,
         string $paymentDate,
-        string $recordedByName
+        string $recordedByName,
+        string $smsMessageType = 'malipo'
     ): void {
         try {
             $company = Company::query()->find($companyId);
@@ -1173,15 +1271,28 @@ class SupplierAdvanceController extends Controller
             );
 
             $dateFormatted = \Carbon\Carbon::parse($paymentDate)->format('d/m/Y');
+            $amountFormatted = number_format($amount, 2);
+            $balanceFormatted = number_format($balance, 2);
 
-            $message = sprintf(
-                'Nimempa %s kiasi cha Tsh %s tarehe %s, Baki yake ni %s, Imeingizwa na %s',
-                $supplier->name,
-                number_format($amount, 2),
-                $dateFormatted,
-                number_format($balance, 2),
-                $recordedByName
-            );
+            if ($smsMessageType === 'mauzo') {
+                $message = sprintf(
+                    'Mauzo ya %s kiasi cha Tsh %s ya tarehe %s, salio jipya ni %s kabla ya kutoa matumizi. Imeingizwa na %s',
+                    $supplier->name,
+                    $amountFormatted,
+                    $dateFormatted,
+                    $balanceFormatted,
+                    $recordedByName
+                );
+            } else {
+                $message = sprintf(
+                    'Nimempa %s kiasi cha Tsh %s tarehe %s, Baki yake ni %s, Imeingizwa na %s',
+                    $supplier->name,
+                    $amountFormatted,
+                    $dateFormatted,
+                    $balanceFormatted,
+                    $recordedByName
+                );
+            }
 
             $result = SmsHelper::send($phone, $message);
             if (! ($result['success'] ?? false)) {

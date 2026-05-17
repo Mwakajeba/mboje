@@ -1,25 +1,25 @@
 @extends('layouts.main')
 
-@section('title', 'Opening Balance Advance Payment')
+@section('title', 'Ingiza Malipo Ya Nyuma — Malipo ya Awali')
 
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Purchase Management', 'url' => route('purchases.index'), 'icon' => 'bx bx-purchase-tag'],
-            ['label' => 'Supplier Advances', 'url' => route('purchases.supplier-advances.index'), 'icon' => 'bx bx-wallet-alt'],
-            ['label' => 'Opening balance advance', 'url' => '#', 'icon' => 'bx bx-book-open']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Usimamizi wa Manunuzi', 'url' => route('purchases.index'), 'icon' => 'bx bx-purchase-tag'],
+            ['label' => 'Hesabu za Wasambazaji', 'url' => route('purchases.supplier-advances.index'), 'icon' => 'bx bx-wallet-alt'],
+            ['label' => 'Ingiza Malipo Ya Nyuma', 'url' => '#', 'icon' => 'bx bx-book-open']
         ]" />
 
-        <h6 class="mb-0 text-uppercase">Opening balance advance payment</h6>
-        <p class="text-muted small mb-0">For supplier advance balances already existing before go-live (not paid from bank now).</p>
+        <h6 class="mb-0 text-uppercase">Ingiza Malipo Ya Nyuma</h6>
+        <p class="text-muted small mb-0">Kwa salio la malipo ya awali lililokuwepo kabla ya kuanza kutumia mfumo (halipwi kutoka benki sasa).</p>
         <hr />
 
         <div class="card radius-10">
             <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0 text-white"><i class="bx bx-book-open me-2"></i>Opening balance advance voucher</h5>
-                <p class="mb-0 opacity-75 small">Debit advance (asset) account, credit retained earnings. Posted via journal, journal items, and GL.</p>
+                <h5 class="mb-0 text-white"><i class="bx bx-book-open me-2"></i>Vocha ya malipo ya awali ya nyuma</h5>
+                <p class="mb-0 opacity-75 small">Debit akaunti ya malipo ya awali (mali), credit mapato yaliyohifadhiwa. Inaandikwa kupitia jarida, vipengele vya jarida, na GL.</p>
             </div>
             <div class="card-body">
                 @if($errors->any())
@@ -33,7 +33,7 @@
 
                 @if(!($retainedEarningsAccount ?? null))
                     <div class="alert alert-warning">
-                        Retained earnings account is not configured. Set <strong>retained_earnings_account_id</strong> in settings before posting.
+                        Akaunti ya mapato yaliyohifadhiwa haijasanidiwa. Weka <strong>retained_earnings_account_id</strong> kwenye mipangilio kabla ya kuandika.
                     </div>
                 @endif
 
@@ -41,7 +41,7 @@
                     @csrf
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="supplier_id" class="form-label fw-bold">Supplier <span class="text-danger">*</span></label>
+                            <label for="supplier_id" class="form-label fw-bold">Msambazaji <span class="text-danger">*</span></label>
                             <select id="supplier_id" name="supplier_id" class="form-select select2-single @error('supplier_id') is-invalid @enderror" required>
                                 <option value=""></option>
                                 @foreach($suppliers as $s)
@@ -52,7 +52,7 @@
                             @error('supplier_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-6">
-                            <label for="advance_date" class="form-label fw-bold">Date <span class="text-danger">*</span></label>
+                            <label for="advance_date" class="form-label fw-bold">Tarehe <span class="text-danger">*</span></label>
                             <input type="date" id="advance_date" name="advance_date" class="form-control @error('advance_date') is-invalid @enderror"
                                    value="{{ old('advance_date', date('Y-m-d')) }}" required>
                             @error('advance_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -61,41 +61,41 @@
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">Retained earnings (credited)</label>
+                            <label class="form-label fw-bold">Mapato yaliyohifadhiwa (credit)</label>
                             @if($retainedEarningsAccount ?? null)
                                 <input type="text" class="form-control bg-light" readonly
                                        value="{{ $retainedEarningsAccount->account_code }} — {{ $retainedEarningsAccount->account_name }}">
-                                <small class="text-muted">From <strong>retained_earnings_account_id</strong> in settings.</small>
+                                <small class="text-muted">Kutoka <strong>retained_earnings_account_id</strong> kwenye mipangilio.</small>
                             @else
-                                <input type="text" class="form-control bg-light text-danger" readonly value="Not configured">
+                                <input type="text" class="form-control bg-light text-danger" readonly value="Haijasanidiwa">
                             @endif
                         </div>
                         <div class="col-md-6">
-                            <label for="reference" class="form-label fw-bold">Reference (optional)</label>
+                            <label for="reference" class="form-label fw-bold">Marejeleo (si lazima)</label>
                             <input type="text" id="reference" name="reference" class="form-control @error('reference') is-invalid @enderror"
-                                   value="{{ old('reference') }}" maxlength="64" placeholder="Leave blank to auto-generate">
+                                   value="{{ old('reference') }}" maxlength="64" placeholder="Itatengenezwa kiotomatiki ikiwa tupu">
                             @error('reference')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label for="description" class="form-label fw-bold">Description (optional)</label>
-                        <textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="2" placeholder="Opening balance advance notes">{{ old('description') }}</textarea>
+                        <label for="description" class="form-label fw-bold">Maelezo <span class="text-danger">*</span></label>
+                        <textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="2" required placeholder="Maelezo ya malipo ya awali ya nyuma">{{ old('description') }}</textarea>
                         @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="mb-4">
-                        <label for="attachment" class="form-label fw-bold">Attachment (optional)</label>
+                        <label for="attachment" class="form-label fw-bold">Kiambatisho (si lazima)</label>
                         <input type="file" id="attachment" name="attachment" class="form-control @error('attachment') is-invalid @enderror" accept=".pdf,.jpg,.jpeg,.png">
-                        <small class="text-muted">PDF or image, max 5 MB.</small>
+                        <small class="text-muted">PDF au picha, upeo wa 5 MB.</small>
                         @error('attachment')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <h6 class="text-uppercase text-muted mb-2">Advance line (GL debit)</h6>
+                    <h6 class="text-uppercase text-muted mb-2">Mstari wa malipo ya awali (debit GL)</h6>
                     <div class="border rounded p-3 bg-light">
                         <div class="row g-3 align-items-end">
                             <div class="col-12 col-md-6">
-                                <label for="debit_chart_account_id" class="form-label fw-bold">Chart of account <span class="text-danger">*</span></label>
+                                <label for="debit_chart_account_id" class="form-label fw-bold">Akaunti ya chati <span class="text-danger">*</span></label>
                                 <select id="debit_chart_account_id" name="debit_chart_account_id" class="form-select select2-single @error('debit_chart_account_id') is-invalid @enderror" required>
                                     <option value=""></option>
                                     @forelse($chartAccounts as $ca)
@@ -103,18 +103,18 @@
                                             {{ $ca->account_code }} — {{ $ca->account_name }}
                                         </option>
                                     @empty
-                                        <option value="" disabled>No accounts with code starting 1100</option>
+                                        <option value="" disabled>Hakuna akaunti zenye msimbo unaanza na 1100</option>
                                     @endforelse
                                 </select>
-                                <small class="text-muted">Accounts with code beginning <strong>1100</strong>.</small>
+                                <small class="text-muted">Akaunti zenye msimbo unaanza na <strong>1100</strong>.</small>
                                 @error('debit_chart_account_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-12 col-md-6">
-                                <label for="amount" class="form-label fw-bold">Amount <span class="text-danger">*</span></label>
+                                <label for="amount" class="form-label fw-bold">Kiasi <span class="text-danger">*</span></label>
                                 <input type="text" inputmode="decimal" id="amount" name="amount" autocomplete="off"
                                        class="form-control @error('amount') is-invalid @enderror"
                                        value="{{ old('amount') }}" required placeholder="0.00">
-                                <small class="text-muted">Thousands separated by commas as you type (e.g. 1,234.56).</small>
+                                <small class="text-muted">Tumia koma kwa maelfu unapoandika (mf. 1,234.56).</small>
                                 @error('amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div>
@@ -122,9 +122,9 @@
 
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-primary" @disabled(!($retainedEarningsAccount ?? null))>
-                            <i class="bx bx-save me-1"></i> Post journal &amp; GL
+                            <i class="bx bx-save me-1"></i> Hifadhi Malipo Ya Nyuma
                         </button>
-                        <a href="{{ route('purchases.supplier-advances.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="{{ route('purchases.supplier-advances.index') }}" class="btn btn-outline-secondary">Ghairi</a>
                     </div>
                 </form>
             </div>
@@ -152,6 +152,12 @@
     var $form = $('#supplier-advance-opening-form');
     var $amt = $('#amount');
     if (!$form.length || !$amt.length) return;
+
+    if (typeof $.fn.select2 !== 'undefined') {
+        $('#supplier_id').select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'Chagua msambazaji…' });
+        $('#debit_chart_account_id').select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'Chagua akaunti ya chati…' });
+    }
+
     function stripCommas(v) { return String(v || '').replace(/,/g, ''); }
     function formatAmountDisplay(v) {
         var s = stripCommas(v).replace(/[^\d.]/g, '');
