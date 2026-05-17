@@ -10,7 +10,9 @@ use App\Models\Region;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Services\Accounting\SupplierDeletionService;
 use App\Services\Purchase\SupplierAdvanceStatementService;
+use Illuminate\Support\Facades\DB;
 use Vinkla\Hashids\Facades\Hashids;
 
 class SupplierController extends Controller
@@ -279,10 +281,22 @@ class SupplierController extends Controller
         }
 
         $supplier = Supplier::findOrFail($decoded[0]);
-        $supplier->delete();
+
+        try {
+            DB::transaction(function () use ($supplier) {
+                app(SupplierDeletionService::class)->deleteAllRelatedData($supplier);
+                $supplier->delete();
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()
+                ->route('accounting.suppliers.index')
+                ->with('error', 'Imeshindikana kufuta msambazaji: '.$e->getMessage());
+        }
 
         return redirect()->route('accounting.suppliers.index')
-            ->with('success', 'Supplier deleted successfully!');
+            ->with('success', 'Msambazaji na rekodi zake zote zimefutwa.');
     }
 
     public function changeStatus(Request $request, $encodedId)
