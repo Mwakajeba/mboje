@@ -91,6 +91,21 @@ class SupplierAdvance extends Model
         return $this->hasMany(SupplierAdvanceDeduction::class, 'supplier_advance_id');
     }
 
+    public function advanceDeductionsForCashPurchases(): HasMany
+    {
+        return $this->advanceDeductions()->where('source_type', 'cash_purchase');
+    }
+
+    public function totalDeductedAmount(): float
+    {
+        return (float) $this->advanceDeductions()->sum('amount');
+    }
+
+    public function hasCashPurchaseDeductions(): bool
+    {
+        return $this->advanceDeductionsForCashPurchases()->exists();
+    }
+
     /**
      * Remove posted GL lines for this advance (e.g. before update or delete).
      */

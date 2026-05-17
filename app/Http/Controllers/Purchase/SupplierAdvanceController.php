@@ -445,7 +445,7 @@ class SupplierAdvanceController extends Controller
         if ($advance->advanceDeductions()->exists()) {
             return redirect()
                 ->route('purchases.supplier-advances.index')
-                ->with('error', 'Cannot delete: this advance has been applied to purchases.');
+                ->with('error', 'Haiwezi kufuta: salio la malipo hili limetumika tayari (manunuzi, matumizi, au malipo).');
         }
 
         try {
@@ -865,8 +865,8 @@ class SupplierAdvanceController extends Controller
     {
         abort_unless(Auth::user()->can('record purchase payment'), 403);
 
-        if ($advance->advanceDeductions()->exists()) {
-            return back()->withInput()->with('error', 'Cannot edit: this advance has been applied to purchases.');
+        if ($advance->hasCashPurchaseDeductions()) {
+            return back()->withInput()->with('error', 'Haiwezi kuhariri: malipo haya yametumika kwenye ununuzi wa cash.');
         }
 
         $this->mergeNormalizedAmount($request);
@@ -884,6 +884,13 @@ class SupplierAdvanceController extends Controller
         $user = Auth::user();
         $companyId = (int) $user->company_id;
         $supplier = Supplier::where('company_id', $companyId)->findOrFail($validated['supplier_id']);
+
+        $totalDeducted = $advance->totalDeductedAmount();
+        if ($totalDeducted > 0 && (float) $validated['amount'] < $totalDeducted - 0.05) {
+            return back()->withInput()->withErrors([
+                'amount' => 'Kiasi hakiwezi kuwa chini ya '.number_format($totalDeducted, 2).' kilichotumika tayari (matumizi au malipo).',
+            ]);
+        }
 
         $err = $this->validateOpeningAdvanceChart($companyId, (int) $validated['debit_chart_account_id']);
         if ($err) {
