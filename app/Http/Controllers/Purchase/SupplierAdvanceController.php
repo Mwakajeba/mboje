@@ -885,13 +885,6 @@ class SupplierAdvanceController extends Controller
         $companyId = (int) $user->company_id;
         $supplier = Supplier::where('company_id', $companyId)->findOrFail($validated['supplier_id']);
 
-        $totalDeducted = $advance->totalDeductedAmount();
-        if ($totalDeducted > 0 && (float) $validated['amount'] < $totalDeducted - 0.05) {
-            return back()->withInput()->withErrors([
-                'amount' => 'Kiasi hakiwezi kuwa chini ya '.number_format($totalDeducted, 2).' kilichotumika tayari (matumizi au malipo).',
-            ]);
-        }
-
         $err = $this->validateOpeningAdvanceChart($companyId, (int) $validated['debit_chart_account_id']);
         if ($err) {
             return $err;
