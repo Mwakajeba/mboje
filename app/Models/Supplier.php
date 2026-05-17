@@ -74,6 +74,11 @@ class Supplier extends Model
         return $this->hasMany(\App\Models\Purchase\SupplierAdvanceDeduction::class);
     }
 
+    public function supplierAdvanceStockRecords()
+    {
+        return $this->hasMany(\App\Models\Purchase\SupplierAdvanceStockRecord::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', self::STATUS_ACTIVE);

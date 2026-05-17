@@ -17,6 +17,7 @@ use App\Models\Purchase\PurchaseOrder;
 use App\Models\Purchase\PurchaseQuotation;
 use App\Models\Purchase\SupplierAdvance;
 use App\Models\Purchase\SupplierAdvanceDeduction;
+use App\Models\Purchase\SupplierAdvanceStockRecord;
 use App\Models\Receipt;
 use App\Models\ReceiptItem;
 use App\Models\Supplier;
@@ -43,6 +44,7 @@ class SupplierDeletionService
         }
 
         SupplierAdvanceDeduction::where('supplier_id', $supplierId)->delete();
+        SupplierAdvanceStockRecord::where('supplier_id', $supplierId)->delete();
 
         $this->deleteSupplierReceipts($supplierId);
 

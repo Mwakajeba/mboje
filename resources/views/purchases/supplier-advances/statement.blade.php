@@ -68,19 +68,6 @@
                             <div class="fs-5 fw-bold text-primary">{{ format_currency($totals['balance']) }}</div>
                         </div>
                     @endif
-                    <div class="col">
-                        <div class="text-muted small">
-                            Jumla ya thamani ya stoo
-                            @if($stockLocationName)
-                                <br><span style="font-size: 0.7rem;">({{ $stockLocationName }})</span>
-                            @endif
-                        </div>
-                        @if($stockLocationName)
-                            <div class="fs-5 fw-bold text-success">{{ format_currency($stockTotals['total_selling']) }}</div>
-                        @else
-                            <div class="fs-6 text-muted">—</div>
-                        @endif
-                    </div>
                 </div>
 
                 @if(!empty($openingRow))
@@ -195,55 +182,40 @@
         <div class="card radius-10 statement-card">
             <div class="card-body">
                 <h6 class="text-primary mb-2">
-                    <i class="bx bx-package me-1"></i> Stoo ya sasa
-                    @if($stockLocationName)
-                        <small class="text-muted">({{ $stockLocationName }})</small>
-                    @endif
+                    <i class="bx bx-package me-1"></i> Stoo
                 </h6>
-                <p class="text-muted small mb-3">Bidhaa zilizo kwenye stoo na thamani kwa bei ya mauzo.</p>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-sm">
+                <p class="text-muted small mb-3">Stoo iliyoingizwa kwa msambazaji huyu (Weka stoo).</p>
+                @forelse($stockRecords as $record)
+                <div class="border rounded p-3 mb-3">
+                    <h6 class="mb-1 fw-bold">{{ $record->bidhaa }}</h6>
+                    <p class="text-muted small mb-2">
+                        Tarehe: <strong>{{ $record->entry_date->format('Y-m-d') }}</strong>
+                        @if($record->user)
+                            · Aliyeingiza: {{ $record->user->name }}
+                        @endif
+                    </p>
+                    <table class="table table-bordered table-sm mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Bidhaa</th>
+                                <th>Aina ya Muamala</th>
                                 <th class="text-end">Idadi</th>
-                                <th class="text-end">Bei ya mauzo</th>
                                 <th class="text-end">Thamani</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($stockRows as $row)
+                            @foreach($record->lines as $line)
                             <tr>
-                                <td>{{ $row['item']->name }}</td>
-                                <td class="text-end">
-                                    {{ number_format($row['quantity'], 2) }}
-                                    <small class="text-muted">{{ $row['unit_of_measure'] }}</small>
-                                </td>
-                                <td class="text-end">{{ format_currency($row['unit_selling_price']) }}</td>
-                                <td class="text-end fw-semibold">{{ format_currency($row['total_selling_price']) }}</td>
+                                <td>{{ $line->transactionTypeLabel() }}</td>
+                                <td class="text-end">{{ $line->idadi }}</td>
+                                <td class="text-end fw-semibold">{{ format_currency((float) $line->thamani) }}</td>
                             </tr>
-                            @empty
-                            <tr>
-                                <td colspan="4" class="text-center text-muted py-4">
-                                    @if($stockLocationName)
-                                        Hakuna stoo kwenye eneo hili.
-                                    @else
-                                        Chagua eneo la kuingia ili kuona stoo ya sasa.
-                                    @endif
-                                </td>
-                            </tr>
-                            @endforelse
-                            @if(count($stockRows) > 0)
-                            <tr class="table-light fw-semibold">
-                                <td class="text-end">Jumla ({{ $stockTotals['items_count'] }} bidhaa)</td>
-                                <td class="text-end">{{ number_format($stockTotals['total_quantity'], 2) }}</td>
-                                <td></td>
-                                <td class="text-end">{{ format_currency($stockTotals['total_selling']) }}</td>
-                            </tr>
-                            @endif
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
+                @empty
+                <p class="text-center text-muted py-4 mb-0">Hakuna stoo iliyoingizwa kwa msambazaji huyu.</p>
+                @endforelse
             </div>
         </div>
     </div>

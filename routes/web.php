@@ -1443,6 +1443,7 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
         Route::get('/create', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'create'])->name('create');
         Route::post('/', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'store'])->name('store');
         Route::get('/statement/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'statement'])->name('statement');
+        Route::post('/stock/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'storeStock'])->name('stock.store');
         Route::get('/pay/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'pay'])->name('pay');
         Route::post('/pay/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'payStore'])->name('pay.store');
         Route::get('/expense/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'expense'])->name('expense');

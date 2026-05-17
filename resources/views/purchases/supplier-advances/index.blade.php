@@ -89,12 +89,83 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="wekaStooModal" tabindex="-1" aria-labelledby="wekaStooModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="wekaStooModalLabel">
+                    <i class="bx bx-package me-1"></i> Weka stoo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Funga"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    <strong>Msambazaji:</strong> <span id="weka-stoo-supplier-name">—</span>
+                </p>
+                <form id="weka-stoo-form" novalidate>
+                    <input type="hidden" id="weka_stoo_encoded_supplier_id" value="">
+                    <div id="weka-stoo-form-errors" class="alert alert-danger d-none small py-2"></div>
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="weka_stoo_bidhaa" class="form-label fw-bold">Bidhaa <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="weka_stoo_bidhaa" name="bidhaa" placeholder="Andika jina la bidhaa" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="weka_stoo_entry_date" class="form-label fw-bold">Tarehe <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="weka_stoo_entry_date" name="entry_date" required>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Aina ya Muamala</th>
+                                    <th class="text-end" style="width: 140px">Idadi</th>
+                                    <th class="text-end" style="width: 160px">Thamani</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-semibold">Zilizouzwa</td>
+                                    <td><input type="text" class="form-control form-control-sm" name="lines[zilizouzwa][idadi]" placeholder="Idadi" required></td>
+                                    <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end" name="lines[zilizouzwa][thamani]" value="0" required></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-semibold">Zizonunuliwa</td>
+                                    <td><input type="text" class="form-control form-control-sm" name="lines[zizonunuliwa][idadi]" placeholder="Idadi" required></td>
+                                    <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end" name="lines[zizonunuliwa][thamani]" value="0" required></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-semibold">Baki</td>
+                                    <td><input type="text" class="form-control form-control-sm" name="lines[baki][idadi]" placeholder="Idadi" required></td>
+                                    <td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end" name="lines[baki][thamani]" value="0" required></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Funga</button>
+                @can('record purchase payment')
+                <button type="submit" form="weka-stoo-form" class="btn btn-success btn-sm" id="weka-stoo-submit">
+                    <i class="bx bx-save me-1"></i> Hifadhi
+                </button>
+                @endcan
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
 <script nonce="{{ $cspNonce ?? '' }}">
 $(document).ready(function () {
     var indexUrl = @json(route('purchases.supplier-advances.index'));
+    var wekaStooModalEl = document.getElementById('wekaStooModal');
+    var wekaStooModal = wekaStooModalEl ? new bootstrap.Modal(wekaStooModalEl) : null;
 
     var dtLang = {
         processing: '<div class="spinner-border text-primary spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div>',
@@ -161,6 +232,65 @@ $(document).ready(function () {
         initComplete: function () {
             $(this.api().table().container()).find('.dataTables_filter input').attr('placeholder', 'Tafuta msambazaji…');
         }
+    });
+
+    var stockStoreUrlTemplate = @json(route('purchases.supplier-advances.stock.store', ['encodedSupplierId' => '__ID__']));
+
+    $(document).on('click', '.btn-weka-stoo', function () {
+        var $btn = $(this);
+        $('#weka_stoo_encoded_supplier_id').val($btn.data('encoded-supplier-id') || '');
+        $('#weka-stoo-supplier-name').text($btn.data('supplier-name') || '—');
+        $('#weka-stoo-form-errors').addClass('d-none').empty();
+        $('#weka-stoo-form')[0].reset();
+        $('#weka_stoo_encoded_supplier_id').val($btn.data('encoded-supplier-id') || '');
+        var today = new Date().toISOString().slice(0, 10);
+        $('#weka_stoo_entry_date').val(today);
+        if (wekaStooModal) {
+            wekaStooModal.show();
+        }
+    });
+
+    $('#weka-stoo-form').on('submit', function (e) {
+        e.preventDefault();
+        var encodedId = $('#weka_stoo_encoded_supplier_id').val();
+        if (!encodedId) {
+            return;
+        }
+        var $errors = $('#weka-stoo-form-errors');
+        var $submit = $('#weka-stoo-submit');
+        $errors.addClass('d-none').empty();
+        $submit.prop('disabled', true);
+        $.ajax({
+            url: stockStoreUrlTemplate.replace('__ID__', encodedId),
+            method: 'POST',
+            data: $(this).serialize(),
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                'Accept': 'application/json'
+            }
+        }).done(function (res) {
+            if (wekaStooModal) {
+                wekaStooModal.hide();
+            }
+            var msg = (res && res.message) ? res.message : 'Stoo imehifadhiwa.';
+            var $alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">'
+                + $('<div>').text(msg).html()
+                + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
+            $('.page-content').prepend($alert);
+        }).fail(function (xhr) {
+            if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                var list = [];
+                $.each(xhr.responseJSON.errors, function (_, msgs) {
+                    list = list.concat(msgs);
+                });
+                $errors.removeClass('d-none').html('<ul class="mb-0"><li>' + list.join('</li><li>') + '</li></ul>');
+            } else {
+                var errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Imeshindikana kuhifadhi stoo.';
+                $errors.removeClass('d-none').text(errMsg);
+            }
+        }).always(function () {
+            $submit.prop('disabled', false);
+        });
     });
 });
 </script>

@@ -9,6 +9,8 @@ use App\Models\Company;
 use App\Models\ChartAccount;
 use App\Models\Purchase\SupplierAdvance;
 use App\Models\Purchase\SupplierAdvanceDeduction;
+use App\Models\Purchase\SupplierAdvanceStockLine;
+use App\Models\Purchase\SupplierAdvanceStockRecord;
 use App\Models\Supplier;
 use App\Services\BankReconciliationService;
 use App\Services\Purchase\SupplierAdvanceAllocationService;
@@ -547,25 +549,21 @@ class SupplierAdvanceController extends Controller
         $malipoTotal = round((float) $malipoLines->sum('paid'), 2);
         $matumiziTotal = round((float) $matumiziLines->sum('deducted'), 2);
 
-        $stockRows = [];
-        $stockTotals = [
-            'items_count' => 0,
-            'total_quantity' => 0.0,
-            'total_selling' => 0.0,
-        ];
-        $stockLocationName = null;
-
-        $locationId = session('location_id') ? (int) session('location_id') : null;
-        if ($locationId) {
-            $stockDetail = app(InventoryValueService::class)->buildLocationDetail($locationId, $companyId);
-            $stockRows = $stockDetail['rows'];
-            $stockTotals = [
-                'items_count' => $stockDetail['totals']['items_count'],
-                'total_quantity' => $stockDetail['totals']['total_quantity'],
-                'total_selling' => $stockDetail['totals']['total_selling'],
-            ];
-            $stockLocationName = $stockDetail['location']->name ?? null;
-        }
+        $stockRecords = SupplierAdvanceStockRecord::query()
+            ->where('company_id', $companyId)
+            ->where('supplier_id', $supplier->id)
+            ->when($branchId, fn ($q) => $q->where(function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+            }))
+            ->with([
+                'user:id,name',
+                'lines' => fn ($q) => $q->orderByRaw(
+                    "FIELD(transaction_type, 'zilizouzwa', 'zizonunuliwa', 'baki')"
+                ),
+            ])
+            ->orderByDesc('entry_date')
+            ->orderByDesc('id')
+            ->get();
 
         return view('purchases.supplier-advances.statement', compact(
             'supplier',
@@ -578,10 +576,77 @@ class SupplierAdvanceController extends Controller
             'closingRow',
             'malipoTotal',
             'matumiziTotal',
-            'stockRows',
-            'stockTotals',
-            'stockLocationName'
+            'stockRecords'
         ));
+    }
+
+    public function storeStock(Request $request, string $encodedSupplierId)
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        $decoded = Hashids::decode($encodedSupplierId);
+        if (empty($decoded[0])) {
+            abort(404);
+        }
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+
+        $supplier = Supplier::where('company_id', $companyId)->findOrFail((int) $decoded[0]);
+
+        $lineRules = [];
+        foreach (SupplierAdvanceStockLine::orderedTypes() as $type) {
+            $lineRules['lines.'.$type.'.idadi'] = ['required', 'string', 'max:255'];
+            $lineRules['lines.'.$type.'.thamani'] = ['required', 'numeric', 'min:0'];
+        }
+
+        $validated = $request->validate(array_merge([
+            'bidhaa' => ['required', 'string', 'max:255'],
+            'entry_date' => ['required', 'date'],
+            'lines' => ['required', 'array'],
+        ], $lineRules), [
+            'bidhaa.required' => 'Bidhaa inahitajika.',
+            'entry_date.required' => 'Tarehe inahitajika.',
+            'entry_date.date' => 'Tarehe si sahihi.',
+            'lines.required' => 'Weka idadi na thamani kwa kila aina ya muamala.',
+        ]);
+
+        $record = DB::transaction(function () use ($validated, $companyId, $branchId, $supplier, $user) {
+            $record = SupplierAdvanceStockRecord::create([
+                'company_id' => $companyId,
+                'branch_id' => $branchId ? (int) $branchId : null,
+                'supplier_id' => $supplier->id,
+                'bidhaa' => $validated['bidhaa'],
+                'entry_date' => $validated['entry_date'],
+                'user_id' => $user->id,
+            ]);
+
+            foreach (SupplierAdvanceStockLine::orderedTypes() as $type) {
+                $line = $validated['lines'][$type] ?? [];
+                SupplierAdvanceStockLine::create([
+                    'stock_record_id' => $record->id,
+                    'transaction_type' => $type,
+                    'idadi' => $line['idadi'] ?? '',
+                    'thamani' => $line['thamani'] ?? 0,
+                ]);
+            }
+
+            return $record->load('lines');
+        });
+
+        $this->sendSupplierAdvanceStockSms($supplier, $record, $companyId);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Stoo imehifadhiwa.',
+            ]);
+        }
+
+        return redirect()
+            ->route('purchases.supplier-advances.index')
+            ->with('success', 'Stoo imehifadhiwa kwa '.$supplier->name.'.');
     }
 
     public function pay(string $encodedSupplierId)
@@ -1210,9 +1275,16 @@ class SupplierAdvanceController extends Controller
                 $bal = $adv - $app;
                 $encSup = Hashids::encode($s->id);
                 $html = '<div class="btn-group btn-group-sm" role="group">';
-                if ($canRecord && $bal > 0.005) {
-                    $html .= '<a href="'.route('purchases.supplier-advances.pay', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-primary" title="Rekodi fedha zilirudishwa na msambazaji"><i class="bx bx-money"></i> Lipa</a>';
-                    $html .= '<a href="'.route('purchases.supplier-advances.expense', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-warning" title="Tumia salio la malipo ya awali kwa matumizi"><i class="bx bx-receipt"></i> Weka Matumizi</a>';
+                if ($canRecord) {
+                    $html .= '<button type="button" class="btn btn-outline-success btn-weka-stoo" title="Weka stoo"'
+                        .' data-supplier-id="'.e((string) $s->id).'"'
+                        .' data-encoded-supplier-id="'.e($encSup).'"'
+                        .' data-supplier-name="'.e($s->name).'"'
+                        .'><i class="bx bx-package"></i> Weka stoo</button>';
+                    if ($bal > 0.005) {
+                        $html .= '<a href="'.route('purchases.supplier-advances.pay', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-primary" title="Rekodi fedha zilirudishwa na msambazaji"><i class="bx bx-money"></i> Lipa</a>';
+                        $html .= '<a href="'.route('purchases.supplier-advances.expense', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-warning" title="Tumia salio la malipo ya awali kwa matumizi"><i class="bx bx-receipt"></i> Weka Matumizi</a>';
+                    }
                 }
                 if ($canView) {
                     $html .= '<a href="'.route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-secondary" title="Statement" target="_blank" rel="noopener"><i class="bx bx-file"></i> Statement</a>';
@@ -1232,6 +1304,63 @@ class SupplierAdvanceController extends Controller
             })
             ->rawColumns(['balance_formatted', 'actions'])
             ->make(true);
+    }
+
+    private function sendSupplierAdvanceStockSms(
+        Supplier $supplier,
+        SupplierAdvanceStockRecord $record,
+        int $companyId
+    ): void {
+        try {
+            $company = Company::query()->find($companyId);
+            $phone = trim((string) ($company?->phone ?? ''));
+            if ($phone === '') {
+                Log::warning('Supplier advance stock SMS skipped: company phone not set.', [
+                    'company_id' => $companyId,
+                    'supplier_id' => $supplier->id,
+                ]);
+
+                return;
+            }
+
+            if (! SmsHelper::isConfigured()) {
+                Log::warning('Supplier advance stock SMS skipped: SMS gateway not configured.');
+
+                return;
+            }
+
+            $linesByType = $record->lines->keyBy('transaction_type');
+            $fmtQty = fn ($type) => (string) ($linesByType->get($type)?->idadi ?? '');
+            $fmtVal = fn ($type) => number_format((float) ($linesByType->get($type)?->thamani ?? 0), 2);
+
+            $dateFormatted = $record->entry_date->format('d/m/Y');
+
+            $message = sprintf(
+                'Taarifa ya %s ya %s tarehe %s, Zilizouzwa %s za thamani ya %s, Zizonunuliwa %s za thamani ya %s na Baki %s za thamani ya %s',
+                $record->bidhaa,
+                $supplier->name,
+                $dateFormatted,
+                $fmtQty(SupplierAdvanceStockLine::TYPE_ZILIZOUZWA),
+                $fmtVal(SupplierAdvanceStockLine::TYPE_ZILIZOUZWA),
+                $fmtQty(SupplierAdvanceStockLine::TYPE_ZIZONUNULIWA),
+                $fmtVal(SupplierAdvanceStockLine::TYPE_ZIZONUNULIWA),
+                $fmtQty(SupplierAdvanceStockLine::TYPE_BAKI),
+                $fmtVal(SupplierAdvanceStockLine::TYPE_BAKI)
+            );
+
+            $result = SmsHelper::send($phone, $message);
+            if (! ($result['success'] ?? false)) {
+                Log::warning('Supplier advance stock SMS failed.', [
+                    'phone' => $phone,
+                    'supplier_id' => $supplier->id,
+                    'error' => $result['error'] ?? 'unknown',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Supplier advance stock SMS exception: '.$e->getMessage(), [
+                'supplier_id' => $supplier->id,
+            ]);
+        }
     }
 
     /**
