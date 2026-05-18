@@ -276,16 +276,23 @@ class SupplierAdvanceStatementService
 
     private function mapDeductionLine(SupplierAdvanceDeduction $deduction): array
     {
+        $sourceType = (string) ($deduction->source_type ?? '');
+
         return [
             'date' => $deduction->deduction_date,
             'sort' => $deduction->deduction_date->format('Y-m-d').'-D-'.str_pad((string) $deduction->id, 8, '0', STR_PAD_LEFT),
             'type' => 'deduction',
+            'deduction_id' => $deduction->id,
+            'source_type' => $sourceType,
+            'source_id' => $deduction->source_id,
             'reference' => $this->formatDeductionReference($deduction),
             'description' => $deduction->description ?: $this->defaultDeductionDescription($deduction),
             'paid' => 0.0,
             'deducted' => (float) $deduction->amount,
             'performed_by' => $deduction->user?->name ?? '—',
             'user_id' => $deduction->user_id,
+            'can_delete' => $sourceType === 'supplier_advance_expense',
+            'is_manunuzi' => $sourceType === 'cash_purchase',
         ];
     }
 

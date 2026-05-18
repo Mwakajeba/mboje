@@ -116,6 +116,10 @@
                             <input type="date" class="form-control" id="weka_stoo_entry_date" name="entry_date" required>
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label for="weka_stoo_description" class="form-label fw-bold">Maelezo</label>
+                        <textarea class="form-control" id="weka_stoo_description" name="description" rows="2" maxlength="2000" placeholder="Maelezo ya ziada (si lazima)"></textarea>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm mb-0">
                             <thead class="table-light">

@@ -18,6 +18,7 @@ use App\Services\Purchase\SupplierAdvanceJournalService;
 use App\Services\Purchase\SupplierAdvanceExpenseService;
 use App\Services\Purchase\SupplierAdvanceRefundService;
 use App\Services\InventoryValueService;
+use App\Services\Purchase\SupplierAdvanceStatementDeletionService;
 use App\Services\Purchase\SupplierAdvanceStatementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -548,6 +549,9 @@ class SupplierAdvanceController extends Controller
 
         $malipoTotal = round((float) $malipoLines->sum('paid'), 2);
         $matumiziTotal = round((float) $matumiziLines->sum('deducted'), 2);
+        $manunuziTotal = round((float) $manunuziLines->sum('deducted'), 2);
+
+        $canDeleteStatementItems = Auth::user()->can('record purchase payment');
 
         $stockRecords = SupplierAdvanceStockRecord::query()
             ->where('company_id', $companyId)
@@ -573,11 +577,67 @@ class SupplierAdvanceController extends Controller
             'openingRow',
             'malipoLines',
             'matumiziLines',
+            'manunuziLines',
             'closingRow',
             'malipoTotal',
             'matumiziTotal',
-            'stockRecords'
+            'manunuziTotal',
+            'stockRecords',
+            'canDeleteStatementItems',
+            'encodedSupplierId'
         ));
+    }
+
+    public function destroyStatementExpense(string $encodedSupplierId, string $encodedJournalId)
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        $companyId = (int) Auth::user()->company_id;
+        $branchId = session('branch_id') ?? Auth::user()->branch_id;
+        $supplier = $this->supplierForEncodedId($encodedSupplierId, $companyId, $branchId);
+        $journalId = $this->decodeId($encodedJournalId);
+
+        app(SupplierAdvanceStatementDeletionService::class)->deleteExpenseJournal(
+            $supplier,
+            $journalId,
+            $companyId,
+            $branchId ? (int) $branchId : null
+        );
+
+        return redirect()
+            ->route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encodedSupplierId])
+            ->with('success', 'Matumizi yamefutwa.');
+    }
+
+    public function destroyStatementStock(string $encodedSupplierId, string $encodedStockRecordId)
+    {
+        abort_unless(Auth::user()->can('record purchase payment'), 403);
+
+        $companyId = (int) Auth::user()->company_id;
+        $branchId = session('branch_id') ?? Auth::user()->branch_id;
+        $supplier = $this->supplierForEncodedId($encodedSupplierId, $companyId, $branchId);
+        $recordId = $this->decodeId($encodedStockRecordId);
+
+        app(SupplierAdvanceStatementDeletionService::class)->deleteStockRecord(
+            $supplier,
+            $recordId,
+            $companyId,
+            $branchId ? (int) $branchId : null
+        );
+
+        return redirect()
+            ->route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encodedSupplierId])
+            ->with('success', 'Stoo imefutwa.');
+    }
+
+    private function decodeId(string $encoded): int
+    {
+        $decoded = Hashids::decode($encoded);
+        if (empty($decoded[0])) {
+            abort(404);
+        }
+
+        return (int) $decoded[0];
     }
 
     public function storeStock(Request $request, string $encodedSupplierId)
@@ -604,6 +664,7 @@ class SupplierAdvanceController extends Controller
         $validated = $request->validate(array_merge([
             'bidhaa' => ['required', 'string', 'max:255'],
             'entry_date' => ['required', 'date'],
+            'description' => ['nullable', 'string', 'max:2000'],
             'lines' => ['required', 'array'],
         ], $lineRules), [
             'bidhaa.required' => 'Bidhaa inahitajika.',
@@ -619,6 +680,7 @@ class SupplierAdvanceController extends Controller
                 'supplier_id' => $supplier->id,
                 'bidhaa' => $validated['bidhaa'],
                 'entry_date' => $validated['entry_date'],
+                'description' => $validated['description'] ?? null,
                 'user_id' => $user->id,
             ]);
 

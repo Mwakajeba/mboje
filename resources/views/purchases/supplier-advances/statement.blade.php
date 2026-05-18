@@ -20,6 +20,19 @@
             </div>
         </div>
 
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show no-print" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show no-print" role="alert">
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
         <div class="card radius-10 statement-card mb-4">
             <div class="card-body">
                 <div class="text-center mb-4">
@@ -129,7 +142,7 @@
                     </table>
                 </div>
 
-                <h6 class="text-primary mb-2"><i class="bx bx-receipt me-1"></i> Matumizi/Manunuzi</h6>
+                <h6 class="text-primary mb-2"><i class="bx bx-receipt me-1"></i> Matumizi</h6>
                 <div class="table-responsive mb-4">
                     <table class="table table-bordered table-sm">
                         <thead class="table-light">
@@ -137,11 +150,64 @@
                                 <th>Tarehe</th>
                                 <th>Maelezo</th>
                                 <th>Aliyeingiza</th>
-                                <th class="text-end">Matumizi/Manunuzi</th>
+                                <th class="text-end">Matumizi</th>
+                                @if($canDeleteStatementItems)
+                                <th class="text-end no-print text-nowrap" style="width: 90px">Vitendo</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody>
+                            @php $expenseDeleteShown = []; @endphp
                             @forelse($matumiziLines as $line)
+                            <tr>
+                                <td>{{ $line['date']->format('Y-m-d') }}</td>
+                                <td>{{ $line['description'] }}</td>
+                                <td>{{ $line['performed_by'] ?? '—' }}</td>
+                                <td class="text-end">{{ format_currency($line['deducted']) }}</td>
+                                @if($canDeleteStatementItems)
+                                <td class="text-end no-print">
+                                    @if(!empty($line['can_delete']) && !empty($line['source_id']) && !in_array($line['source_id'], $expenseDeleteShown, true))
+                                        @php $expenseDeleteShown[] = $line['source_id']; @endphp
+                                        <form method="post" action="{{ route('purchases.supplier-advances.statement.expense.destroy', ['encodedSupplierId' => $encodedSupplierId, 'encodedJournalId' => Vinkla\Hashids\Facades\Hashids::encode($line['source_id'])]) }}" class="d-inline" onsubmit="return confirm('Una uhakika unataka kufuta matumizi haya?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Futa matumizi">
+                                                <i class="bx bx-trash"></i>
+                                            </button>
+                                        </form>
+                                    @endif
+                                </td>
+                                @endif
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="{{ $canDeleteStatementItems ? 5 : 4 }}" class="text-center text-muted py-3">Hakuna matumizi katika kipindi hiki.</td>
+                            </tr>
+                            @endforelse
+                            @if($matumiziLines->isNotEmpty())
+                            <tr class="table-light fw-semibold">
+                                <td colspan="3" class="text-end">Jumla ya Matumizi</td>
+                                <td class="text-end">{{ format_currency($matumiziTotal) }}</td>
+                                @if($canDeleteStatementItems)<td class="no-print"></td>@endif
+                            </tr>
+                            @endif
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="text-primary mb-2"><i class="bx bx-cart me-1"></i> Manunuzi</h6>
+                <div class="table-responsive mb-4">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tarehe</th>
+                                <th>Maelezo</th>
+                                <th>Aliyeingiza</th>
+                                <th class="text-end">Manunuzi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($manunuziLines as $line)
                             <tr>
                                 <td>{{ $line['date']->format('Y-m-d') }}</td>
                                 <td>{{ $line['description'] }}</td>
@@ -150,13 +216,13 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-3">Hakuna Matumizi/Manunuzi katika kipindi hiki.</td>
+                                <td colspan="4" class="text-center text-muted py-3">Hakuna manunuzi katika kipindi hiki.</td>
                             </tr>
                             @endforelse
-                            @if($matumiziLines->isNotEmpty())
+                            @if($manunuziLines->isNotEmpty())
                             <tr class="table-light fw-semibold">
-                                <td colspan="3" class="text-end">Jumla ya Matumizi/Manunuzi</td>
-                                <td class="text-end">{{ format_currency($matumiziTotal) }}</td>
+                                <td colspan="3" class="text-end">Jumla ya Manunuzi</td>
+                                <td class="text-end">{{ format_currency($manunuziTotal) }}</td>
                             </tr>
                             @endif
                         </tbody>
@@ -186,7 +252,18 @@
                 </h6>
                 <p class="text-muted small mb-3">Stoo iliyoingizwa kwa msambazaji huyu (Weka stoo).</p>
                 @forelse($stockRecords as $record)
-                <div class="border rounded p-3 mb-3">
+                <div class="border rounded p-3 mb-3 position-relative">
+                    @if($canDeleteStatementItems)
+                    <div class="no-print position-absolute top-0 end-0 m-2">
+                        <form method="post" action="{{ route('purchases.supplier-advances.statement.stock.destroy', ['encodedSupplierId' => $encodedSupplierId, 'encodedStockRecordId' => Vinkla\Hashids\Facades\Hashids::encode($record->id)]) }}" class="d-inline" onsubmit="return confirm('Una uhakika unataka kufuta stoo hii?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Futa stoo">
+                                <i class="bx bx-trash me-1"></i> Futa
+                            </button>
+                        </form>
+                    </div>
+                    @endif
                     <h6 class="mb-1 fw-bold">{{ $record->bidhaa }}</h6>
                     <p class="text-muted small mb-2">
                         Tarehe: <strong>{{ $record->entry_date->format('Y-m-d') }}</strong>
@@ -194,6 +271,9 @@
                             · Aliyeingiza: {{ $record->user->name }}
                         @endif
                     </p>
+                    @if(filled($record->description))
+                    <p class="small mb-2">{{ $record->description }}</p>
+                    @endif
                     <table class="table table-bordered table-sm mb-0">
                         <thead class="table-light">
                             <tr>

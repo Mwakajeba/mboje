@@ -18,6 +18,7 @@ class SupplierAdvanceStockRecord extends Model
         'supplier_id',
         'bidhaa',
         'entry_date',
+        'description',
         'user_id',
     ];
 
