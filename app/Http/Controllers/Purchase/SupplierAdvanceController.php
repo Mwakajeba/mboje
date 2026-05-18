@@ -534,12 +534,15 @@ class SupplierAdvanceController extends Controller
 
             return $line;
         });
-        $matumiziLines = collect($statement['matumizi_lines'] ?? [])->map(function (array $line) {
+        $allDeductionLines = collect($statement['matumizi_lines'] ?? [])->map(function (array $line) {
             $line['paid'] = (float) ($line['paid'] ?? 0);
             $line['deducted'] = (float) ($line['deducted'] ?? 0);
 
             return $line;
         });
+
+        $manunuziLines = $allDeductionLines->filter(fn (array $line) => ($line['is_manunuzi'] ?? false))->values();
+        $matumiziLines = $allDeductionLines->filter(fn (array $line) => ! ($line['is_manunuzi'] ?? false))->values();
 
         $totals = $statement['totals'];
         $period = $statement['period'] ?? null;
