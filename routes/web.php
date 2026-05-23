@@ -1445,6 +1445,7 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
         Route::get('/matumizi-manunuzi', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'matumiziManunuzi'])->name('matumizi-manunuzi');
         Route::get('/report', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'report'])->name('report');
         Route::get('/report/show', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'reportShow'])->name('report.show');
+        Route::post('/report/notify', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'reportSendNotification'])->name('report.notify');
     });
 
     // Supplier advances (prepayments to suppliers)

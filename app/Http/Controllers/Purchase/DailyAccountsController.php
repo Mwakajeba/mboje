@@ -13,6 +13,7 @@ use App\Models\Purchase\DailyMauzoRecord;
 use App\Models\Purchase\DailyStooLine;
 use App\Models\Purchase\DailyStooRecord;
 use App\Models\User;
+use App\Services\Purchase\DailyAccountsReportNotificationService;
 use App\Services\Purchase\DailyAccountsReportService;
 use App\Services\Purchase\DailyMauzoEmployeeListService;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +26,8 @@ class DailyAccountsController extends Controller
 {
     public function __construct(
         private readonly DailyMauzoEmployeeListService $mauzoEmployeeList,
-        private readonly DailyAccountsReportService $dailyAccountsReport
+        private readonly DailyAccountsReportService $dailyAccountsReport,
+        private readonly DailyAccountsReportNotificationService $reportNotification
     ) {}
 
     public function index()
@@ -158,7 +160,48 @@ class DailyAccountsController extends Controller
 
         return view('purchases.daily-accounts.report-show', array_merge($report, [
             'employee_name' => $employeeName,
+            'employee_id' => (int) $validated['employee_id'],
         ]));
+    }
+
+    public function reportSendNotification(Request $request)
+    {
+        abort_unless(Auth::user()->can('view purchases'), 403);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+
+        $validated = $request->validate([
+            'employee_id' => ['required', 'integer'],
+            'entry_date' => ['required', 'date'],
+        ], [
+            'employee_id.required' => 'Chagua mfanyakazi.',
+            'entry_date.required' => 'Chagua tarehe.',
+        ]);
+
+        if (! $this->mauzoEmployeeList->employeeExistsForCompanyBranch(
+            (int) $validated['employee_id'],
+            $companyId,
+            $branchId ? (int) $branchId : null
+        )) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mfanyakaji aliyechaguliwa si sahihi.',
+            ], 422);
+        }
+
+        $employeeName = $this->resolveEmployeeDisplayName((int) $validated['employee_id']);
+
+        $result = $this->reportNotification->send(
+            $companyId,
+            $branchId ? (int) $branchId : null,
+            (int) $validated['employee_id'],
+            $validated['entry_date'],
+            $employeeName
+        );
+
+        return response()->json($result, ($result['success'] ?? false) ? 200 : 422);
     }
 
     /**

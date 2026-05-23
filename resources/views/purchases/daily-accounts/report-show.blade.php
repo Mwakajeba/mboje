@@ -12,7 +12,12 @@
                 ['label' => 'Hesabu za Kila Siku', 'url' => route('purchases.daily-accounts.index'), 'icon' => 'bx bx-calendar-check'],
                 ['label' => 'Ripoti', 'url' => '#', 'icon' => 'bx bx-file']
             ]" />
-            <div>
+            <div class="d-flex flex-wrap gap-2">
+                @can('view purchases')
+                <button type="button" class="btn btn-primary btn-sm" id="btnSendDailyReportSms">
+                    <i class="bx bx-message-rounded-dots me-1"></i> Tuma taarifa (SMS)
+                </button>
+                @endcan
                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
                     <i class="bx bx-printer me-1"></i> Chapisha
                 </button>
@@ -36,9 +41,13 @@
                 </h6>
                 @include('purchases.daily-accounts.partials.report-amount-section', [
                     'lines' => $mauzo_lines,
-                    'total' => $mauzo_total,
+                    'total' => $baki_na_mauzo,
                     'amountLabel' => 'Kiasi',
                     'emptyMessage' => 'Hakuna mauzo kwa siku hii.',
+                    'showOpeningBalance' => true,
+                    'openingBalance' => $opening_balance,
+                    'openingBalanceLabel' => 'Salio la kufungua (baki ya tarehe '.$previous_date_formatted.')',
+                    'totalLabel' => 'Jumla ya mauzo',
                 ])
 
                 {{-- Matumizi --}}
@@ -67,22 +76,32 @@
                 <div class="card bg-light border-0 mt-4 mb-4">
                     <div class="card-body py-3">
                         <div class="row g-2 small">
-                            <div class="col-sm-4 d-flex justify-content-between">
-                                <span>Jumla ya Mauzo</span>
+                            <div class="col-sm-6 d-flex justify-content-between">
+                                <span>Baki ya tarehe {{ $previous_date_formatted }}</span>
+                                <span class="fw-semibold">{{ format_currency($opening_balance) }}</span>
+                            </div>
+                            <div class="col-sm-6 d-flex justify-content-between">
+                                <span>Mauzo ya tarehe {{ $entry_date_formatted }}</span>
                                 <span class="fw-semibold">{{ format_currency($mauzo_total) }}</span>
                             </div>
-                            <div class="col-sm-4 d-flex justify-content-between">
+                            <div class="col-sm-6 d-flex justify-content-between">
+                                <span>Jumla ya baki na mauzo</span>
+                                <span class="fw-semibold">{{ format_currency($baki_na_mauzo) }}</span>
+                            </div>
+                            <div class="col-sm-6 d-flex justify-content-between">
                                 <span>Matumizi + Manunuzi</span>
                                 <span class="fw-semibold">{{ format_currency($matumizi_manunuzi_total) }}</span>
                             </div>
                         </div>
                         <hr class="my-2">
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="fw-bold text-uppercase">Baki (Mauzo − Matumizi − Manunuzi)</span>
-                            <span class="fs-5 fw-bold {{ $baki >= 0 ? 'text-success' : 'text-danger' }}">{{ format_currency($baki) }}</span>
+                            <span class="fw-bold text-uppercase">Baki mpya</span>
+                            <span class="fs-5 fw-bold {{ $baki_mpya >= 0 ? 'text-success' : 'text-danger' }}">{{ format_currency($baki_mpya) }}</span>
                         </div>
                     </div>
                 </div>
+
+                <div id="daily-report-sms-alert" class="d-none"></div>
 
                 {{-- Stoo --}}
                 <h6 class="text-info text-uppercase border-bottom pb-2 mb-3">
@@ -133,4 +152,51 @@
     .page-wrapper { padding: 0; }
 }
 </style>
+@endpush
+
+@push('scripts')
+<script nonce="{{ $cspNonce ?? '' }}">
+$(document).ready(function () {
+    var $btn = $('#btnSendDailyReportSms');
+    if (!$btn.length) {
+        return;
+    }
+
+    $btn.on('click', function () {
+        if (!confirm('Tuma SMS ya hesabu kwa namba ya simu ya kampuni?')) {
+            return;
+        }
+
+        var $alert = $('#daily-report-sms-alert');
+        $btn.prop('disabled', true);
+
+        $.ajax({
+            url: @json(route('purchases.daily-accounts.report.notify')),
+            method: 'POST',
+            data: {
+                employee_id: @json($employee_id),
+                entry_date: @json($entry_date)
+            },
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                'Accept': 'application/json'
+            }
+        }).done(function (res) {
+            var ok = res && res.success;
+            $alert.removeClass('d-none alert-danger alert-success')
+                .addClass(ok ? 'alert alert-success' : 'alert alert-danger')
+                .html($('<div>').text((res && res.message) ? res.message : 'Imekamilika.').html());
+        }).fail(function (xhr) {
+            var msg = (xhr.responseJSON && xhr.responseJSON.message)
+                ? xhr.responseJSON.message
+                : 'Imeshindikana kutuma SMS.';
+            $alert.removeClass('d-none alert-success')
+                .addClass('alert alert-danger')
+                .html($('<div>').text(msg).html());
+        }).always(function () {
+            $btn.prop('disabled', false);
+        });
+    });
+});
+</script>
 @endpush
