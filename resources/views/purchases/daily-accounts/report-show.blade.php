@@ -13,6 +13,11 @@
                 ['label' => 'Ripoti', 'url' => '#', 'icon' => 'bx bx-file']
             ]" />
             <div class="d-flex flex-wrap gap-2">
+                @if(!empty($can_delete))
+                <button type="button" class="btn btn-outline-danger btn-sm no-print" id="btnDeleteReportAll">
+                    <i class="bx bx-trash me-1"></i> Futa zote (siku hii)
+                </button>
+                @endif
                 @can('view purchases')
                 <button type="button" class="btn btn-primary btn-sm" id="btnSendDailyReportSms">
                     <i class="bx bx-message-rounded-dots me-1"></i> Tuma taarifa (SMS)
@@ -48,6 +53,10 @@
                     'openingBalance' => $opening_balance,
                     'openingBalanceLabel' => 'Salio la kufungua (baki ya tarehe '.$previous_date_formatted.')',
                     'totalLabel' => 'Jumla ya mauzo',
+                    'lineType' => 'mauzo',
+                    'canManage' => $can_manage ?? false,
+                    'canDelete' => $can_delete ?? false,
+                    'sectionDeleteLabel' => 'mauzo',
                 ])
 
                 {{-- Matumizi --}}
@@ -59,6 +68,10 @@
                     'total' => $matumizi_total,
                     'amountLabel' => 'Kiasi',
                     'emptyMessage' => 'Hakuna matumizi kwa siku hii.',
+                    'lineType' => 'matumizi',
+                    'canManage' => $can_manage ?? false,
+                    'canDelete' => $can_delete ?? false,
+                    'sectionDeleteLabel' => 'matumizi',
                 ])
 
                 {{-- Manunuzi --}}
@@ -70,6 +83,10 @@
                     'total' => $manunuzi_total,
                     'amountLabel' => 'Kiasi',
                     'emptyMessage' => 'Hakuna manunuzi kwa siku hii.',
+                    'lineType' => 'manunuzi',
+                    'canManage' => $can_manage ?? false,
+                    'canDelete' => $can_delete ?? false,
+                    'sectionDeleteLabel' => 'manunuzi',
                 ])
 
                 {{-- Baki --}}
@@ -108,6 +125,19 @@
                     <i class="bx bx-package me-1"></i> Taarifa ya stoo
                 </h6>
 
+                @if(!empty($can_delete) || !empty($can_manage))
+                <div class="d-flex justify-content-end mb-2 no-print">
+                    @if(!empty($can_delete))
+                    <button type="button"
+                            class="btn btn-outline-danger btn-sm btn-delete-report-section"
+                            data-type="stoo"
+                            data-label="stoo">
+                        <i class="bx bx-trash me-1"></i> Futa stoo zote
+                    </button>
+                    @endif
+                </div>
+                @endif
+
                 @if(empty($stoo_groups))
                     <p class="text-muted small mb-0">Hakuna taarifa za stoo kwa siku hii.</p>
                 @else
@@ -119,18 +149,55 @@
                                     <thead class="table-light">
                                         <tr>
                                             <th>Maelezo</th>
-                                            <th class="text-end" style="width: 160px">Thamani</th>
+                                            <th style="width: 160px">Thamani/Idadi</th>
+                                            @if(!empty($can_delete) || !empty($can_manage))
+                                                <th class="text-center no-print" style="width: {{ !empty($can_manage) && !empty($can_delete) ? '88' : '52' }}px"></th>
+                                            @endif
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @forelse($group['lines'] as $line)
                                             <tr>
                                                 <td>{{ $line['maelezo'] }}</td>
-                                                <td class="text-end">{{ format_currency($line['thamani']) }}</td>
+                                                <td>{{ $line['thamani'] }}</td>
+                                                @if((!empty($can_delete) || !empty($can_manage)) && !empty($line['id']))
+                                                    <td class="text-center no-print text-nowrap">
+                                                        @if(!empty($can_manage))
+                                                        @php
+                                                            $stooEditPayload = json_encode([
+                                                                'maelezo' => $line['maelezo'],
+                                                                'amount' => $line['thamani'],
+                                                                'bidhaa' => $group['bidhaa'],
+                                                                'employee_id' => $line['employee_id'] ?? null,
+                                                                'entry_date' => $line['entry_date'] ?? null,
+                                                            ], JSON_HEX_APOS | JSON_HEX_QUOT);
+                                                        @endphp
+                                                        <button type="button"
+                                                                class="btn btn-outline-primary btn-sm btn-edit-report-line"
+                                                                data-type="stoo"
+                                                                data-line-id="{{ $line['id'] }}"
+                                                                data-payload="{{ $stooEditPayload }}"
+                                                                title="Hariri">
+                                                            <i class="bx bx-edit"></i>
+                                                        </button>
+                                                        @endif
+                                                        @if(!empty($can_delete))
+                                                        <button type="button"
+                                                                class="btn btn-outline-danger btn-sm btn-delete-report-line"
+                                                                data-type="stoo"
+                                                                data-line-id="{{ $line['id'] }}"
+                                                                title="Futa">
+                                                            <i class="bx bx-trash"></i>
+                                                        </button>
+                                                        @endif
+                                                    </td>
+                                                @elseif(!empty($can_delete) || !empty($can_manage))
+                                                    <td class="no-print"></td>
+                                                @endif
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="2" class="text-muted small">Hakuna mistari.</td>
+                                                <td colspan="{{ (!empty($can_delete) || !empty($can_manage)) ? 3 : 2 }}" class="text-muted small">Hakuna mistari.</td>
                                             </tr>
                                         @endforelse
                                     </tbody>
@@ -143,6 +210,11 @@
         </div>
     </div>
 </div>
+
+@include('purchases.daily-accounts.partials.report-edit-modal', [
+    'can_manage' => $can_manage ?? false,
+    'employees' => $employees ?? collect(),
+])
 @endsection
 
 @push('styles')
@@ -155,6 +227,12 @@
 @endpush
 
 @push('scripts')
+@include('purchases.daily-accounts.partials.report-delete-scripts')
+@include('purchases.daily-accounts.partials.report-edit-scripts', [
+    'can_manage' => $can_manage ?? false,
+    'report_employee_id' => $employee_id ?? null,
+    'report_entry_date' => $entry_date ?? null,
+])
 <script nonce="{{ $cspNonce ?? '' }}">
 $(document).ready(function () {
     var $btn = $('#btnSendDailyReportSms');

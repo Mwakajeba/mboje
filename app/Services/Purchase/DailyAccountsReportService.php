@@ -46,10 +46,14 @@ class DailyAccountsReportService
             ->values();
 
         $stooGroups = $stooRecords->map(fn (DailyStooRecord $record) => [
+            'record_id' => $record->id,
             'bidhaa' => $record->bidhaa,
             'lines' => $record->lines->map(fn ($line) => [
+                'id' => $line->id,
                 'maelezo' => $line->maelezo,
-                'thamani' => (float) $line->thamani,
+                'thamani' => (string) $line->thamani,
+                'employee_id' => $record->employee_id,
+                'entry_date' => $record->entry_date->format('Y-m-d'),
             ])->values()->all(),
         ])->values()->all();
 
@@ -154,7 +158,7 @@ class DailyAccountsReportService
 
     /**
      * @param  \Illuminate\Support\Collection<int, \Illuminate\Database\Eloquent\Model>  $records
-     * @return list<array{maelezo: string, amount: float}>
+     * @return list<array{id: int, maelezo: string, amount: float}>
      */
     private function flattenAmountLines($records, string $amountColumn): array
     {
@@ -163,8 +167,11 @@ class DailyAccountsReportService
         foreach ($records as $record) {
             foreach ($record->lines as $line) {
                 $lines[] = [
+                    'id' => $line->id,
                     'maelezo' => $line->maelezo,
                     'amount' => (float) $line->{$amountColumn},
+                    'employee_id' => $record->employee_id,
+                    'entry_date' => $record->entry_date->format('Y-m-d'),
                 ];
             }
         }

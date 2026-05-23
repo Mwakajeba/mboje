@@ -1446,6 +1446,10 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
         Route::get('/report', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'report'])->name('report');
         Route::get('/report/show', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'reportShow'])->name('report.show');
         Route::post('/report/notify', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'reportSendNotification'])->name('report.notify');
+        Route::patch('/report/lines/{type}/{line}', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'updateReportLine'])->name('report.line.update');
+        Route::delete('/report/lines/{type}/{line}', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'destroyReportLine'])->name('report.line.destroy');
+        Route::delete('/report/section/{type}', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'destroyReportSection'])->name('report.section.destroy');
+        Route::delete('/report/all', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'destroyReportAll'])->name('report.all.destroy');
     });
 
     // Supplier advances (prepayments to suppliers)

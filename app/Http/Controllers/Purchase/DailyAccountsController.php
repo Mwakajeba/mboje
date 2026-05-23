@@ -13,6 +13,8 @@ use App\Models\Purchase\DailyMauzoRecord;
 use App\Models\Purchase\DailyStooLine;
 use App\Models\Purchase\DailyStooRecord;
 use App\Models\User;
+use App\Services\Purchase\DailyAccountsReportDeletionService;
+use App\Services\Purchase\DailyAccountsReportLineService;
 use App\Services\Purchase\DailyAccountsReportNotificationService;
 use App\Services\Purchase\DailyAccountsReportService;
 use App\Services\Purchase\DailyMauzoEmployeeListService;
@@ -27,7 +29,9 @@ class DailyAccountsController extends Controller
     public function __construct(
         private readonly DailyMauzoEmployeeListService $mauzoEmployeeList,
         private readonly DailyAccountsReportService $dailyAccountsReport,
-        private readonly DailyAccountsReportNotificationService $reportNotification
+        private readonly DailyAccountsReportNotificationService $reportNotification,
+        private readonly DailyAccountsReportDeletionService $reportDeletion,
+        private readonly DailyAccountsReportLineService $reportLineService
     ) {}
 
     public function index()
@@ -91,7 +95,8 @@ class DailyAccountsController extends Controller
             'stoo',
             'Taarifa za stoo zimehifadhiwa',
             'thamani',
-            ['bidhaa' => ['required', 'string', 'max:255']]
+            ['bidhaa' => ['required', 'string', 'max:255']],
+            amountIsText: true
         );
     }
 
@@ -158,10 +163,159 @@ class DailyAccountsController extends Controller
             $validated['entry_date']
         );
 
+        $canManage = $this->userIsAdmin();
+        $employees = $canManage
+            ? $this->mauzoEmployeeList->listForCompanyBranch($companyId, $branchId ? (int) $branchId : null)
+            : collect();
+
         return view('purchases.daily-accounts.report-show', array_merge($report, [
             'employee_name' => $employeeName,
             'employee_id' => (int) $validated['employee_id'],
+            'can_manage' => $canManage,
+            'can_delete' => $canManage,
+            'employees' => $employees,
         ]));
+    }
+
+    public function updateReportLine(Request $request, string $type, int $line)
+    {
+        abort_unless($this->userIsAdmin(), 403);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+
+        $amountField = $this->reportLineService->amountField($type);
+
+        $amountLabel = $type === 'stoo' ? 'Thamani/Idadi' : 'Kiasi';
+
+        $rules = [
+            'employee_id' => ['required', 'integer'],
+            'entry_date' => ['required', 'date'],
+            'maelezo' => ['required', 'string', 'max:2000'],
+            $amountField => $type === 'stoo'
+                ? ['required', 'string', 'max:255']
+                : ['required', 'numeric', 'min:0'],
+        ];
+
+        if ($type === 'stoo') {
+            $rules['bidhaa'] = ['required', 'string', 'max:255'];
+        }
+
+        $messages = [
+            'employee_id.required' => 'Chagua mfanyakazi.',
+            'entry_date.required' => 'Chagua tarehe.',
+            'entry_date.date' => 'Tarehe si sahihi.',
+            'maelezo.required' => 'Maelezo yanahitajika.',
+            'bidhaa.required' => 'Jina la bidhaa linahitajika.',
+            $amountField.'.required' => $amountLabel.' inahitajika.',
+        ];
+
+        if ($type !== 'stoo') {
+            $messages[$amountField.'.numeric'] = $amountLabel.' lazima iwe nambari.';
+            $messages[$amountField.'.min'] = $amountLabel.' haiwezi kuwa hasi.';
+        }
+
+        $validated = $request->validate($rules, $messages);
+
+        if (! $this->mauzoEmployeeList->employeeExistsForCompanyBranch(
+            (int) $validated['employee_id'],
+            $companyId,
+            $branchId ? (int) $branchId : null
+        )) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Mfanyakaji aliyechaguliwa si sahihi.',
+                'errors' => ['employee_id' => ['Mfanyakaji aliyechaguliwa si sahihi.']],
+            ], 422);
+        }
+
+        try {
+            $this->reportLineService->updateLine(
+                $type,
+                $line,
+                $companyId,
+                $branchId ? (int) $branchId : null,
+                $validated
+            );
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            abort(404);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Rekodi imesasishwa.',
+            'redirect' => route('purchases.daily-accounts.report.show', [
+                'employee_id' => (int) $validated['employee_id'],
+                'entry_date' => $validated['entry_date'],
+            ]),
+        ]);
+    }
+
+    public function destroyReportLine(string $type, int $line)
+    {
+        abort_unless($this->userIsAdmin(), 403);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+
+        try {
+            $this->reportDeletion->deleteLine($type, $line, $companyId, $branchId ? (int) $branchId : null);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            abort(404);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Rekodi imefutwa.']);
+    }
+
+    public function destroyReportSection(Request $request, string $type)
+    {
+        abort_unless($this->userIsAdmin(), 403);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+
+        $validated = $this->validateReportScope($request, $companyId, $branchId);
+
+        try {
+            $this->reportDeletion->deleteSectionForDate(
+                $type,
+                $companyId,
+                $branchId ? (int) $branchId : null,
+                (int) $validated['employee_id'],
+                $validated['entry_date']
+            );
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Rekodi zote za sehemu hii zimefutwa.']);
+    }
+
+    public function destroyReportAll(Request $request)
+    {
+        abort_unless($this->userIsAdmin(), 403);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+
+        $validated = $this->validateReportScope($request, $companyId, $branchId);
+
+        $this->reportDeletion->deleteAllForDate(
+            $companyId,
+            $branchId ? (int) $branchId : null,
+            (int) $validated['employee_id'],
+            $validated['entry_date']
+        );
+
+        return response()->json(['success' => true, 'message' => 'Rekodi zote za siku hii zimefutwa.']);
     }
 
     public function reportSendNotification(Request $request)
@@ -216,7 +370,8 @@ class DailyAccountsController extends Controller
         string $entryTypeKey,
         string $successPrefix,
         string $amountField = 'kiasi',
-        array $extraRecordRules = []
+        array $extraRecordRules = [],
+        bool $amountIsText = false
     ): JsonResponse|\Illuminate\Http\RedirectResponse {
         abort_unless(Auth::user()->can('record purchase payment'), 403);
 
@@ -231,14 +386,18 @@ class DailyAccountsController extends Controller
             default => 'mauzo',
         };
 
-        $amountLabel = $amountField === 'thamani' ? 'Thamani' : 'Kiasi';
+        $amountLabel = $amountIsText ? 'Thamani/Idadi' : 'Kiasi';
+
+        $amountLineRules = $amountIsText
+            ? ['required', 'string', 'max:255']
+            : ['required', 'numeric', 'min:0'];
 
         $rules = array_merge([
             'employee_id' => ['required', 'integer'],
             'entry_date' => ['required', 'date'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.maelezo' => ['required', 'string', 'max:2000'],
-            'lines.*.'.$amountField => ['required', 'numeric', 'min:0'],
+            'lines.*.'.$amountField => $amountLineRules,
         ], $extraRecordRules);
 
         $messages = [
@@ -249,11 +408,14 @@ class DailyAccountsController extends Controller
             'lines.min' => 'Ongeza angalau mstari mmoja wa '.$typeLabel.'.',
             'lines.*.maelezo.required' => 'Maelezo yanahitajika kwa kila mstari.',
             'lines.*.'.$amountField.'.required' => $amountLabel.' inahitajika kwa kila mstari.',
-            'lines.*.'.$amountField.'.numeric' => $amountLabel.' lazima iwe nambari.',
-            'lines.*.'.$amountField.'.min' => $amountLabel.' haiwezi kuwa hasi.',
             'bidhaa.required' => 'Jina la bidhaa linahitajika.',
             'bidhaa.max' => 'Jina la bidhaa ni refu sana.',
         ];
+
+        if (! $amountIsText) {
+            $messages['lines.*.'.$amountField.'.numeric'] = $amountLabel.' lazima iwe nambari.';
+            $messages['lines.*.'.$amountField.'.min'] = $amountLabel.' haiwezi kuwa hasi.';
+        }
 
         $validated = $request->validate($rules, $messages);
 
@@ -270,8 +432,13 @@ class DailyAccountsController extends Controller
 
         $employeeName = $this->resolveEmployeeDisplayName((int) $validated['employee_id']);
 
-        $lines = array_values(array_filter($validated['lines'], function ($line) use ($amountField) {
-            return trim((string) ($line['maelezo'] ?? '')) !== '' || (float) ($line[$amountField] ?? 0) > 0;
+        $lines = array_values(array_filter($validated['lines'], function ($line) use ($amountField, $amountIsText) {
+            $hasMaelezo = trim((string) ($line['maelezo'] ?? '')) !== '';
+            $hasAmount = $amountIsText
+                ? trim((string) ($line[$amountField] ?? '')) !== ''
+                : (float) ($line[$amountField] ?? 0) > 0;
+
+            return $hasMaelezo || $hasAmount;
         }));
 
         if ($lines === []) {
@@ -308,7 +475,7 @@ class DailyAccountsController extends Controller
             return $record->load('lines');
         });
 
-        $total = (float) $record->lines->sum($amountField);
+        $total = $amountIsText ? null : (float) $record->lines->sum($amountField);
 
         $successMessage = $successPrefix.' kwa '.$employeeName;
         if (! empty($validated['bidhaa'])) {
@@ -327,6 +494,43 @@ class DailyAccountsController extends Controller
         return redirect()
             ->route('purchases.daily-accounts.index')
             ->with('success', $successMessage);
+    }
+
+    /**
+     * @return array{employee_id: int, entry_date: string}
+     */
+    private function validateReportScope(Request $request, int $companyId, ?int $branchId): array
+    {
+        $validated = $request->validate([
+            'employee_id' => ['required', 'integer'],
+            'entry_date' => ['required', 'date'],
+        ], [
+            'employee_id.required' => 'Mfanyakaji haapatikani.',
+            'entry_date.required' => 'Tarehe haipo.',
+        ]);
+
+        if (! $this->mauzoEmployeeList->employeeExistsForCompanyBranch(
+            (int) $validated['employee_id'],
+            $companyId,
+            $branchId ? (int) $branchId : null
+        )) {
+            abort(404);
+        }
+
+        return $validated;
+    }
+
+    private function userIsAdmin(): bool
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole('admin')
+            || $user->hasRole('super-admin')
+            || $user->hasRole('Super Admin');
     }
 
     private function resolveEmployeeDisplayName(int $employeeId): string

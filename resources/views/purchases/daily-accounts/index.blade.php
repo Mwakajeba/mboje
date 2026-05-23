@@ -55,7 +55,7 @@
                             <i class="bx bx-package fs-1 text-info"></i>
                         </div>
                         <h5 class="card-title">Ingiza Taarifa za stoo</h5>
-                        <p class="card-text flex-grow-1 small">Weka mistari ya stoo: maelezo na thamani kwa mfanyakazi.</p>
+                        <p class="card-text flex-grow-1 small">Weka mistari ya stoo: maelezo na thamani/idadi kwa mfanyakazi.</p>
                         <button type="button" class="btn btn-info text-white mt-auto" id="btnOpenIngizaStoo">
                             <i class="bx bx-plus me-1"></i> Weka stoo
                         </button>
@@ -130,7 +130,8 @@
     'showBidhaa' => true,
     'bidhaaInputId' => 'stoo_bidhaa',
     'amountField' => 'thamani',
-    'amountLabel' => 'Thamani',
+    'amountLabel' => 'Thamani/Idadi',
+    'showLinesTotal' => false,
     'submitBtnClass' => 'btn-info text-white',
     'employees' => $employees,
 ])
@@ -172,6 +173,8 @@ $(document).ready(function () {
         storeUrl: @json(route('purchases.daily-accounts.stoo.store')),
         linePlaceholder: 'Maelezo (mf. zilizouzwa, zizonunuliwa, baki…)',
         amountField: 'thamani',
+        amountInputType: 'text',
+        showLinesTotal: false,
         bidhaaInput: '#stoo_bidhaa',
         successDefault: 'Taarifa za stoo zimehifadhiwa.'
     });

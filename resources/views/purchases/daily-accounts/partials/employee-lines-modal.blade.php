@@ -15,6 +15,7 @@
     'linePlaceholder',
     'amountField' => 'kiasi',
     'amountLabel' => 'Kiasi',
+    'showLinesTotal' => true,
     'showBidhaa' => false,
     'bidhaaInputId' => 'bidhaa',
     'submitBtnClass' => 'btn-success',
@@ -78,6 +79,7 @@
                                 </tr>
                             </thead>
                             <tbody id="{{ $linesBodyId }}"></tbody>
+                            @if($showLinesTotal)
                             <tfoot>
                                 <tr class="table-light">
                                     <td class="text-end fw-bold">Jumla</td>
@@ -85,6 +87,7 @@
                                     <td></td>
                                 </tr>
                             </tfoot>
+                            @endif
                         </table>
                     </div>
                 </form>

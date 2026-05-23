@@ -1,6 +1,8 @@
 <script nonce="{{ $cspNonce ?? '' }}">
 function initDailyLinesForm(cfg) {
     var amountField = cfg.amountField || 'kiasi';
+    var amountInputType = cfg.amountInputType || 'number';
+    var showLinesTotal = cfg.showLinesTotal !== false;
     var modalEl = document.getElementById(cfg.modalId);
     if (!modalEl) {
         return;
@@ -24,6 +26,9 @@ function initDailyLinesForm(cfg) {
     }
 
     function updateTotal() {
+        if (!showLinesTotal || !cfg.linesTotal) {
+            return;
+        }
         var total = 0;
         $(cfg.linesBody + ' .daily-amount-input').each(function () {
             total += parseFloat($(this).val()) || 0;
@@ -33,9 +38,13 @@ function initDailyLinesForm(cfg) {
 
     function addLine(maelezo, amount) {
         var idx = lineIndex++;
+        var amountAttrs = amountInputType === 'text'
+            ? 'type="text" class="form-control form-control-sm daily-amount-input" placeholder="Mf. 50, 2 gunia, 100kg"'
+            : 'type="number" step="0.01" min="0" class="form-control form-control-sm text-end daily-amount-input"';
+        var amountValue = amountInputType === 'text' ? '' : '0';
         var $row = $('<tr class="daily-line-row">'
             + '<td><input type="text" class="form-control form-control-sm daily-maelezo-input" name="lines[' + idx + '][maelezo]" placeholder="' + cfg.linePlaceholder + '" maxlength="2000" required></td>'
-            + '<td><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end daily-amount-input" name="lines[' + idx + '][' + amountField + ']" value="0" required></td>'
+            + '<td><input ' + amountAttrs + ' name="lines[' + idx + '][' + amountField + ']" value="' + amountValue + '" maxlength="255" required></td>'
             + '<td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm btn-remove-line" title="Ondoa"><i class="bx bx-trash"></i></button></td>'
             + '</tr>');
         if (maelezo !== undefined) {
@@ -77,7 +86,9 @@ function initDailyLinesForm(cfg) {
         updateTotal();
     });
 
-    $(cfg.linesBody).on('input', '.daily-amount-input', updateTotal);
+    if (showLinesTotal) {
+        $(cfg.linesBody).on('input', '.daily-amount-input', updateTotal);
+    }
 
     $(cfg.form).on('submit', function (e) {
         e.preventDefault();
