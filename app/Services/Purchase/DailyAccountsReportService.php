@@ -88,7 +88,7 @@ class DailyAccountsReportService
         $fmt = fn (float $n) => number_format($n, 2, '.', ',');
 
         return sprintf(
-            'Hesabu ya %s ya tarehe %s imeingizwa tayari. Baki ya tarehe %s ni %s. Mauzo ya tarehe %s ni %s. Jumla ya baki na mauzo ni %s. Jumla ya matumizi na manunuzi ni %s. Baki mpya ni %s.',
+            'Hesabu ya %s ya tarehe %s imeingizwa tayari. Baki ya tarehe %s ni %s. Mauzo ya tarehe %s ni %s. Jumla ya baki na mauzo ni %s. Jumla ya matumizi na manunuzi ni %s. Baki mpya ni %s. Ingia kwenye mfumo kuangalia bonyeza mboje.sys.co.tz',
             $employeeName,
             $report['entry_date_formatted'],
             $report['previous_date_formatted'],
