@@ -1,15 +1,12 @@
 @if(!empty($can_delete))
 @php
-    $lineDestroyUrlTemplate = str_replace(
-        ['mauzo', '/0'],
-        ['__TYPE__', '__LINE__'],
-        route('purchases.daily-accounts.report.line.destroy', ['type' => 'mauzo', 'line' => 0])
-    );
-    $sectionDestroyUrlTemplate = str_replace(
-        'mauzo',
-        '__TYPE__',
-        route('purchases.daily-accounts.report.section.destroy', ['type' => 'mauzo'])
-    );
+    $lineDestroyUrlTemplate = route('purchases.daily-accounts.report.line.destroy', [
+        'type' => '__TYPE__',
+        'line' => '__LINE__',
+    ]);
+    $sectionDestroyUrlTemplate = route('purchases.daily-accounts.report.section.destroy', [
+        'type' => '__TYPE__',
+    ]);
 @endphp
 <script nonce="{{ $cspNonce ?? '' }}">
 $(document).ready(function () {

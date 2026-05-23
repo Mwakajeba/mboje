@@ -1,10 +1,9 @@
 @if(!empty($can_manage))
 @php
-    $lineUpdateUrlTemplate = str_replace(
-        ['mauzo', '/0'],
-        ['__TYPE__', '__LINE__'],
-        route('purchases.daily-accounts.report.line.update', ['type' => 'mauzo', 'line' => 0])
-    );
+    $lineUpdateUrlTemplate = route('purchases.daily-accounts.report.line.update', [
+        'type' => '__TYPE__',
+        'line' => '__LINE__',
+    ]);
 @endphp
 <script nonce="{{ $cspNonce ?? '' }}">
 $(document).ready(function () {
