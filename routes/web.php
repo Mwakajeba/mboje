@@ -1435,6 +1435,18 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
     Route::post('opening-balances', [\App\Http\Controllers\Purchase\OpeningBalanceController::class, 'store'])->name('opening-balances.store');
     Route::get('opening-balances/{encodedId}', [\App\Http\Controllers\Purchase\OpeningBalanceController::class, 'show'])->name('opening-balances.show');
 
+    // Hesabu za Kila Siku (daily supplier accounts hub)
+    Route::prefix('daily-accounts')->name('daily-accounts.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'index'])->name('index');
+        Route::post('/mauzo', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'storeMauzo'])->name('mauzo.store');
+        Route::post('/matumizi', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'storeMatumizi'])->name('matumizi.store');
+        Route::post('/manunuzi', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'storeManunuzi'])->name('manunuzi.store');
+        Route::post('/stoo', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'storeStoo'])->name('stoo.store');
+        Route::get('/matumizi-manunuzi', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'matumiziManunuzi'])->name('matumizi-manunuzi');
+        Route::get('/report', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'report'])->name('report');
+        Route::get('/report/show', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'reportShow'])->name('report.show');
+    });
+
     // Supplier advances (prepayments to suppliers)
     Route::prefix('supplier-advances')->name('supplier-advances.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'index'])->name('index');

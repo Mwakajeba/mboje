@@ -227,6 +227,33 @@
                             </div>
                             @endcan
 
+                            <!-- Hesabu za Kila Siku -->
+                            @can('view purchases')
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card border-warning position-relative h-100" style="border-color: #f59e0b !important;">
+                                    <div class="card-body text-center d-flex flex-column">
+                                        @php
+                                            $dailyAccountsBranch = session('branch_id') ?? auth()->user()->branch_id;
+                                            $dailyAccountsCount = \App\Models\Purchase\SupplierAdvance::where('company_id', auth()->user()->company_id)
+                                                ->when($dailyAccountsBranch, fn ($q) => $q->where('branch_id', $dailyAccountsBranch))
+                                                ->count();
+                                        @endphp
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-dark" style="background-color: #f59e0b;">
+                                            {{ $dailyAccountsCount }}
+                                            <span class="visually-hidden">hesabu za kila siku count</span>
+                                        </span>
+                                        <div class="mb-3">
+                                            <i class="bx bx-calendar-check fs-1" style="color: #f59e0b;"></i>
+                                        </div>
+                                        <h5 class="card-title">Hesabu za Kila Siku</h5>
+                                        <p class="card-text flex-grow-1">Malipo ya awali, matumizi, stoo, na salio la wasambazaji — rekodi na fuatilia kila siku.</p>
+                                        <a href="{{ route('purchases.daily-accounts.index') }}" class="btn text-dark mt-auto" style="background-color: #f59e0b;">
+                                            <i class="bx bx-list-ul me-1"></i> Fungua hesabu za kila siku
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            @endcan
 
                             {{-- 2. Purchase Requisitions (hidden — uncomment when needed)
                             <div class="col-md-6 col-lg-4 mb-4">
