@@ -122,7 +122,7 @@ class DailyAccountsController extends Controller
         $user = Auth::user();
         $branchId = session('branch_id') ?? $user->branch_id;
 
-        $employees = $this->mauzoEmployeeList->listForCompanyBranch(
+        $employees = $this->mauzoEmployeeList->listSalesPersonsForCompanyBranch(
             (int) $user->company_id,
             $branchId ? (int) $branchId : null
         );
@@ -147,7 +147,7 @@ class DailyAccountsController extends Controller
             'entry_date.date' => 'Tarehe si sahihi.',
         ]);
 
-        if (! $this->mauzoEmployeeList->employeeExistsForCompanyBranch(
+        if (! $this->mauzoEmployeeList->salesPersonExistsForCompanyBranch(
             (int) $validated['employee_id'],
             $companyId,
             $branchId ? (int) $branchId : null
@@ -165,7 +165,7 @@ class DailyAccountsController extends Controller
 
         $canManage = $this->userIsAdmin();
         $employees = $canManage
-            ? $this->mauzoEmployeeList->listForCompanyBranch($companyId, $branchId ? (int) $branchId : null)
+            ? $this->mauzoEmployeeList->listSalesPersonsForCompanyBranch($companyId, $branchId ? (int) $branchId : null)
             : collect();
 
         return view('purchases.daily-accounts.report-show', array_merge($report, [
@@ -218,7 +218,7 @@ class DailyAccountsController extends Controller
 
         $validated = $request->validate($rules, $messages);
 
-        if (! $this->mauzoEmployeeList->employeeExistsForCompanyBranch(
+        if (! $this->mauzoEmployeeList->salesPersonExistsForCompanyBranch(
             (int) $validated['employee_id'],
             $companyId,
             $branchId ? (int) $branchId : null
@@ -334,7 +334,7 @@ class DailyAccountsController extends Controller
             'entry_date.required' => 'Chagua tarehe.',
         ]);
 
-        if (! $this->mauzoEmployeeList->employeeExistsForCompanyBranch(
+        if (! $this->mauzoEmployeeList->salesPersonExistsForCompanyBranch(
             (int) $validated['employee_id'],
             $companyId,
             $branchId ? (int) $branchId : null

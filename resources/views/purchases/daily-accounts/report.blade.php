@@ -17,7 +17,7 @@
 
         <div class="card radius-10">
             <div class="card-body">
-                <p class="text-muted">Chagua mfanyakazi na tarehe. Ripoti inaonyesha mauzo/mapato, matumizi, manunuzi, baki, na taarifa za stoo.</p>
+                <p class="text-muted">Chagua mfanyakazi (sales person) na tarehe. Ripoti inaonyesha mauzo/mapato, matumizi, manunuzi, baki, na taarifa za stoo.</p>
 
                 <form id="daily-report-form" method="get" action="{{ route('purchases.daily-accounts.report.show') }}" target="_blank">
                     <div class="mb-3">
@@ -54,7 +54,7 @@ $(document).ready(function () {
         $('.report-employee-select').select2({
             theme: 'bootstrap-5',
             width: '100%',
-            placeholder: 'Tafuta mfanyakazi…',
+            placeholder: 'Tafuta sales person…',
             allowClear: true
         });
     }
