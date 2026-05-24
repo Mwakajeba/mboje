@@ -26,9 +26,9 @@
                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
                     <i class="bx bx-printer me-1"></i> Chapisha
                 </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.close()">
-                    <i class="bx bx-x me-1"></i> Funga
-                </button>
+                <a href="{{ route('purchases.daily-accounts.report') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bx bx-arrow-back me-1"></i> Rudi nyuma
+                </a>
             </div>
         </div>
 
