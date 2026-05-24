@@ -575,22 +575,6 @@ class SupplierAdvanceController extends Controller
 
         $canDeleteStatementItems = user_can_record_wamachinga_purchases();
 
-        $stockRecords = SupplierAdvanceStockRecord::query()
-            ->where('company_id', $companyId)
-            ->where('supplier_id', $supplier->id)
-            ->when($branchId, fn ($q) => $q->where(function ($q) use ($branchId) {
-                $q->where('branch_id', $branchId)->orWhereNull('branch_id');
-            }))
-            ->with([
-                'user:id,name',
-                'lines' => fn ($q) => $q->orderByRaw(
-                    "FIELD(transaction_type, 'zilizouzwa', 'zizonunuliwa', 'baki')"
-                ),
-            ])
-            ->orderByDesc('entry_date')
-            ->orderByDesc('id')
-            ->get();
-
         return view('purchases.supplier-advances.statement', compact(
             'supplier',
             'totals',
@@ -604,7 +588,6 @@ class SupplierAdvanceController extends Controller
             'malipoTotal',
             'matumiziTotal',
             'manunuziTotal',
-            'stockRecords',
             'canDeleteStatementItems',
             'encodedSupplierId'
         ));
@@ -701,6 +684,16 @@ class SupplierAdvanceController extends Controller
                 'user_id' => $user->id,
             ]);
         });
+
+        $this->sendSupplierAdvanceManunuziSms(
+            $supplier,
+            $validated['maelezo'],
+            $kiasi,
+            $companyId,
+            $branchId ? (int) $branchId : null,
+            $entryDate,
+            (string) ($user->name ?? '—')
+        );
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -1631,6 +1624,72 @@ class SupplierAdvanceController extends Controller
             }
         } catch (\Throwable $e) {
             Log::error('Supplier advance SMS exception: '.$e->getMessage(), [
+                'supplier_id' => $supplier->id,
+            ]);
+        }
+    }
+
+    /**
+     * Notify company phone when matumizi/manunuzi is recorded against a supplier advance.
+     */
+    private function sendSupplierAdvanceManunuziSms(
+        Supplier $supplier,
+        string $maelezo,
+        float $kiasi,
+        int $companyId,
+        ?int $branchId,
+        string $entryDate,
+        string $recordedByName
+    ): void {
+        try {
+            $company = Company::query()->find($companyId);
+            $phone = trim((string) ($company?->phone ?? ''));
+            if ($phone === '') {
+                Log::warning('Supplier advance manunuzi SMS skipped: company phone not set in company settings.', [
+                    'company_id' => $companyId,
+                    'supplier_id' => $supplier->id,
+                ]);
+
+                return;
+            }
+
+            if (! SmsHelper::isConfigured()) {
+                Log::warning('Supplier advance manunuzi SMS skipped: SMS gateway not configured.');
+
+                return;
+            }
+
+            $balance = $this->allocationService->balanceForSupplier(
+                $supplier->id,
+                $companyId,
+                $branchId
+            );
+
+            $maelezoLower = mb_strtolower(trim($maelezo));
+            $dateFormatted = \Carbon\Carbon::parse($entryDate)->format('d/m/Y');
+            $amountFormatted = number_format($kiasi, 2);
+            $balanceFormatted = number_format($balance, 2);
+
+            $message = sprintf(
+                'Matumizi ya %s: %s kiasi cha Tsh %s tarehe %s, baki ni %s. Imeingizwa na %s',
+                $supplier->name,
+                $maelezoLower,
+                $amountFormatted,
+                $dateFormatted,
+                $balanceFormatted,
+                $recordedByName
+            );
+
+            $result = SmsHelper::send($phone, $message);
+            if (! ($result['success'] ?? false)) {
+                Log::warning('Supplier advance manunuzi SMS failed.', [
+                    'phone' => $phone,
+                    'supplier_id' => $supplier->id,
+                    'error' => $result['error'] ?? 'unknown',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Supplier advance manunuzi SMS exception: '.$e->getMessage(), [
                 'supplier_id' => $supplier->id,
             ]);
         }

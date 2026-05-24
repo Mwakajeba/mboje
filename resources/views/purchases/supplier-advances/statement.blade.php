@@ -209,60 +209,6 @@
                 @endif
             </div>
         </div>
-
-        <div class="card radius-10 statement-card">
-            <div class="card-body">
-                <h6 class="text-primary mb-2">
-                    <i class="bx bx-package me-1"></i> Stoo
-                </h6>
-                <p class="text-muted small mb-3">Stoo iliyoingizwa kwa msambazaji huyu (Weka stoo).</p>
-                @forelse($stockRecords as $record)
-                <div class="border rounded p-3 mb-3 position-relative">
-                    @if($canDeleteStatementItems)
-                    <div class="no-print position-absolute top-0 end-0 m-2">
-                        <form method="post" action="{{ route('purchases.supplier-advances.statement.stock.destroy', ['encodedSupplierId' => $encodedSupplierId, 'encodedStockRecordId' => Vinkla\Hashids\Facades\Hashids::encode($record->id)]) }}" class="d-inline" onsubmit="return confirm('Una uhakika unataka kufuta stoo hii?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Futa stoo">
-                                <i class="bx bx-trash me-1"></i> Futa
-                            </button>
-                        </form>
-                    </div>
-                    @endif
-                    <h6 class="mb-1 fw-bold">{{ $record->bidhaa }}</h6>
-                    <p class="text-muted small mb-2">
-                        Tarehe: <strong>{{ $record->entry_date->format('Y-m-d') }}</strong>
-                        @if($record->user)
-                            · Aliyeingiza: {{ $record->user->name }}
-                        @endif
-                    </p>
-                    @if(filled($record->description))
-                    <p class="small mb-2">{{ $record->description }}</p>
-                    @endif
-                    <table class="table table-bordered table-sm mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Aina ya Muamala</th>
-                                <th class="text-end">Idadi</th>
-                                <th class="text-end">Thamani</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($record->lines as $line)
-                            <tr>
-                                <td>{{ $line->transactionTypeLabel() }}</td>
-                                <td class="text-end">{{ $line->idadi }}</td>
-                                <td class="text-end fw-semibold">{{ format_currency((float) $line->thamani) }}</td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-                @empty
-                <p class="text-center text-muted py-4 mb-0">Hakuna stoo iliyoingizwa kwa msambazaji huyu.</p>
-                @endforelse
-            </div>
-        </div>
     </div>
 </div>
 
