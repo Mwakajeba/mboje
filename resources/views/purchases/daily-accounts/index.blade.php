@@ -14,9 +14,20 @@
         <h6 class="mb-0 text-uppercase">Hesabu za Kila Siku (Wafanyakazi)</h6>
         <hr />
 
-        <p class="text-muted mb-4">Chagua kitendo cha kufanya kwa mfanyakazi wa leo.</p>
+        @php
+            $isMdDailyAccountsRole = auth()->user()->hasRole('Md');
+        @endphp
+
+        <p class="text-muted mb-4">
+            @if($isMdDailyAccountsRole)
+                Angalia ripoti ya hesabu za kila siku kwa wafanyakazi.
+            @else
+                Chagua kitendo cha kufanya kwa mfanyakazi wa leo.
+            @endif
+        </p>
 
         <div class="row">
+            @unless($isMdDailyAccountsRole)
             @can('record purchase payment')
             <div class="col-md-6 col-lg-3 mb-4">
                 <div class="card border-success h-100">
@@ -63,8 +74,9 @@
                 </div>
             </div>
             @endcan
+            @endunless
 
-            @can('view purchases')
+            @if(user_can_view_wamachinga_purchases())
             <div class="col-md-6 col-lg-3 mb-4">
                 <div class="card border-primary h-100">
                     <div class="card-body text-center d-flex flex-column">
@@ -79,7 +91,7 @@
                     </div>
                 </div>
             </div>
-            @endcan
+            @endif
         </div>
 
         <div class="mt-2">
@@ -90,6 +102,7 @@
     </div>
 </div>
 
+@unless(auth()->user()->hasRole('Md'))
 @can('record purchase payment')
 @include('purchases.daily-accounts.partials.employee-lines-modal', [
     'modalId' => 'ingizaMauzoModal',
@@ -136,8 +149,11 @@
     'employees' => $employees,
 ])
 @endcan
+@endunless
 @endsection
 
+@unless(auth()->user()->hasRole('Md'))
+@can('record purchase payment')
 @push('scripts')
 @include('purchases.daily-accounts.partials.daily-lines-form-init')
 <script nonce="{{ $cspNonce ?? '' }}">
@@ -181,3 +197,5 @@ $(document).ready(function () {
 });
 </script>
 @endpush
+@endcan
+@endunless

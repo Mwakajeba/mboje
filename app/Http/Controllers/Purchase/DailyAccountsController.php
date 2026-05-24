@@ -102,7 +102,7 @@ class DailyAccountsController extends Controller
 
     public function matumiziManunuzi()
     {
-        abort_unless(user_can_record_wamachinga_purchases(), 403);
+        abort_unless(user_can_enter_daily_accounts(), 403);
 
         $user = Auth::user();
         $branchId = session('branch_id') ?? $user->branch_id;
@@ -373,7 +373,7 @@ class DailyAccountsController extends Controller
         array $extraRecordRules = [],
         bool $amountIsText = false
     ): JsonResponse|\Illuminate\Http\RedirectResponse {
-        abort_unless(user_can_record_wamachinga_purchases(), 403);
+        abort_unless(user_can_enter_daily_accounts(), 403);
 
         $user = Auth::user();
         $companyId = (int) $user->company_id;

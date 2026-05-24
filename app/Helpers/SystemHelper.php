@@ -179,3 +179,16 @@ if (!function_exists('user_can_record_wamachinga_purchases')) {
         return $user->hasRole('Md') || $user->can('record purchase payment');
     }
 }
+
+if (!function_exists('user_can_enter_daily_accounts')) {
+    function user_can_enter_daily_accounts($user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user || $user->hasRole('Md')) {
+            return false;
+        }
+
+        return user_can_record_wamachinga_purchases($user);
+    }
+}
