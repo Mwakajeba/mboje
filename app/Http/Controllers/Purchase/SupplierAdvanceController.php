@@ -644,12 +644,13 @@ class SupplierAdvanceController extends Controller
         $validated = $request->validate([
             'maelezo' => ['required', 'string', 'max:2000'],
             'kiasi' => ['required', 'numeric', 'min:0.01'],
-            'entry_date' => ['nullable', 'date'],
+            'entry_date' => ['required', 'date'],
         ], [
             'maelezo.required' => 'Maelezo yanahitajika.',
             'kiasi.required' => 'Kiasi kinahitajika.',
             'kiasi.numeric' => 'Kiasi lazima kiwe nambari.',
             'kiasi.min' => 'Kiasi lazima kiwe zaidi ya sifuri.',
+            'entry_date.required' => 'Tarehe inahitajika.',
             'entry_date.date' => 'Tarehe si sahihi.',
         ]);
 

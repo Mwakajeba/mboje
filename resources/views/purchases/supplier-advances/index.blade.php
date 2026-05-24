@@ -181,8 +181,11 @@
                 </p>
                 <form id="ingiza-manunuzi-form" novalidate>
                     <input type="hidden" id="ingiza_manunuzi_encoded_supplier_id" value="">
-                    <input type="hidden" id="ingiza_manunuzi_entry_date" name="entry_date" value="">
                     <div id="ingiza-manunuzi-form-errors" class="alert alert-danger d-none small py-2"></div>
+                    <div class="mb-3">
+                        <label for="ingiza_manunuzi_entry_date" class="form-label fw-bold">Tarehe <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="ingiza_manunuzi_entry_date" name="entry_date" required>
+                    </div>
                     <div class="mb-3">
                         <label for="ingiza_manunuzi_maelezo" class="form-label fw-bold">Maelezo <span class="text-danger">*</span></label>
                         <textarea class="form-control" id="ingiza_manunuzi_maelezo" name="maelezo" rows="3" maxlength="2000" placeholder="Maelezo ya manunuzi" required></textarea>
