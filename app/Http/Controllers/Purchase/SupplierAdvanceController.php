@@ -1341,14 +1341,16 @@ class SupplierAdvanceController extends Controller
                 $encSup = Hashids::encode($s->id);
                 $html = '<div class="btn-group btn-group-sm" role="group">';
                 if ($canRecord) {
-                    $html .= '<button type="button" class="btn btn-outline-success btn-weka-stoo" title="Weka stoo"'
-                        .' data-supplier-id="'.e((string) $s->id).'"'
-                        .' data-encoded-supplier-id="'.e($encSup).'"'
-                        .' data-supplier-name="'.e($s->name).'"'
-                        .'><i class="bx bx-package"></i> Weka stoo</button>';
+                    // Weka stoo — disabled; use Hesabu za Kila Siku (Wafanyakazi) instead
+                    // $html .= '<button type="button" class="btn btn-outline-success btn-weka-stoo" title="Weka stoo"'
+                    //     .' data-supplier-id="'.e((string) $s->id).'"'
+                    //     .' data-encoded-supplier-id="'.e($encSup).'"'
+                    //     .' data-supplier-name="'.e($s->name).'"'
+                    //     .'><i class="bx bx-package"></i> Weka stoo</button>';
                     if ($bal > 0.005) {
                         $html .= '<a href="'.route('purchases.supplier-advances.pay', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-primary" title="Rekodi fedha zilirudishwa na msambazaji"><i class="bx bx-money"></i> Lipa</a>';
-                        $html .= '<a href="'.route('purchases.supplier-advances.expense', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-warning" title="Tumia salio la malipo ya awali kwa matumizi"><i class="bx bx-receipt"></i> Weka Matumizi</a>';
+                        // Weka Matumizi — disabled; use Hesabu za Kila Siku (Wafanyakazi) instead
+                        // $html .= '<a href="'.route('purchases.supplier-advances.expense', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-warning" title="Tumia salio la malipo ya awali kwa matumizi"><i class="bx bx-receipt"></i> Weka Matumizi</a>';
                     }
                 }
                 if ($canView) {

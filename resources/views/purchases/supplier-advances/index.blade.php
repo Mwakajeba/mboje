@@ -44,7 +44,8 @@
                 <h6 class="text-primary mb-3"><i class="bx bx-pie-chart-alt me-1"></i> Hesabu za Malipo</h6>
                 <p class="text-muted small mb-3">
                     <strong>Malipo ya awali</strong> ni jumla ya malipo yaliyochapishwa; <strong>Matumizi</strong> ni kiasi kilichotumika kwenye ununuzi, matumizi, au marejesho; <strong>Salio</strong> ni malipo ya awali minus matumizi.
-                    <strong>Lipa</strong> = fedha zilirudishwa (benki). <strong>Weka Matumizi</strong> = toa matumizi kutoka salio la awali.
+                    <strong>Lipa</strong> = fedha zilirudishwa (benki).
+                    {{-- <strong>Weka Matumizi</strong> = toa matumizi kutoka salio la awali. --}}
                 </p>
                 <div class="table-responsive">
                     <table id="supplier-advance-balances-table" class="table table-striped table-hover align-middle w-100">
@@ -90,6 +91,7 @@
     </div>
 </div>
 
+{{-- Weka stoo modal — disabled; use Hesabu za Kila Siku (Wafanyakazi) instead
 <div class="modal fade" id="wekaStooModal" tabindex="-1" aria-labelledby="wekaStooModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -161,6 +163,7 @@
         </div>
     </div>
 </div>
+--}}
 
 @endsection
 
@@ -168,8 +171,10 @@
 <script nonce="{{ $cspNonce ?? '' }}">
 $(document).ready(function () {
     var indexUrl = @json(route('purchases.supplier-advances.index'));
+    /* Weka stoo — disabled
     var wekaStooModalEl = document.getElementById('wekaStooModal');
     var wekaStooModal = wekaStooModalEl ? new bootstrap.Modal(wekaStooModalEl) : null;
+    */
 
     var dtLang = {
         processing: '<div class="spinner-border text-primary spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div>',
@@ -238,6 +243,7 @@ $(document).ready(function () {
         }
     });
 
+    /* Weka stoo — disabled
     var stockStoreUrlTemplate = @json(route('purchases.supplier-advances.stock.store', ['encodedSupplierId' => '__ID__']));
 
     $(document).on('click', '.btn-weka-stoo', function () {
@@ -296,6 +302,7 @@ $(document).ready(function () {
             $submit.prop('disabled', false);
         });
     });
+    */
 });
 </script>
 @endpush
