@@ -163,7 +163,7 @@ if (!function_exists('user_can_view_wamachinga_purchases')) {
             return false;
         }
 
-        return $user->hasRole('Md') || $user->can('view purchases');
+        return $user->hasRole('md') || $user->can('view purchases');
     }
 }
 
@@ -176,7 +176,7 @@ if (!function_exists('user_can_record_wamachinga_purchases')) {
             return false;
         }
 
-        return $user->hasRole('Md') || $user->can('record purchase payment');
+        return $user->hasRole('md') || $user->can('record purchase payment');
     }
 }
 
@@ -185,7 +185,7 @@ if (!function_exists('user_can_enter_daily_accounts')) {
     {
         $user = $user ?? auth()->user();
 
-        if (! $user || $user->hasRole('Md')) {
+        if (! $user || $user->hasRole('md')) {
             return false;
         }
 
