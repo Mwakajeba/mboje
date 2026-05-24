@@ -46,6 +46,7 @@
                     <strong>Malipo ya awali</strong> ni jumla ya malipo yaliyochapishwa; <strong>Matumizi</strong> ni kiasi kilichotumika kwenye ununuzi, matumizi, au marejesho; <strong>Salio</strong> ni malipo ya awali minus matumizi.
                     <strong>Lipa</strong> = fedha zilirudishwa (benki).
                     {{-- <strong>Weka Matumizi</strong> = toa matumizi kutoka salio la awali. --}}
+                    <strong>Ingiza Manunuzi</strong> = rekodi manunuzi (maelezo na kiasi) kwenye hesabu.
                 </p>
                 <div class="table-responsive">
                     <table id="supplier-advance-balances-table" class="table table-striped table-hover align-middle w-100">
@@ -165,16 +166,54 @@
 </div>
 --}}
 
+<div class="modal fade" id="ingizaManunuziModal" tabindex="-1" aria-labelledby="ingizaManunuziModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ingizaManunuziModalLabel">
+                    <i class="bx bx-cart me-1"></i> Ingiza Manunuzi
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Funga"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    <strong>Msambazaji:</strong> <span id="ingiza-manunuzi-supplier-name">—</span>
+                </p>
+                <form id="ingiza-manunuzi-form" novalidate>
+                    <input type="hidden" id="ingiza_manunuzi_encoded_supplier_id" value="">
+                    <input type="hidden" id="ingiza_manunuzi_entry_date" name="entry_date" value="">
+                    <div id="ingiza-manunuzi-form-errors" class="alert alert-danger d-none small py-2"></div>
+                    <div class="mb-3">
+                        <label for="ingiza_manunuzi_maelezo" class="form-label fw-bold">Maelezo <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="ingiza_manunuzi_maelezo" name="maelezo" rows="3" maxlength="2000" placeholder="Maelezo ya manunuzi" required></textarea>
+                    </div>
+                    <div class="mb-0">
+                        <label for="ingiza_manunuzi_kiasi" class="form-label fw-bold">Kiasi <span class="text-danger">*</span></label>
+                        <input type="text" inputmode="decimal" class="form-control" id="ingiza_manunuzi_kiasi" name="kiasi" placeholder="0.00" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Funga</button>
+                @can('record purchase payment')
+                <button type="submit" form="ingiza-manunuzi-form" class="btn btn-warning btn-sm text-dark" id="ingiza-manunuzi-submit">
+                    <i class="bx bx-save me-1"></i> Hifadhi
+                </button>
+                @endcan
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
 <script nonce="{{ $cspNonce ?? '' }}">
 $(document).ready(function () {
     var indexUrl = @json(route('purchases.supplier-advances.index'));
-    /* Weka stoo — disabled
-    var wekaStooModalEl = document.getElementById('wekaStooModal');
-    var wekaStooModal = wekaStooModalEl ? new bootstrap.Modal(wekaStooModalEl) : null;
-    */
+    var ingizaManunuziModalEl = document.getElementById('ingizaManunuziModal');
+    var ingizaManunuziModal = ingizaManunuziModalEl ? new bootstrap.Modal(ingizaManunuziModalEl) : null;
+    var manunuziStoreUrlTemplate = @json(route('purchases.supplier-advances.manunuzi.store', ['encodedSupplierId' => '__ID__']));
 
     var dtLang = {
         processing: '<div class="spinner-border text-primary spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div>',
@@ -241,6 +280,82 @@ $(document).ready(function () {
         initComplete: function () {
             $(this.api().table().container()).find('.dataTables_filter input').attr('placeholder', 'Tafuta msambazaji…');
         }
+    });
+
+    function formatAmountInput(value) {
+        var raw = String(value || '').replace(/[^\d.]/g, '');
+        if (!raw) {
+            return '';
+        }
+        var parts = raw.split('.');
+        var intPart = parts[0].replace(/^0+(?=\d)/, '') || '0';
+        var decPart = parts.length > 1 ? parts.slice(1).join('').slice(0, 2) : '';
+        intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return decPart.length ? intPart + '.' + decPart : intPart;
+    }
+
+    $('#ingiza_manunuzi_kiasi').on('input', function () {
+        var el = this;
+        var start = el.selectionStart;
+        var before = el.value;
+        el.value = formatAmountInput(before);
+    });
+
+    $(document).on('click', '.btn-ingiza-manunuzi', function () {
+        var $btn = $(this);
+        $('#ingiza_manunuzi_encoded_supplier_id').val($btn.data('encoded-supplier-id') || '');
+        $('#ingiza-manunuzi-supplier-name').text($btn.data('supplier-name') || '—');
+        $('#ingiza-manunuzi-form-errors').addClass('d-none').empty();
+        $('#ingiza-manunuzi-form')[0].reset();
+        $('#ingiza_manunuzi_encoded_supplier_id').val($btn.data('encoded-supplier-id') || '');
+        $('#ingiza_manunuzi_entry_date').val(new Date().toISOString().slice(0, 10));
+        if (ingizaManunuziModal) {
+            ingizaManunuziModal.show();
+        }
+    });
+
+    $('#ingiza-manunuzi-form').on('submit', function (e) {
+        e.preventDefault();
+        var encodedId = $('#ingiza_manunuzi_encoded_supplier_id').val();
+        if (!encodedId) {
+            return;
+        }
+        var $errors = $('#ingiza-manunuzi-form-errors');
+        var $submit = $('#ingiza-manunuzi-submit');
+        $errors.addClass('d-none').empty();
+        $submit.prop('disabled', true);
+        $.ajax({
+            url: manunuziStoreUrlTemplate.replace('__ID__', encodedId),
+            method: 'POST',
+            data: $(this).serialize(),
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                'Accept': 'application/json'
+            }
+        }).done(function (res) {
+            if (ingizaManunuziModal) {
+                ingizaManunuziModal.hide();
+            }
+            var msg = (res && res.message) ? res.message : 'Manunuzi yamehifadhiwa.';
+            var $alert = $('<div class="alert alert-success alert-dismissible fade show" role="alert">'
+                + $('<div>').text(msg).html()
+                + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>');
+            $('.page-content').prepend($alert);
+            $('#supplier-advance-balances-table').DataTable().ajax.reload(null, false);
+        }).fail(function (xhr) {
+            if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                var list = [];
+                $.each(xhr.responseJSON.errors, function (_, msgs) {
+                    list = list.concat(msgs);
+                });
+                $errors.removeClass('d-none').html('<ul class="mb-0"><li>' + list.join('</li><li>') + '</li></ul>');
+            } else {
+                var errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Imeshindikana kuhifadhi manunuzi.';
+                $errors.removeClass('d-none').text(errMsg);
+            }
+        }).always(function () {
+            $submit.prop('disabled', false);
+        });
     });
 
     /* Weka stoo — disabled

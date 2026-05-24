@@ -9,6 +9,7 @@ use App\Models\Company;
 use App\Models\ChartAccount;
 use App\Models\Purchase\SupplierAdvance;
 use App\Models\Purchase\SupplierAdvanceDeduction;
+use App\Models\Purchase\SupplierAdvanceManunuziEntry;
 use App\Models\Purchase\SupplierAdvanceStockLine;
 use App\Models\Purchase\SupplierAdvanceStockRecord;
 use App\Models\Supplier;
@@ -534,15 +535,33 @@ class SupplierAdvanceController extends Controller
 
             return $line;
         });
-        $allDeductionLines = collect($statement['matumizi_lines'] ?? [])->map(function (array $line) {
-            $line['paid'] = (float) ($line['paid'] ?? 0);
-            $line['deducted'] = (float) ($line['deducted'] ?? 0);
+        $manunuziEntryQuery = SupplierAdvanceManunuziEntry::query()
+            ->where('company_id', $companyId)
+            ->where('supplier_id', $supplier->id)
+            ->when($branchId, fn ($q) => $q->where(function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+            }))
+            ->with('user:id,name');
 
-            return $line;
-        });
+        if ($fromDate && $toDate) {
+            $manunuziEntryQuery->whereBetween('entry_date', [$fromDate, $toDate]);
+        }
 
-        $manunuziLines = $allDeductionLines->filter(fn (array $line) => ($line['is_manunuzi'] ?? false))->values();
-        $matumiziLines = $allDeductionLines->filter(fn (array $line) => ! ($line['is_manunuzi'] ?? false))->values();
+        $manunuziEntries = $manunuziEntryQuery
+            ->orderBy('entry_date')
+            ->orderBy('id')
+            ->get();
+
+        $matumiziLines = $manunuziEntries->map(fn (SupplierAdvanceManunuziEntry $entry) => [
+            'date' => $entry->entry_date,
+            'description' => $entry->maelezo,
+            'deducted' => (float) $entry->kiasi,
+            'performed_by' => $entry->user?->name ?? '—',
+            'can_delete' => true,
+            'entry_id' => $entry->id,
+        ])->values();
+
+        $manunuziLines = collect();
 
         $totals = $statement['totals'];
         $period = $statement['period'] ?? null;
@@ -631,6 +650,101 @@ class SupplierAdvanceController extends Controller
         return redirect()
             ->route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encodedSupplierId])
             ->with('success', 'Stoo imefutwa.');
+    }
+
+    public function storeManunuzi(Request $request, string $encodedSupplierId)
+    {
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
+
+        $this->mergeNormalizedKiasi($request);
+
+        $validated = $request->validate([
+            'maelezo' => ['required', 'string', 'max:2000'],
+            'kiasi' => ['required', 'numeric', 'min:0.01'],
+            'entry_date' => ['nullable', 'date'],
+        ], [
+            'maelezo.required' => 'Maelezo yanahitajika.',
+            'kiasi.required' => 'Kiasi kinahitajika.',
+            'kiasi.numeric' => 'Kiasi lazima kiwe nambari.',
+            'kiasi.min' => 'Kiasi lazima kiwe zaidi ya sifuri.',
+            'entry_date.date' => 'Tarehe si sahihi.',
+        ]);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+        $supplier = $this->supplierForEncodedId($encodedSupplierId, $companyId, $branchId);
+
+        $entryDate = $validated['entry_date'] ?? now()->toDateString();
+        $kiasi = round((float) $validated['kiasi'], 2);
+
+        DB::transaction(function () use ($validated, $companyId, $branchId, $supplier, $user, $entryDate, $kiasi) {
+            $entry = SupplierAdvanceManunuziEntry::create([
+                'company_id' => $companyId,
+                'branch_id' => $branchId ? (int) $branchId : null,
+                'supplier_id' => $supplier->id,
+                'entry_date' => $entryDate,
+                'maelezo' => $validated['maelezo'],
+                'kiasi' => $kiasi,
+                'user_id' => $user->id,
+            ]);
+
+            SupplierAdvanceDeduction::create([
+                'company_id' => $companyId,
+                'branch_id' => $branchId ? (int) $branchId : null,
+                'supplier_id' => $supplier->id,
+                'amount' => $kiasi,
+                'deduction_date' => $entryDate,
+                'source_type' => 'supplier_advance_manunuzi',
+                'source_id' => $entry->id,
+                'description' => $validated['maelezo'],
+                'user_id' => $user->id,
+            ]);
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Manunuzi yamehifadhiwa.',
+            ]);
+        }
+
+        return redirect()
+            ->route('purchases.supplier-advances.index')
+            ->with('success', 'Manunuzi yamehifadhiwa kwa '.$supplier->name.'.');
+    }
+
+    public function destroyStatementManunuzi(string $encodedSupplierId, string $encodedEntryId)
+    {
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
+
+        $companyId = (int) Auth::user()->company_id;
+        $branchId = session('branch_id') ?? Auth::user()->branch_id;
+        $supplier = $this->supplierForEncodedId($encodedSupplierId, $companyId, $branchId);
+        $entryId = $this->decodeId($encodedEntryId);
+
+        $entry = SupplierAdvanceManunuziEntry::query()
+            ->where('company_id', $companyId)
+            ->where('supplier_id', $supplier->id)
+            ->when($branchId, fn ($q) => $q->where(function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId)->orWhereNull('branch_id');
+            }))
+            ->findOrFail($entryId);
+
+        DB::transaction(function () use ($entry, $companyId, $supplier) {
+            SupplierAdvanceDeduction::query()
+                ->where('company_id', $companyId)
+                ->where('supplier_id', $supplier->id)
+                ->where('source_type', 'supplier_advance_manunuzi')
+                ->where('source_id', $entry->id)
+                ->delete();
+
+            $entry->delete();
+        });
+
+        return redirect()
+            ->route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encodedSupplierId])
+            ->with('success', 'Manunuzi yamefutwa.');
     }
 
     private function decodeId(string $encoded): int
@@ -1165,6 +1279,21 @@ class SupplierAdvanceController extends Controller
         $request->merge(['amount' => $clean]);
     }
 
+    private function mergeNormalizedKiasi(Request $request): void
+    {
+        if (! $request->has('kiasi')) {
+            return;
+        }
+        $raw = (string) $request->input('kiasi', '');
+        $clean = preg_replace('/[^\d.]/', '', str_replace(',', '', $raw));
+        if ($clean === '') {
+            $request->merge(['kiasi' => null]);
+
+            return;
+        }
+        $request->merge(['kiasi' => $clean]);
+    }
+
     private function mergeNormalizedLineItemAmounts(Request $request): void
     {
         if (! $request->has('line_items') || ! is_array($request->line_items)) {
@@ -1349,9 +1478,11 @@ class SupplierAdvanceController extends Controller
                     //     .'><i class="bx bx-package"></i> Weka stoo</button>';
                     if ($bal > 0.005) {
                         $html .= '<a href="'.route('purchases.supplier-advances.pay', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-primary" title="Rekodi fedha zilirudishwa na msambazaji"><i class="bx bx-money"></i> Lipa</a>';
-                        // Weka Matumizi — disabled; use Hesabu za Kila Siku (Wafanyakazi) instead
-                        // $html .= '<a href="'.route('purchases.supplier-advances.expense', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-warning" title="Tumia salio la malipo ya awali kwa matumizi"><i class="bx bx-receipt"></i> Weka Matumizi</a>';
                     }
+                    $html .= '<button type="button" class="btn btn-outline-warning btn-ingiza-manunuzi" title="Ingiza manunuzi"'
+                        .' data-encoded-supplier-id="'.e($encSup).'"'
+                        .' data-supplier-name="'.e($s->name).'"'
+                        .'><i class="bx bx-cart"></i> Ingiza Manunuzi</button>';
                 }
                 if ($canView) {
                     $html .= '<a href="'.route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encSup]).'" class="btn btn-outline-secondary" title="Statement" target="_blank" rel="noopener"><i class="bx bx-file"></i> Statement</a>';

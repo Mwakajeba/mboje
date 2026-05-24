@@ -311,6 +311,7 @@ class SupplierAdvanceStatementService
             'cash_purchase' => 'Matumizi kwa ununuzi wa cash #'.($deduction->source_id ?? ''),
             'supplier_advance_refund' => 'Fedha zilirudishwa na msambazaji (risiti #'.($deduction->source_id ?? '').')',
             'supplier_advance_expense' => 'Matumizi (jarida #'.($deduction->source_id ?? '').')',
+            'supplier_advance_manunuzi' => 'Manunuzi',
             default => 'Malipo ya awali yametumika',
         };
     }
