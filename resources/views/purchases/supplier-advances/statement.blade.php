@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Hesabu za Fedha — '.$supplier->name)
+@section('title', 'Hesabu za Machinga — '.$supplier->name)
 
 @section('content')
 <div class="page-wrapper">
@@ -36,7 +36,7 @@
         <div class="card radius-10 statement-card mb-4">
             <div class="card-body">
                 <div class="text-center mb-4">
-                    <h4 class="mb-1">Hesabu za Fedha</h4>
+                    <h4 class="mb-1">Hesabu za Machinga</h4>
                     <p class="mb-0 fs-5 fw-semibold">{{ $supplier->name }}</p>
                     @if($supplier->tin_number)
                         <small class="text-muted">TIN: {{ $supplier->tin_number }}</small>

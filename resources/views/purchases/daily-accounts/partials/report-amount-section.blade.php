@@ -11,6 +11,7 @@
     'canDelete' => false,
     'canManage' => false,
     'sectionDeleteLabel' => null,
+    'noNewLinesMessage' => 'Hakuna mauzo/mapato mapya kwa siku hii.',
 ])
 
 @php
@@ -93,7 +94,7 @@
                 @endforeach
                 @if($showOpeningBalance && empty($lines))
                     <tr>
-                        <td colspan="{{ $showActions ? 3 : 2 }}" class="text-muted small">Hakuna mauzo mapya kwa siku hii.</td>
+                        <td colspan="{{ $showActions ? 3 : 2 }}" class="text-muted small">{{ $noNewLinesMessage }}</td>
                     </tr>
                 @endif
             </tbody>

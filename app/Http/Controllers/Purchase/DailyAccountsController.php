@@ -57,7 +57,7 @@ class DailyAccountsController extends Controller
             DailyMauzoLine::class,
             'daily_mauzo_record_id',
             'mauzo',
-            'Mauzo yamehifadhiwa'
+            'Mauzo/Mapato yamehifadhiwa'
         );
     }
 
@@ -380,10 +380,11 @@ class DailyAccountsController extends Controller
         $branchId = session('branch_id') ?? $user->branch_id;
 
         $typeLabel = match ($entryTypeKey) {
+            'mauzo' => 'mauzo/mapato',
             'matumizi' => 'matumizi',
             'manunuzi' => 'manunuzi',
             'stoo' => 'stoo',
-            default => 'mauzo',
+            default => 'mauzo/mapato',
         };
 
         $amountLabel = $amountIsText ? 'Thamani/Idadi' : 'Kiasi';

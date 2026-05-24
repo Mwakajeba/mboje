@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Ona Repoti — Hesabu za Kila Siku')
+@section('title', 'Ona Repoti — Hesabu za Kila Siku (Wafanyakazi)')
 
 @section('content')
 <div class="page-wrapper">
@@ -8,7 +8,7 @@
         <x-breadcrumbs-with-icons :links="[
             ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Usimamizi wa Manunuzi', 'url' => route('purchases.index'), 'icon' => 'bx bx-purchase-tag'],
-            ['label' => 'Hesabu za Kila Siku', 'url' => route('purchases.daily-accounts.index'), 'icon' => 'bx bx-calendar-check'],
+            ['label' => 'Hesabu za Kila Siku (Wafanyakazi)', 'url' => route('purchases.daily-accounts.index'), 'icon' => 'bx bx-calendar-check'],
             ['label' => 'Ona Repoti', 'url' => '#', 'icon' => 'bx bx-file']
         ]" />
 
@@ -17,7 +17,7 @@
 
         <div class="card radius-10">
             <div class="card-body">
-                <p class="text-muted">Chagua mfanyakazi na tarehe. Ripoti inaonyesha mauzo, matumizi, manunuzi, baki, na taarifa za stoo.</p>
+                <p class="text-muted">Chagua mfanyakazi na tarehe. Ripoti inaonyesha mauzo/mapato, matumizi, manunuzi, baki, na taarifa za stoo.</p>
 
                 <form id="daily-report-form" method="get" action="{{ route('purchases.daily-accounts.report.show') }}" target="_blank">
                     <div class="mb-3">

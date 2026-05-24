@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Ripoti — Hesabu za Kila Siku')
+@section('title', 'Ripoti — Hesabu za Kila Siku (Wafanyakazi)')
 
 @section('content')
 <div class="page-wrapper">
@@ -9,7 +9,7 @@
             <x-breadcrumbs-with-icons :links="[
                 ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
                 ['label' => 'Usimamizi wa Manunuzi', 'url' => route('purchases.index'), 'icon' => 'bx bx-purchase-tag'],
-                ['label' => 'Hesabu za Kila Siku', 'url' => route('purchases.daily-accounts.index'), 'icon' => 'bx bx-calendar-check'],
+                ['label' => 'Hesabu za Kila Siku (Wafanyakazi)', 'url' => route('purchases.daily-accounts.index'), 'icon' => 'bx bx-calendar-check'],
                 ['label' => 'Ripoti', 'url' => '#', 'icon' => 'bx bx-file']
             ]" />
             <div class="d-flex flex-wrap gap-2">
@@ -35,28 +35,29 @@
         <div class="card radius-10">
             <div class="card-body">
                 <div class="text-center mb-4">
-                    <h5 class="mb-1 text-uppercase">Ripoti ya Hesabu za Kila Siku</h5>
+                    <h5 class="mb-1 text-uppercase">Ripoti ya Hesabu za Kila Siku (Wafanyakazi)</h5>
                     <p class="mb-0"><strong>Mfanyakazi:</strong> {{ $employee_name }}</p>
                     <p class="mb-0 text-muted"><strong>Tarehe:</strong> {{ $entry_date_formatted }}</p>
                 </div>
 
-                {{-- Mauzo --}}
+                {{-- Mauzo/Mapato --}}
                 <h6 class="text-success text-uppercase border-bottom pb-2 mb-3">
-                    <i class="bx bx-wallet me-1"></i> Mauzo
+                    <i class="bx bx-wallet me-1"></i> Mauzo/Mapato
                 </h6>
                 @include('purchases.daily-accounts.partials.report-amount-section', [
                     'lines' => $mauzo_lines,
                     'total' => $baki_na_mauzo,
                     'amountLabel' => 'Kiasi',
-                    'emptyMessage' => 'Hakuna mauzo kwa siku hii.',
+                    'emptyMessage' => 'Hakuna mauzo/mapato kwa siku hii.',
                     'showOpeningBalance' => true,
                     'openingBalance' => $opening_balance,
                     'openingBalanceLabel' => 'Salio la kufungua (baki ya tarehe '.$previous_date_formatted.')',
-                    'totalLabel' => 'Jumla ya mauzo',
+                    'totalLabel' => 'Jumla ya mauzo/mapato',
+                    'noNewLinesMessage' => 'Hakuna mauzo/mapato mapya kwa siku hii.',
                     'lineType' => 'mauzo',
                     'canManage' => $can_manage ?? false,
                     'canDelete' => $can_delete ?? false,
-                    'sectionDeleteLabel' => 'mauzo',
+                    'sectionDeleteLabel' => 'mauzo/mapato',
                 ])
 
                 {{-- Matumizi --}}
@@ -98,11 +99,11 @@
                                 <span class="fw-semibold">{{ format_currency($opening_balance) }}</span>
                             </div>
                             <div class="col-sm-6 d-flex justify-content-between">
-                                <span>Mauzo ya tarehe {{ $entry_date_formatted }}</span>
+                                <span>Mauzo/Mapato ya tarehe {{ $entry_date_formatted }}</span>
                                 <span class="fw-semibold">{{ format_currency($mauzo_total) }}</span>
                             </div>
                             <div class="col-sm-6 d-flex justify-content-between">
-                                <span>Jumla ya baki na mauzo</span>
+                                <span>Jumla ya baki na mauzo/mapato</span>
                                 <span class="fw-semibold">{{ format_currency($baki_na_mauzo) }}</span>
                             </div>
                             <div class="col-sm-6 d-flex justify-content-between">

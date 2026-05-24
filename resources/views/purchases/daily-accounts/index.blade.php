@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Hesabu za Kila Siku')
+@section('title', 'Hesabu za Kila Siku (Wafanyakazi)')
 
 @section('content')
 <div class="page-wrapper">
@@ -8,10 +8,10 @@
         <x-breadcrumbs-with-icons :links="[
             ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Usimamizi wa Manunuzi', 'url' => route('purchases.index'), 'icon' => 'bx bx-purchase-tag'],
-            ['label' => 'Hesabu za Kila Siku', 'url' => '#', 'icon' => 'bx bx-calendar-check']
+            ['label' => 'Hesabu za Kila Siku (Wafanyakazi)', 'url' => '#', 'icon' => 'bx bx-calendar-check']
         ]" />
 
-        <h6 class="mb-0 text-uppercase">Hesabu za Kila Siku</h6>
+        <h6 class="mb-0 text-uppercase">Hesabu za Kila Siku (Wafanyakazi)</h6>
         <hr />
 
         <p class="text-muted mb-4">Chagua kitendo cha kufanya kwa mfanyakazi wa leo.</p>
@@ -24,10 +24,10 @@
                         <div class="mb-3">
                             <i class="bx bx-wallet fs-1 text-success"></i>
                         </div>
-                        <h5 class="card-title">Ingiza Mauzo</h5>
-                        <p class="card-text flex-grow-1 small">Rekodi mauzo ya mfanyakazi kwa siku.</p>
+                        <h5 class="card-title">Ingiza Mauzo/Mapato</h5>
+                        <p class="card-text flex-grow-1 small">Rekodi mauzo/mapato ya mfanyakazi kwa siku.</p>
                         <button type="button" class="btn btn-success mt-auto" id="btnOpenIngizaMauzo">
-                            <i class="bx bx-plus me-1"></i> Ingiza Mauzo
+                            <i class="bx bx-plus me-1"></i> Ingiza Mauzo/Mapato
                         </button>
                     </div>
                 </div>
@@ -93,7 +93,7 @@
 @can('record purchase payment')
 @include('purchases.daily-accounts.partials.employee-lines-modal', [
     'modalId' => 'ingizaMauzoModal',
-    'modalTitle' => 'Ingiza Mauzo',
+    'modalTitle' => 'Ingiza Mauzo/Mapato',
     'modalIcon' => 'bx bx-wallet',
     'formId' => 'ingiza-mauzo-form',
     'errorsId' => 'ingiza-mauzo-form-errors',
@@ -104,8 +104,8 @@
     'linesBodyId' => 'mauzo-lines-body',
     'linesTotalId' => 'mauzo-lines-total',
     'addLineBtnId' => 'btnAddMauzoLine',
-    'linesLabel' => 'Mistari ya mauzo',
-    'linePlaceholder' => 'Maelezo ya alichouza',
+    'linesLabel' => 'Mistari ya mauzo/mapato',
+    'linePlaceholder' => 'Maelezo ya alichouza / mapato',
     'amountField' => 'kiasi',
     'amountLabel' => 'Kiasi',
     'submitBtnClass' => 'btn-success',
@@ -154,9 +154,9 @@ $(document).ready(function () {
         addLineBtn: '#btnAddMauzoLine',
         openBtn: '#btnOpenIngizaMauzo',
         storeUrl: @json(route('purchases.daily-accounts.mauzo.store')),
-        linePlaceholder: 'Maelezo ya alichouza',
+        linePlaceholder: 'Maelezo ya alichouza / mapato',
         amountField: 'kiasi',
-        successDefault: 'Mauzo yamehifadhiwa.'
+        successDefault: 'Mauzo/Mapato yamehifadhiwa.'
     });
 
     initDailyLinesForm({

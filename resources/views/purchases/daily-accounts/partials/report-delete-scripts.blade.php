@@ -66,7 +66,7 @@ $(document).ready(function () {
     });
 
     $('#btnDeleteReportAll').on('click', function () {
-        deleteRequest(allDestroyUrl, 'Futa rekodi ZOTE za siku hii (mauzo, matumizi, manunuzi, stoo)?');
+        deleteRequest(allDestroyUrl, 'Futa rekodi ZOTE za siku hii (mauzo/mapato, matumizi, manunuzi, stoo)?');
     });
 });
 </script>

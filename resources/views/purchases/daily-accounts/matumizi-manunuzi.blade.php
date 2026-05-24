@@ -8,7 +8,7 @@
         <x-breadcrumbs-with-icons :links="[
             ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Usimamizi wa Manunuzi', 'url' => route('purchases.index'), 'icon' => 'bx bx-purchase-tag'],
-            ['label' => 'Hesabu za Kila Siku', 'url' => route('purchases.daily-accounts.index'), 'icon' => 'bx bx-calendar-check'],
+            ['label' => 'Hesabu za Kila Siku (Wafanyakazi)', 'url' => route('purchases.daily-accounts.index'), 'icon' => 'bx bx-calendar-check'],
             ['label' => 'Matumizi/Manunuzi', 'url' => '#', 'icon' => 'bx bx-receipt']
         ]" />
 

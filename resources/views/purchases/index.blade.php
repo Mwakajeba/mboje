@@ -156,7 +156,18 @@
                             <h5 class="mb-0 text-primary">Usimamizi wa Mtiririko wa Ununuzi</h5>
                         </div>
                         <hr>
+                        @php
+                            $canSeeAnyPurchaseModule = auth()->user()->can('view suppliers')
+                                || auth()->user()->can('view purchases')
+                                || auth()->user()->can('view cash purchases')
+                                || auth()->user()->can('view purchase invoices')
+                                || auth()->user()->can('create purchase invoices');
+                        @endphp
+                        @unless($canSeeAnyPurchaseModule)
+                            <p class="text-muted text-center py-4 mb-0">Huna ruhusa ya kuona moduli za ununuzi. Wasiliana na msimamizi.</p>
+                        @else
                         <div class="row">
+                            @can('view suppliers')
                             <!-- 1. Supplier Master Data -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-primary position-relative">
@@ -171,15 +182,15 @@
                                         </div>
                                         <h5 class="card-title">Wasambazaji - Wamachinga <small class="text-muted">(Suppliers)</small></h5>
                                         <p class="card-text">Usajili na usimamizi wa taarifa za msambazaji, mawasiliano, na masharti ya malipo.</p>
-                                        @can('view suppliers')
                                         <a href="{{ route('accounting.suppliers.index') }}" class="btn btn-primary">
                                             <i class="bx bx-list-ul me-1"></i> Simamia wasambazaji
                                         </a>
-                                        @endcan
                                     </div>
                                 </div>
                             </div>
+                            @endcan
 
+                            @can('view purchases')
                             <!-- Advance Payments -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-teal position-relative" style="border-color: #0d9488 !important;">
@@ -200,24 +211,21 @@
                                         </div>
                                         <h5 class="card-title">Malipo ya Awali - Wamachinga <small class="text-muted">(Advance Payments)</small></h5>
                                         <p class="card-text">Rekodi malipo ya awali kwa wasambazaji, fuatilia matumizi na salio, na chapisha taarifa.</p>
-                                        @can('view purchases')
                                         <a href="{{ route('purchases.supplier-advances.index') }}" class="btn text-white" style="background-color: #0d9488;">
                                             <i class="bx bx-list-ul me-1"></i> Fungua malipo ya awali
                                         </a>
-                                        @endcan
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Supplier Advance Statement (Hesabu) -->
-                            @can('view purchases')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-info position-relative h-100">
                                     <div class="card-body text-center d-flex flex-column">
                                         <div class="mb-3">
                                             <i class="bx bx-file fs-1 text-info"></i>
                                         </div>
-                                        <h5 class="card-title">Hesabu za Fedha</h5>
+                                        <h5 class="card-title">Hesabu za Machinga</h5>
                                         <p class="card-text flex-grow-1">Chagua msambazaji/mfanyakazi na tarehe: salio la kufungua, malipo yote ya awali, matumizi yote, na salio la kufunga.</p>
                                         <button type="button" class="btn btn-info text-white mt-auto" data-bs-toggle="modal" data-bs-target="#supplierAdvanceStatementModal">
                                             <i class="bx bx-search-alt me-1"></i> Fungua hesabu
@@ -225,10 +233,8 @@
                                     </div>
                                 </div>
                             </div>
-                            @endcan
 
-                            <!-- Hesabu za Kila Siku -->
-                            @can('view purchases')
+                            <!-- Hesabu za Kila Siku (Wafanyakazi) -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-warning position-relative h-100" style="border-color: #f59e0b !important;">
                                     <div class="card-body text-center d-flex flex-column">
@@ -245,10 +251,10 @@
                                         <div class="mb-3">
                                             <i class="bx bx-calendar-check fs-1" style="color: #f59e0b;"></i>
                                         </div>
-                                        <h5 class="card-title">Hesabu za Kila Siku</h5>
+                                        <h5 class="card-title">Hesabu za Kila Siku (Wafanyakazi)</h5>
                                         <p class="card-text flex-grow-1">Malipo ya awali, matumizi, stoo, na salio la wasambazaji — rekodi na fuatilia kila siku.</p>
                                         <a href="{{ route('purchases.daily-accounts.index') }}" class="btn text-dark mt-auto" style="background-color: #f59e0b;">
-                                            <i class="bx bx-list-ul me-1"></i> Fungua hesabu za kila siku
+                                            <i class="bx bx-list-ul me-1"></i> Fungua hesabu za kila siku (wafanyakazi)
                                         </a>
                                     </div>
                                 </div>
@@ -351,6 +357,7 @@
                             </div>
                             --}}
 
+                            @can('view cash purchases')
                             <!-- Cash Purchase -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-success position-relative">
@@ -368,15 +375,15 @@
                                         </div>
                                         <h5 class="card-title">Ununuzi wa Taslimu <small class="text-muted">(Cash Purchase)</small></h5>
                                         <p class="card-text">Fanya ununuzi unaolipwa kwa malipo ya awali ya msambazaji na kuandikwa kwenye jarida.</p>
-                                        @can('view cash purchases')
                                         <a href="{{ route('purchases.cash-purchases.index') }}" class="btn btn-success">
                                             <i class="bx bx-list-ul me-1"></i> Simamia ununuzi wa taslimu
                                         </a>
-                                        @endcan
                                     </div>
                                 </div>
                             </div>
+                            @endcan
 
+                            @canany(['view purchase invoices', 'create purchase invoices'])
                             <!-- Purchase Invoice -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-danger position-relative">
@@ -407,6 +414,7 @@
                                     </div>
                                 </div>
                             </div>
+                            @endcanany
 
                             {{-- 7. Debit Notes (hidden — uncomment when needed)
                             <div class="col-md-6 col-lg-4 mb-4">
@@ -454,6 +462,7 @@
                             --}}
 
                         </div>
+                        @endunless
                     </div>
                 </div>
             </div>
@@ -563,7 +572,7 @@
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title text-white" id="supplierAdvanceStatementModalLabel">
-                    <i class="bx bx-file me-1"></i> Hesabu za Fedha
+                    <i class="bx bx-file me-1"></i> Hesabu za Machinga
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
