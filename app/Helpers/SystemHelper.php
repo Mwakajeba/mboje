@@ -153,3 +153,29 @@ if (!function_exists('format_datetime')) {
         return $date->setTimezone(config('app.timezone'))->format($format);
     }
 }
+
+if (!function_exists('user_can_view_wamachinga_purchases')) {
+    function user_can_view_wamachinga_purchases($user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole('Md') || $user->can('view purchases');
+    }
+}
+
+if (!function_exists('user_can_record_wamachinga_purchases')) {
+    function user_can_record_wamachinga_purchases($user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole('Md') || $user->can('record purchase payment');
+    }
+}

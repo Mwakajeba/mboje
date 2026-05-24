@@ -36,7 +36,7 @@ class DailyAccountsController extends Controller
 
     public function index()
     {
-        abort_unless(Auth::user()->can('view purchases'), 403);
+        abort_unless(user_can_view_wamachinga_purchases(), 403);
 
         $user = Auth::user();
         $branchId = session('branch_id') ?? $user->branch_id;
@@ -102,7 +102,7 @@ class DailyAccountsController extends Controller
 
     public function matumiziManunuzi()
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $user = Auth::user();
         $branchId = session('branch_id') ?? $user->branch_id;
@@ -117,7 +117,7 @@ class DailyAccountsController extends Controller
 
     public function report()
     {
-        abort_unless(Auth::user()->can('view purchases'), 403);
+        abort_unless(user_can_view_wamachinga_purchases(), 403);
 
         $user = Auth::user();
         $branchId = session('branch_id') ?? $user->branch_id;
@@ -132,7 +132,7 @@ class DailyAccountsController extends Controller
 
     public function reportShow(Request $request)
     {
-        abort_unless(Auth::user()->can('view purchases'), 403);
+        abort_unless(user_can_view_wamachinga_purchases(), 403);
 
         $user = Auth::user();
         $companyId = (int) $user->company_id;
@@ -320,7 +320,7 @@ class DailyAccountsController extends Controller
 
     public function reportSendNotification(Request $request)
     {
-        abort_unless(Auth::user()->can('view purchases'), 403);
+        abort_unless(user_can_view_wamachinga_purchases(), 403);
 
         $user = Auth::user();
         $companyId = (int) $user->company_id;
@@ -373,7 +373,7 @@ class DailyAccountsController extends Controller
         array $extraRecordRules = [],
         bool $amountIsText = false
     ): JsonResponse|\Illuminate\Http\RedirectResponse {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $user = Auth::user();
         $companyId = (int) $user->company_id;

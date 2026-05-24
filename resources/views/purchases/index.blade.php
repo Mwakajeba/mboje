@@ -157,16 +157,20 @@
                         </div>
                         <hr>
                         @php
-                            $canSeeAnyPurchaseModule = auth()->user()->can('view suppliers')
-                                || auth()->user()->can('view purchases')
-                                || auth()->user()->can('view cash purchases')
-                                || auth()->user()->can('view purchase invoices')
-                                || auth()->user()->can('create purchase invoices');
+                            $purchaseIndexUser = auth()->user();
+                            $isMdPurchaseRole = $purchaseIndexUser->hasRole('Md');
+                            $canSeePurchasesHub = user_can_view_wamachinga_purchases($purchaseIndexUser);
+                            $canSeeAnyPurchaseModule = $canSeePurchasesHub
+                                || $purchaseIndexUser->can('view suppliers')
+                                || $purchaseIndexUser->can('view cash purchases')
+                                || $purchaseIndexUser->can('view purchase invoices')
+                                || $purchaseIndexUser->can('create purchase invoices');
                         @endphp
                         @unless($canSeeAnyPurchaseModule)
                             <p class="text-muted text-center py-4 mb-0">Huna ruhusa ya kuona moduli za ununuzi. Wasiliana na msimamizi.</p>
                         @else
                         <div class="row">
+                            @if(!$isMdPurchaseRole)
                             @can('view suppliers')
                             <!-- 1. Supplier Master Data -->
                             <div class="col-md-6 col-lg-4 mb-4">
@@ -189,8 +193,9 @@
                                 </div>
                             </div>
                             @endcan
+                            @endif
 
-                            @can('view purchases')
+                            @if($canSeePurchasesHub)
                             <!-- Advance Payments -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-teal position-relative" style="border-color: #0d9488 !important;">
@@ -259,7 +264,7 @@
                                     </div>
                                 </div>
                             </div>
-                            @endcan
+                            @endif
 
                             {{-- 2. Purchase Requisitions (hidden — uncomment when needed)
                             <div class="col-md-6 col-lg-4 mb-4">
@@ -357,6 +362,7 @@
                             </div>
                             --}}
 
+                            @if(!$isMdPurchaseRole)
                             @can('view cash purchases')
                             <!-- Cash Purchase -->
                             <div class="col-md-6 col-lg-4 mb-4">
@@ -415,6 +421,7 @@
                                 </div>
                             </div>
                             @endcanany
+                            @endif
 
                             {{-- 7. Debit Notes (hidden — uncomment when needed)
                             <div class="col-md-6 col-lg-4 mb-4">
@@ -566,7 +573,7 @@
     </div>
 </div>
 
-@can('view purchases')
+@if($canSeePurchasesHub ?? auth()->user()->can('view purchases'))
 <div class="modal fade" id="supplierAdvanceStatementModal" tabindex="-1" aria-labelledby="supplierAdvanceStatementModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -607,7 +614,7 @@
         </div>
     </div>
 </div>
-@endcan
+@endif
 
 @endsection
 
@@ -660,7 +667,7 @@
 @push('scripts')
 <script nonce="{{ $cspNonce ?? '' }}">
     $(document).ready(function() {
-    @can('view purchases')
+    @if($canSeePurchasesHub ?? false)
     var supplierAdvanceStatementBaseUrl = @json(url('purchases/supplier-advances/statement'));
 
     function initSupplierAdvanceStatementSelect() {
@@ -709,7 +716,7 @@
             + '&to_date=' + encodeURIComponent(toDate);
         window.open(url, '_blank');
     });
-    @endcan
+    @endif
 
 
         // Initialize DataTable for recent quotations

@@ -42,7 +42,7 @@ class SupplierAdvanceController extends Controller
 
     public function index(Request $request)
     {
-        abort_unless(Auth::user()->can('view purchases'), 403);
+        abort_unless(user_can_view_wamachinga_purchases(), 403);
 
         $user = Auth::user();
         $companyId = (int) $user->company_id;
@@ -61,7 +61,7 @@ class SupplierAdvanceController extends Controller
 
     public function create()
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $user = Auth::user();
         $branchId = session('branch_id') ?? ($user->branch_id ?? null);
@@ -95,7 +95,7 @@ class SupplierAdvanceController extends Controller
 
     public function createOpening()
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $user = Auth::user();
         $branchId = session('branch_id') ?? ($user->branch_id ?? null);
@@ -118,7 +118,7 @@ class SupplierAdvanceController extends Controller
 
     public function store(Request $request)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $this->mergeNormalizedAmount($request);
 
@@ -218,7 +218,7 @@ class SupplierAdvanceController extends Controller
 
     public function storeOpening(Request $request)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $this->mergeNormalizedAmount($request);
 
@@ -302,7 +302,7 @@ class SupplierAdvanceController extends Controller
 
     public function edit(string $encodedId)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $advance = $this->advanceForEncodedId($encodedId);
         $user = Auth::user();
@@ -357,7 +357,7 @@ class SupplierAdvanceController extends Controller
 
     public function update(Request $request, string $encodedId)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $advance = $this->advanceForEncodedId($encodedId);
 
@@ -441,7 +441,7 @@ class SupplierAdvanceController extends Controller
 
     public function destroy(string $encodedId)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $advance = $this->advanceForEncodedId($encodedId);
 
@@ -488,7 +488,7 @@ class SupplierAdvanceController extends Controller
 
     public function statement(Request $request, string $encodedSupplierId)
     {
-        abort_unless(Auth::user()->can('view purchases'), 403);
+        abort_unless(user_can_view_wamachinga_purchases(), 403);
 
         $decoded = Hashids::decode($encodedSupplierId);
         if (empty($decoded[0])) {
@@ -554,7 +554,7 @@ class SupplierAdvanceController extends Controller
         $matumiziTotal = round((float) $matumiziLines->sum('deducted'), 2);
         $manunuziTotal = round((float) $manunuziLines->sum('deducted'), 2);
 
-        $canDeleteStatementItems = Auth::user()->can('record purchase payment');
+        $canDeleteStatementItems = user_can_record_wamachinga_purchases();
 
         $stockRecords = SupplierAdvanceStockRecord::query()
             ->where('company_id', $companyId)
@@ -593,7 +593,7 @@ class SupplierAdvanceController extends Controller
 
     public function destroyStatementExpense(string $encodedSupplierId, string $encodedJournalId)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $companyId = (int) Auth::user()->company_id;
         $branchId = session('branch_id') ?? Auth::user()->branch_id;
@@ -614,7 +614,7 @@ class SupplierAdvanceController extends Controller
 
     public function destroyStatementStock(string $encodedSupplierId, string $encodedStockRecordId)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $companyId = (int) Auth::user()->company_id;
         $branchId = session('branch_id') ?? Auth::user()->branch_id;
@@ -645,7 +645,7 @@ class SupplierAdvanceController extends Controller
 
     public function storeStock(Request $request, string $encodedSupplierId)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $decoded = Hashids::decode($encodedSupplierId);
         if (empty($decoded[0])) {
@@ -716,7 +716,7 @@ class SupplierAdvanceController extends Controller
 
     public function pay(string $encodedSupplierId)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $user = Auth::user();
         $companyId = (int) $user->company_id;
@@ -758,7 +758,7 @@ class SupplierAdvanceController extends Controller
 
     public function payStore(Request $request, string $encodedSupplierId)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $this->mergeNormalizedAmount($request);
 
@@ -827,7 +827,7 @@ class SupplierAdvanceController extends Controller
 
     public function expense(string $encodedSupplierId)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $user = Auth::user();
         $companyId = (int) $user->company_id;
@@ -858,7 +858,7 @@ class SupplierAdvanceController extends Controller
 
     public function expenseStore(Request $request, string $encodedSupplierId)
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $this->mergeNormalizedLineItemAmounts($request);
 
@@ -993,7 +993,7 @@ class SupplierAdvanceController extends Controller
 
     private function updateOpeningAdvance(Request $request, SupplierAdvance $advance): RedirectResponse
     {
-        abort_unless(Auth::user()->can('record purchase payment'), 403);
+        abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         if ($advance->hasCashPurchaseDeductions()) {
             return back()->withInput()->with('error', 'Haiwezi kuhariri: malipo haya yametumika kwenye ununuzi wa cash.');
@@ -1220,8 +1220,8 @@ class SupplierAdvanceController extends Controller
     private function advancesDataTable(Request $request, int $companyId, ?int $branchId)
     {
         $user = Auth::user();
-        $canRecord = $user->can('record purchase payment');
-        $canView = $user->can('view purchases');
+        $canRecord = user_can_record_wamachinga_purchases($user);
+        $canView = user_can_view_wamachinga_purchases($user);
 
         $query = SupplierAdvance::query()
             ->where('company_id', $companyId)
@@ -1287,8 +1287,8 @@ class SupplierAdvanceController extends Controller
     private function balancesDataTable(Request $request, int $companyId, ?int $branchId)
     {
         $user = Auth::user();
-        $canRecord = $user->can('record purchase payment');
-        $canView = $user->can('view purchases');
+        $canRecord = user_can_record_wamachinga_purchases($user);
+        $canView = user_can_view_wamachinga_purchases($user);
         $showAll = $request->boolean('show_all');
 
         $query = Supplier::query()
