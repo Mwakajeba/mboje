@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     'throttle.global' => \App\Http\Middleware\ThrottleGlobalRequests::class,
                     'throttle' => \App\Http\Middleware\ThrottleByConfig::class,
                     'check.menu.access' => \App\Http\Middleware\CheckMenuAccess::class,
+                    'mobile.context' => \App\Http\Middleware\SetMobileApiContext::class,
                 ]);
                 
                 // Trust proxies first (needed for correct HTTPS detection behind load balancers)

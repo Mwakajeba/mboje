@@ -22,3 +22,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Flutter mobile app (local / separate deploy; not pushed to GitHub)
+/machinga_app/
