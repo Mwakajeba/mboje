@@ -81,7 +81,7 @@ class SupplierAdvanceController extends Controller
             ->get();
 
         $suppliers = Supplier::where('company_id', $user->company_id)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->visibleInBranch($branchId ? (int) $branchId : null)
             ->withSum(['supplierAdvances as advances_total' => function ($q) use ($user, $branchId) {
                 $q->where('company_id', $user->company_id)
                     ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
@@ -102,7 +102,7 @@ class SupplierAdvanceController extends Controller
         $branchId = session('branch_id') ?? ($user->branch_id ?? null);
 
         $suppliers = Supplier::where('company_id', $user->company_id)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->visibleInBranch($branchId ? (int) $branchId : null)
             ->withSum(['supplierAdvances as advances_total' => function ($q) use ($user, $branchId) {
                 $q->where('company_id', $user->company_id)
                     ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
@@ -323,7 +323,7 @@ class SupplierAdvanceController extends Controller
             ->get();
 
         $suppliers = Supplier::where('company_id', $user->company_id)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->visibleInBranch($branchId ? (int) $branchId : null)
             ->withSum(['supplierAdvances as advances_total' => function ($q) use ($user, $branchId) {
                 $q->where('company_id', $user->company_id)
                     ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
@@ -1175,7 +1175,7 @@ class SupplierAdvanceController extends Controller
 
         return Supplier::query()
             ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->visibleInBranch($branchId ? (int) $branchId : null)
             ->findOrFail((int) $decoded[0]);
     }
 
@@ -1416,7 +1416,7 @@ class SupplierAdvanceController extends Controller
 
         $query = Supplier::query()
             ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->visibleInBranch($branchId ? (int) $branchId : null)
             ->withSum(['supplierAdvances as advances_total' => function ($q) use ($companyId, $branchId) {
                 $q->where('company_id', $companyId)
                     ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));

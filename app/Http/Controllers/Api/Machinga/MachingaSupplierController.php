@@ -25,7 +25,7 @@ class MachingaSupplierController extends Controller
 
         $suppliers = Supplier::query()
             ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->visibleInBranch($branchId)
             ->orderBy('name')
             ->get(['id', 'name', 'phone'])
             ->map(fn (Supplier $s) => [

@@ -108,6 +108,21 @@ class Supplier extends Model
     }
 
     /**
+     * Suppliers assigned to the branch or with no branch (e.g. mobile / shared).
+     */
+    public function scopeVisibleInBranch($query, ?int $branchId)
+    {
+        if (! $branchId) {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($branchId) {
+            $q->where('branch_id', $branchId)
+                ->orWhereNull('branch_id');
+        });
+    }
+
+    /**
      * Check if supplier can handle the requested items
      */
     public function canSupplyItems($itemIds)

@@ -26,13 +26,13 @@ class SupplierController extends Controller
         if ($companyId) {
             $suppliers = Supplier::with(['company', 'branch', 'createdBy'])
                 ->byCompany($companyId)
-                ->when($branchId, function($q) use ($branchId){ $q->where('branch_id', $branchId); })
+                ->visibleInBranch($branchId ? (int) $branchId : null)
                 ->orderBy('name')
                 ->get();
         } else {
             // If user doesn't have company_id, show by branch if present, else all suppliers
             $suppliers = Supplier::with(['company', 'branch', 'createdBy'])
-                ->when($branchId, function($q) use ($branchId){ $q->where('branch_id', $branchId); })
+                ->visibleInBranch($branchId ? (int) $branchId : null)
                 ->orderBy('name')
                 ->get();
         }
@@ -154,16 +154,20 @@ class SupplierController extends Controller
             return redirect()->route('accounting.suppliers.index')->withErrors(['Supplier not found.']);
         }
 
-        $supplier = Supplier::findOrFail($decoded[0]);
+        $user = Auth::user();
+        $companyId = (int) ($user->company_id ?? 0);
+
+        $supplier = Supplier::query()
+            ->when($companyId > 0, fn ($q) => $q->where('company_id', $companyId))
+            ->findOrFail($decoded[0]);
+
         $supplier->load(['company', 'branch', 'createdBy', 'updatedBy']);
 
-        $user = Auth::user();
-        $companyId = (int) $user->company_id;
         $branchId = session('branch_id') ?? $user->branch_id;
 
         $advanceStatement = app(SupplierAdvanceStatementService::class)->buildForSupplier(
             (int) $supplier->id,
-            $companyId,
+            $companyId > 0 ? $companyId : (int) $supplier->company_id,
             $branchId ? (int) $branchId : null
         );
 
@@ -182,10 +186,12 @@ class SupplierController extends Controller
             return redirect()->route('accounting.suppliers.index')->withErrors(['Supplier not found.']);
         }
 
-        $supplier = Supplier::findOrFail($decoded[0]);
-
         $user = auth()->user();
         $companyId = $user->company_id ?? null;
+
+        $supplier = Supplier::query()
+            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
+            ->findOrFail($decoded[0]);
 
         $companies = Company::orderBy('name')->get();
 
@@ -209,7 +215,12 @@ class SupplierController extends Controller
             return redirect()->route('accounting.suppliers.index')->withErrors(['Supplier not found.']);
         }
 
-        $supplier = Supplier::findOrFail($decoded[0]);
+        $user = auth()->user();
+        $companyId = $user->company_id ?? null;
+
+        $supplier = Supplier::query()
+            ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
+            ->findOrFail($decoded[0]);
 
         // Debug: Log the Business & Legal Information fields
         \Log::info('SupplierController::update - Business & Legal fields received:', [
@@ -233,7 +244,6 @@ class SupplierController extends Controller
             'account_name' => 'nullable|string|max:255',
             'products_or_services' => 'nullable|string|max:1000',
             'status' => 'required|in:active,inactive,blacklisted',
-            'branch_id' => 'nullable|exists:branches,id',
         ]);
 
         if ($validator->fails()) {
@@ -256,7 +266,6 @@ class SupplierController extends Controller
             'account_name' => $request->account_name,
             'products_or_services' => $request->products_or_services,
             'status' => $request->status,
-            'branch_id' => $request->branch_id,
             'updated_by' => auth()->id(),
         ]);
 

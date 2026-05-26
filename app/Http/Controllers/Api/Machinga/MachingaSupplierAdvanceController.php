@@ -34,7 +34,7 @@ class MachingaSupplierAdvanceController extends Controller
 
         $query = Supplier::query()
             ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->visibleInBranch($branchId)
             ->withSum(['supplierAdvances as advances_total' => function ($q) use ($companyId, $branchId) {
                 $q->where('company_id', $companyId)
                     ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
@@ -90,7 +90,7 @@ class MachingaSupplierAdvanceController extends Controller
 
         $suppliers = Supplier::query()
             ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->visibleInBranch($branchId)
             ->orderBy('name')
             ->get(['id', 'name'])
             ->map(fn (Supplier $s) => [
@@ -347,7 +347,7 @@ class MachingaSupplierAdvanceController extends Controller
     {
         return Supplier::query()
             ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->visibleInBranch($branchId)
             ->findOrFail($supplierId);
     }
 
