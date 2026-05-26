@@ -65,7 +65,7 @@ class MachingaSupplierController extends Controller
             'phone' => $validated['phone'],
             'status' => Supplier::STATUS_ACTIVE,
             'company_id' => $companyId,
-            'branch_id' => $branchId,
+            'branch_id' => Supplier::resolveBranchIdForUser($branchId),
             'created_by' => $user->id,
         ]);
 

@@ -119,7 +119,7 @@ class SupplierController extends Controller
             'products_or_services' => $request->products_or_services,
             'status' => $request->status,
             'company_id' => $companyId,
-            'branch_id' => (Auth::user()->branch_id) ?? (session('branch_id') ?: null) ?? (function_exists('current_branch_id') ? current_branch_id() : null),
+            'branch_id' => Supplier::resolveBranchIdForUser(null),
             'created_by' => auth()->id(),
         ]);
 
@@ -161,6 +161,7 @@ class SupplierController extends Controller
             ->when($companyId > 0, fn ($q) => $q->where('company_id', $companyId))
             ->findOrFail($decoded[0]);
 
+        $supplier->ensureBranchFromLogin();
         $supplier->load(['company', 'branch', 'createdBy', 'updatedBy']);
 
         $branchId = session('branch_id') ?? $user->branch_id;
@@ -192,6 +193,8 @@ class SupplierController extends Controller
         $supplier = Supplier::query()
             ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->findOrFail($decoded[0]);
+
+        $supplier->ensureBranchFromLogin();
 
         $companies = Company::orderBy('name')->get();
 
@@ -266,6 +269,7 @@ class SupplierController extends Controller
             'account_name' => $request->account_name,
             'products_or_services' => $request->products_or_services,
             'status' => $request->status,
+            'branch_id' => Supplier::resolveBranchIdForUser($supplier->branch_id),
             'updated_by' => auth()->id(),
         ]);
 

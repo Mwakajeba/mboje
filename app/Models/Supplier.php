@@ -108,6 +108,47 @@ class Supplier extends Model
     }
 
     /**
+     * Branch on record, or the logged-in user's branch (session, then profile).
+     */
+    public static function resolveBranchIdForUser(?int $existingBranchId = null): ?int
+    {
+        if ($existingBranchId) {
+            return (int) $existingBranchId;
+        }
+
+        $user = auth()->user();
+        if (! $user) {
+            return null;
+        }
+
+        $branchId = session('branch_id') ?: $user->branch_id;
+
+        return $branchId ? (int) $branchId : null;
+    }
+
+    /**
+     * Persist login user's branch when supplier has none.
+     */
+    public function ensureBranchFromLogin(): void
+    {
+        if ($this->branch_id) {
+            return;
+        }
+
+        $branchId = self::resolveBranchIdForUser(null);
+        if (! $branchId) {
+            return;
+        }
+
+        $this->forceFill([
+            'branch_id' => $branchId,
+            'updated_by' => auth()->id(),
+        ])->save();
+
+        $this->load('branch');
+    }
+
+    /**
      * Suppliers assigned to the branch or with no branch (e.g. mobile / shared).
      */
     public function scopeVisibleInBranch($query, ?int $branchId)
