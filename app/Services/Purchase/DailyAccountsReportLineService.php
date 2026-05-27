@@ -50,6 +50,37 @@ class DailyAccountsReportLineService
         return $this->config($type)['amount'];
     }
 
+    public function usesNumericKiasi(string $type): bool
+    {
+        return $type !== 'stoo';
+    }
+
+    /**
+     * Kiasi cha mstari kabla ya kuhariri/kufuta (mauzo, matumizi, manunuzi tu).
+     */
+    public function lineKiasi(string $type, int $lineId, int $companyId, ?int $branchId): ?float
+    {
+        if (! $this->usesNumericKiasi($type)) {
+            return null;
+        }
+
+        $config = $this->config($type);
+        /** @var Model|null $line */
+        $line = $config['line']::query()->find($lineId);
+        if (! $line) {
+            return null;
+        }
+
+        $this->authorizedRecord(
+            $config['record'],
+            (int) $line->{$config['line_fk']},
+            $companyId,
+            $branchId
+        );
+
+        return (float) $line->{$config['amount']};
+    }
+
     public function updateLine(string $type, int $lineId, int $companyId, ?int $branchId, array $data): void
     {
         $config = $this->config($type);

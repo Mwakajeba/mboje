@@ -230,6 +230,18 @@ class DailyAccountsController extends Controller
             ], 422);
         }
 
+        $kiasiBefore = null;
+        $kiasiAfter = null;
+        if ($this->reportLineService->usesNumericKiasi($type)) {
+            $kiasiBefore = $this->reportLineService->lineKiasi(
+                $type,
+                $line,
+                $companyId,
+                $branchId ? (int) $branchId : null
+            );
+            $kiasiAfter = (float) $validated[$amountField];
+        }
+
         try {
             $this->reportLineService->updateLine(
                 $type,
@@ -243,6 +255,15 @@ class DailyAccountsController extends Controller
         } catch (\InvalidArgumentException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
+
+        $this->notifyDailyReportChange(
+            (int) $validated['employee_id'],
+            $validated['entry_date'],
+            'updated',
+            $type,
+            $kiasiBefore,
+            $kiasiAfter
+        );
 
         return response()->json([
             'success' => true,
@@ -263,12 +284,20 @@ class DailyAccountsController extends Controller
         $branchId = session('branch_id') ?? $user->branch_id;
 
         try {
-            $this->reportDeletion->deleteLine($type, $line, $companyId, $branchId ? (int) $branchId : null);
+            $context = $this->reportDeletion->deleteLine($type, $line, $companyId, $branchId ? (int) $branchId : null);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             abort(404);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
+
+        $this->notifyDailyReportChange(
+            $context['employee_id'],
+            $context['entry_date'],
+            'line_deleted',
+            $type,
+            $context['kiasi'] ?? null
+        );
 
         return response()->json(['success' => true, 'message' => 'Rekodi imefutwa.']);
     }
@@ -284,7 +313,7 @@ class DailyAccountsController extends Controller
         $validated = $this->validateReportScope($request, $companyId, $branchId);
 
         try {
-            $this->reportDeletion->deleteSectionForDate(
+            $deletedTotal = $this->reportDeletion->deleteSectionForDate(
                 $type,
                 $companyId,
                 $branchId ? (int) $branchId : null,
@@ -294,6 +323,14 @@ class DailyAccountsController extends Controller
         } catch (\InvalidArgumentException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
+
+        $this->notifyDailyReportChange(
+            (int) $validated['employee_id'],
+            $validated['entry_date'],
+            'section_deleted',
+            $type,
+            $deletedTotal
+        );
 
         return response()->json(['success' => true, 'message' => 'Rekodi zote za sehemu hii zimefutwa.']);
     }
@@ -313,6 +350,13 @@ class DailyAccountsController extends Controller
             $branchId ? (int) $branchId : null,
             (int) $validated['employee_id'],
             $validated['entry_date']
+        );
+
+        $this->notifyDailyReportChange(
+            (int) $validated['employee_id'],
+            $validated['entry_date'],
+            'all_deleted',
+            'all'
         );
 
         return response()->json(['success' => true, 'message' => 'Rekodi zote za siku hii zimefutwa.']);
@@ -543,5 +587,38 @@ class DailyAccountsController extends Controller
         }
 
         return User::query()->find($employeeId)?->name ?? 'Mfanyakaji';
+    }
+
+    /**
+     * @param  'updated'|'line_deleted'|'section_deleted'|'all_deleted'  $changeKind
+     */
+    private function notifyDailyReportChange(
+        int $employeeId,
+        string $entryDate,
+        string $changeKind,
+        string $sectionType,
+        ?float $kiasiBefore = null,
+        ?float $kiasiAfter = null
+    ): void {
+        $user = Auth::user();
+        if (! $user) {
+            return;
+        }
+
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+
+        $this->reportNotification->sendChangeAlert(
+            $companyId,
+            $branchId ? (int) $branchId : null,
+            $employeeId,
+            $entryDate,
+            $this->resolveEmployeeDisplayName($employeeId),
+            $changeKind,
+            $sectionType,
+            $user->name,
+            $kiasiBefore,
+            $kiasiAfter
+        );
     }
 }

@@ -41,11 +41,15 @@ class DailyAccountsReportDeletionService
         ],
     ];
 
-    public function deleteLine(string $type, int $lineId, int $companyId, ?int $branchId): void
+    /**
+     * @return array{employee_id: int, entry_date: string, kiasi: float|null}
+     */
+    public function deleteLine(string $type, int $lineId, int $companyId, ?int $branchId): array
     {
         $config = $this->config($type);
+        $context = ['employee_id' => 0, 'entry_date' => '', 'kiasi' => null];
 
-        DB::transaction(function () use ($config, $lineId, $companyId, $branchId) {
+        DB::transaction(function () use ($config, $type, $lineId, $companyId, $branchId, &$context) {
             $lineModel = $config['line'];
             /** @var Model $line */
             $line = $lineModel::query()->findOrFail($lineId);
@@ -56,29 +60,44 @@ class DailyAccountsReportDeletionService
                 $branchId
             );
 
+            $context = [
+                'employee_id' => (int) $record->employee_id,
+                'entry_date' => $record->entry_date->format('Y-m-d'),
+                'kiasi' => $this->lineKiasiForType($type, $line),
+            ];
+
             $line->delete();
             $this->deleteRecordIfEmpty($config['record'], $config['line'], $config['line_fk'], $record->id);
         });
+
+        return $context;
     }
 
+    /**
+     * @return float|null Jumla ya kiasi kilichofutwa (mauzo/matumizi/manunuzi tu)
+     */
     public function deleteSectionForDate(
         string $type,
         int $companyId,
         ?int $branchId,
         int $employeeId,
         string $entryDate
-    ): void {
+    ): ?float {
         $config = $this->config($type);
         $date = Carbon::parse($entryDate)->toDateString();
+        $deletedTotal = null;
 
-        DB::transaction(function () use ($config, $companyId, $branchId, $employeeId, $date) {
+        DB::transaction(function () use ($config, $type, $companyId, $branchId, $employeeId, $date, &$deletedTotal) {
             $records = $this->recordsQuery($config['record'], $companyId, $branchId, $employeeId, $date)->get();
+            $deletedTotal = $this->sumLinesKiasiForType($type, $records, $config);
 
             foreach ($records as $record) {
                 $config['line']::query()->where($config['line_fk'], $record->id)->delete();
                 $record->delete();
             }
         });
+
+        return $deletedTotal;
     }
 
     public function deleteAllForDate(int $companyId, ?int $branchId, int $employeeId, string $entryDate): void
@@ -154,5 +173,33 @@ class DailyAccountsReportDeletionService
         }
 
         return $query;
+    }
+
+    private function lineKiasiForType(string $type, Model $line): ?float
+    {
+        if ($type === 'stoo') {
+            return null;
+        }
+
+        return (float) $line->kiasi;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Model>  $records
+     */
+    private function sumLinesKiasiForType(string $type, $records, array $config): ?float
+    {
+        if ($type === 'stoo') {
+            return null;
+        }
+
+        $total = 0.0;
+        foreach ($records as $record) {
+            $total += (float) $config['line']::query()
+                ->where($config['line_fk'], $record->id)
+                ->sum('kiasi');
+        }
+
+        return $total;
     }
 }
