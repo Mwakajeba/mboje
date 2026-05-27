@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Accounting;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\SmsHelper;
 use App\Models\Supplier;
 use App\Models\Company;
 use App\Models\Branch;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Services\Accounting\SupplierDeletionService;
 use App\Services\Purchase\SupplierAdvanceStatementService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Vinkla\Hashids\Facades\Hashids;
 
 class SupplierController extends Controller
@@ -225,6 +227,9 @@ class SupplierController extends Controller
             ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->findOrFail($decoded[0]);
 
+        $beforeName = (string) ($supplier->name ?? '');
+        $beforePhone = (string) ($supplier->phone ?? '');
+
         // Debug: Log the Business & Legal Information fields
         \Log::info('SupplierController::update - Business & Legal fields received:', [
             'company_registration_name' => $request->company_registration_name,
@@ -272,6 +277,50 @@ class SupplierController extends Controller
             'branch_id' => Supplier::resolveBranchIdForUser($supplier->branch_id),
             'updated_by' => auth()->id(),
         ]);
+
+        $afterName = (string) ($supplier->name ?? '');
+        $afterPhone = (string) ($supplier->phone ?? '');
+
+        $nameChanged = $beforeName !== $afterName;
+        $phoneChanged = $beforePhone !== $afterPhone;
+
+        if ($nameChanged || $phoneChanged) {
+            try {
+                $companyPhone = null;
+                if (! empty($user->company_id)) {
+                    $companyPhone = Company::whereKey((int) $user->company_id)->value('phone');
+                }
+
+                if (! empty($companyPhone) && SmsHelper::isConfigured()) {
+                    $changedBy = (string) ($user->name ?? '—');
+                    $changedAt = now()->format('Y-m-d H:i');
+
+                    $message = "TAARIFA YA MMACHINGA: ";
+                    if ($nameChanged && $phoneChanged) {
+                        $message .= 'Jina na namba ya simu vimebadilishwa';
+                    } elseif ($nameChanged) {
+                        $message .= 'Jina limebadilishwa';
+                    } else {
+                        $message .= 'Namba ya simu imebadilishwa';
+                    }
+                    $message .= " na $changedBy leo tarehe $changedAt. ";
+                    $message .= "Mwanzo ilikuwa ni Jina: \"$beforeName\", Simu: \"$beforePhone\". ";
+                    $message .= "Sasa ni Jina: \"$afterName\", Simu: \"$afterPhone\".";
+
+                    $to = function_exists('normalize_phone_number')
+                        ? normalize_phone_number($companyPhone)
+                        : (string) $companyPhone;
+
+                    SmsHelper::send($to, $message);
+                }
+            } catch (\Throwable $e) {
+                Log::error('SupplierController::update - SMS failed', [
+                    'supplier_id' => $supplier->id,
+                    'company_id' => $user->company_id ?? null,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         // Debug: Log what was actually updated
         \Log::info('SupplierController::update - Business & Legal fields updated:', [

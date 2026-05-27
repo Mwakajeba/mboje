@@ -361,6 +361,7 @@ class SupplierAdvanceController extends Controller
         abort_unless(user_can_record_wamachinga_purchases(), 403);
 
         $advance = $this->advanceForEncodedId($encodedId);
+        $oldAmount = (float) ($advance->amount ?? 0);
 
         if ($advance->isOpeningJournalAdvance()) {
             return $this->updateOpeningAdvance($request, $advance);
@@ -433,6 +434,18 @@ class SupplierAdvanceController extends Controller
             report($e);
 
             return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        $newAmount = (float) ($validated['amount'] ?? 0);
+        if (abs(round($oldAmount, 2) - round($newAmount, 2)) > 0.00001) {
+            $this->sendSupplierAdvanceAmountChangedSms(
+                supplierName: (string) ($supplier->name ?? '—'),
+                oldAmount: $oldAmount,
+                newAmount: $newAmount,
+                changedBy: (string) ($user->name ?? '—'),
+                changedAt: now()->format('Y-m-d H:i'),
+                companyId: (int) $companyId
+            );
         }
 
         return redirect()
@@ -1103,6 +1116,8 @@ class SupplierAdvanceController extends Controller
     {
         abort_unless(user_can_record_wamachinga_purchases(), 403);
 
+        $oldAmount = (float) ($advance->amount ?? 0);
+
         if ($advance->hasCashPurchaseDeductions()) {
             return back()->withInput()->with('error', 'Haiwezi kuhariri: malipo haya yametumika kwenye ununuzi wa cash.');
         }
@@ -1161,9 +1176,55 @@ class SupplierAdvanceController extends Controller
             return back()->withInput()->with('error', $e->getMessage());
         }
 
+        $newAmount = (float) ($validated['amount'] ?? 0);
+        if (abs(round($oldAmount, 2) - round($newAmount, 2)) > 0.00001) {
+            $this->sendSupplierAdvanceAmountChangedSms(
+                supplierName: (string) ($supplier->name ?? '—'),
+                oldAmount: $oldAmount,
+                newAmount: $newAmount,
+                changedBy: (string) ($user->name ?? '—'),
+                changedAt: now()->format('Y-m-d H:i'),
+                companyId: (int) $companyId
+            );
+        }
+
         return redirect()
             ->route('purchases.supplier-advances.index')
             ->with('success', 'Opening supplier advance updated and journal reposted.');
+    }
+
+    private function sendSupplierAdvanceAmountChangedSms(
+        string $supplierName,
+        float $oldAmount,
+        float $newAmount,
+        string $changedBy,
+        string $changedAt,
+        int $companyId
+    ): void {
+        try {
+            $companyPhone = Company::whereKey($companyId)->value('phone');
+            if (empty($companyPhone) || ! SmsHelper::isConfigured()) {
+                return;
+            }
+
+            $to = function_exists('normalize_phone_number')
+                ? normalize_phone_number($companyPhone)
+                : (string) $companyPhone;
+
+            $msg = 'MALIPO YA MMACHINGA: '.$supplierName
+                .' yamebadilishwa kutoka '.number_format($oldAmount, 2)
+                .' kuwa '.number_format($newAmount, 2)
+                .'. Yamebadilishwa na '.$changedBy
+                .' leo tarehe '.$changedAt;
+
+            SmsHelper::send($to, $msg);
+        } catch (\Throwable $e) {
+            Log::error('SupplierAdvanceController - SMS failed', [
+                'company_id' => $companyId,
+                'supplier_name' => $supplierName,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function supplierForEncodedId(string $encodedSupplierId, int $companyId, ?int $branchId): Supplier
