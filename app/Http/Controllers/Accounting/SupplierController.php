@@ -342,7 +342,34 @@ class SupplierController extends Controller
             return redirect()->route('accounting.suppliers.index')->withErrors(['Supplier not found.']);
         }
 
-        $supplier = Supplier::findOrFail($decoded[0]);
+        $user = Auth::user();
+        $companyId = (int) ($user?->company_id ?? 0);
+        $branchId = session('branch_id') ?? ($user?->branch_id ?? null);
+
+        $supplier = Supplier::query()
+            ->when($companyId > 0, fn ($q) => $q->where('company_id', $companyId))
+            ->findOrFail((int) $decoded[0]);
+
+        $supplier->ensureBranchFromLogin();
+
+        $supplierName = (string) ($supplier->name ?? 'Msambazaji');
+        $deletedBy = (string) ($user?->name ?? '—');
+
+        $balance = null;
+        try {
+            $statement = app(SupplierAdvanceStatementService::class)->buildForSupplier(
+                (int) $supplier->id,
+                $companyId > 0 ? $companyId : (int) $supplier->company_id,
+                $branchId ? (int) $branchId : null
+            );
+            $balance = (float) ($statement['totals']['balance'] ?? 0.0);
+        } catch (\Throwable $e) {
+            Log::warning('SupplierController::destroy - Failed to compute supplier balance', [
+                'supplier_id' => $supplier->id,
+                'company_id' => $companyId ?: $supplier->company_id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         try {
             DB::transaction(function () use ($supplier) {
@@ -355,6 +382,33 @@ class SupplierController extends Controller
             return redirect()
                 ->route('accounting.suppliers.index')
                 ->with('error', 'Imeshindikana kufuta msambazaji: '.$e->getMessage());
+        }
+
+        try {
+            $companyPhone = null;
+            if (! empty($user?->company_id)) {
+                $companyPhone = Company::whereKey((int) $user->company_id)->value('phone');
+            }
+
+            if (! empty($companyPhone) && SmsHelper::isConfigured()) {
+                $fmt = fn (float $n) => number_format($n, 2, '.', ',');
+                $bakiText = $balance === null ? '—' : $fmt((float) $balance);
+                $deletedAt = now()->format('Y-m-d H:i');
+
+                $message = "TAARIFA YA MMACHINGA: Msambazaji \"$supplierName\" amefutwa na $deletedBy tarehe $deletedAt. Baki yake ilikuwa $bakiText.";
+
+                $to = function_exists('normalize_phone_number')
+                    ? normalize_phone_number($companyPhone)
+                    : (string) $companyPhone;
+
+                SmsHelper::send($to, $message);
+            }
+        } catch (\Throwable $e) {
+            Log::error('SupplierController::destroy - SMS failed', [
+                'supplier_id' => $supplier->id,
+                'company_id' => $user?->company_id ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return redirect()->route('accounting.suppliers.index')
