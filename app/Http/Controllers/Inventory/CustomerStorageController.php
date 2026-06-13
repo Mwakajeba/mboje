@@ -19,24 +19,43 @@ use Yajra\DataTables\Facades\DataTables;
 
 class CustomerStorageController extends Controller
 {
+    private function currentBranchId(): int
+    {
+        $user = Auth::user();
+
+        return (int) (session('branch_id') ?: $user->branch_id);
+    }
+
+    private function customersForCurrentBranch()
+    {
+        $user = Auth::user();
+        $branchId = $this->currentBranchId();
+
+        return Customer::where('company_id', $user->company_id)
+            ->where('branch_id', $branchId)
+            ->orderBy('name');
+    }
+
+    private function itemsForCurrentBranch()
+    {
+        return Item::forBranch($this->currentBranchId())
+            ->active()
+            ->orderBy('name');
+    }
+
     public function index(Request $request)
     {
         $user = Auth::user();
-        $branchId = session('branch_id') ?: $user->branch_id;
+        $branchId = $this->currentBranchId();
 
         if ($request->has('draw')) {
             return $this->balancesDatatable($request);
         }
 
-        $customers = Customer::where('company_id', $user->company_id)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->orderBy('name')
+        $customers = $this->customersForCurrentBranch()
             ->get(['id', 'name', 'phone']);
 
-        $items = Item::where('company_id', $user->company_id)
-            ->where('is_active', true)
-            ->visibleInSessionBranch($branchId ? (int) $branchId : null)
-            ->orderBy('name')
+        $items = $this->itemsForCurrentBranch()
             ->get(['id', 'name', 'code', 'unit_of_measure']);
 
         $unitOptions = Item::unitOfMeasureOptions();
@@ -56,7 +75,8 @@ class CustomerStorageController extends Controller
             'items',
             'unitOptions',
             'categories',
-            'assignableBranches'
+            'assignableBranches',
+            'branchId'
         ));
     }
 
@@ -64,7 +84,7 @@ class CustomerStorageController extends Controller
     {
         $user = Auth::user();
         $companyId = $user->company_id;
-        $branchId = session('branch_id') ?: $user->branch_id;
+        $branchId = $this->currentBranchId();
 
         if (! $branchId) {
             return response()->json([
@@ -200,8 +220,8 @@ class CustomerStorageController extends Controller
                     ->values()
                     ->all();
 
-                if ($branchIds === [] && $sessionBranch = session('branch_id') ?: $user->branch_id) {
-                    $branchIds = [(int) $sessionBranch];
+                if ($branchIds === []) {
+                    $branchIds = [$this->currentBranchId()];
                 }
 
                 $item->visibilityBranches()->sync($branchIds);
@@ -224,7 +244,7 @@ class CustomerStorageController extends Controller
     public function store(Request $request)
     {
         $user = Auth::user();
-        $branchId = session('branch_id') ?: $user->branch_id;
+        $branchId = $this->currentBranchId();
 
         $validated = $request->validate([
             'customer_id' => 'required|integer',
@@ -235,12 +255,10 @@ class CustomerStorageController extends Controller
         ]);
 
         $customer = Customer::where('company_id', $user->company_id)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->where('branch_id', $branchId)
             ->findOrFail($validated['customer_id']);
 
-        $item = Item::where('company_id', $user->company_id)
-            ->where('is_active', true)
-            ->visibleInSessionBranch($branchId ? (int) $branchId : null)
+        $item = $this->itemsForCurrentBranch()
             ->findOrFail($validated['inventory_item_id']);
 
         DB::transaction(function () use ($user, $branchId, $customer, $item, $validated) {
@@ -274,7 +292,7 @@ class CustomerStorageController extends Controller
     public function history(Request $request)
     {
         $user = Auth::user();
-        $branchId = session('branch_id') ?: $user->branch_id;
+        $branchId = $this->currentBranchId();
 
         if ($request->has('draw')) {
             return $this->historyDatatable($request);
@@ -284,13 +302,11 @@ class CustomerStorageController extends Controller
         $customer = null;
         if ($customerId) {
             $customer = Customer::where('company_id', $user->company_id)
-                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->where('branch_id', $branchId)
                 ->find($customerId);
         }
 
-        $customers = Customer::where('company_id', $user->company_id)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->orderBy('name')
+        $customers = $this->customersForCurrentBranch()
             ->get(['id', 'name']);
 
         return view('inventory.customer-storage.history', compact('customers', 'customer', 'customerId'));
@@ -299,13 +315,13 @@ class CustomerStorageController extends Controller
     protected function balancesDatatable(Request $request)
     {
         $user = Auth::user();
-        $branchId = session('branch_id') ?: $user->branch_id;
+        $branchId = $this->currentBranchId();
 
         $query = CustomerStorageBalance::query()
             ->with(['customer', 'item'])
             ->where('company_id', $user->company_id)
-            ->where('quantity_on_hand', '>', 0)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
+            ->where('branch_id', $branchId)
+            ->where('quantity_on_hand', '>', 0);
 
         return DataTables::of($query)
             ->addColumn('customer_name', fn ($row) => $row->customer->name ?? '—')
@@ -333,12 +349,12 @@ class CustomerStorageController extends Controller
     protected function historyDatatable(Request $request)
     {
         $user = Auth::user();
-        $branchId = session('branch_id') ?: $user->branch_id;
+        $branchId = $this->currentBranchId();
 
         $query = CustomerStorageReceipt::query()
             ->with(['customer', 'item', 'createdByUser'])
             ->where('company_id', $user->company_id)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
+            ->where('branch_id', $branchId);
 
         if ($request->filled('customer_id')) {
             $query->where('customer_id', $request->customer_id);

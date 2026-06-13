@@ -59,6 +59,7 @@
                         </div>
                         <div class="col-md-4">
                             <label for="inventory_item_id" class="form-label">Zao <span class="text-danger">*</span></label>
+                            <small class="text-muted d-block mb-1">Bidhaa za tawi lako pekee</small>
                             <div class="input-group">
                                 <select name="inventory_item_id" id="inventory_item_id" class="form-select select2-single @error('inventory_item_id') is-invalid @enderror" required>
                                     <option value="">— Chagua Zao —</option>
@@ -224,10 +225,10 @@
                 @if(isset($assignableBranches) && $assignableBranches->isNotEmpty())
                 <div class="mb-3">
                     <label for="quick_item_branches" class="form-label">Inaonekana katika matawi</label>
-                    <p class="text-muted small mb-1">Usichague chochote kwa <strong>matawi yote</strong>.</p>
-                    <select id="quick_item_branches" class="form-select quick-item-select2" multiple data-placeholder="Matawi yote">
+                    <p class="text-muted small mb-1">Tawi la sasa limechaguliwa kiotomatiki.</p>
+                    <select id="quick_item_branches" class="form-select quick-item-select2" multiple data-placeholder="Chagua matawi">
                         @foreach($assignableBranches as $branch)
-                        <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                        <option value="{{ $branch->id }}" {{ (int) ($branchId ?? 0) === (int) $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -299,6 +300,8 @@
 @push('scripts')
 <script nonce="{{ $cspNonce ?? '' }}">
 $(function () {
+    const currentBranchId = {{ (int) ($branchId ?? 0) }};
+
     $('.select2-single').select2({
         theme: 'bootstrap-5',
         width: '100%',
@@ -358,7 +361,11 @@ $(function () {
         $('#quick_item_package_quantity').val('');
         $('#quick_item_unit').val('kg');
         $('#quick_item_category').val('').trigger('change');
-        $('#quick_item_branches').val(null).trigger('change');
+        if (currentBranchId) {
+            $('#quick_item_branches').val([String(currentBranchId)]).trigger('change');
+        } else {
+            $('#quick_item_branches').val(null).trigger('change');
+        }
     }
 
     $('#btn-add-item').on('click', function () {
