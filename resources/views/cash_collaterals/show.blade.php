@@ -1,15 +1,15 @@
 @extends('layouts.main')
 
-@section('title', 'Cash Deposit Transaction History')
+@section('title', 'Historia ya Mkopo')
 
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Customers', 'url' => route('customers.index'), 'icon' => 'bx bx-group'],
-            ['label' => 'Customer', 'url' => route('customers.show', Hashids::encode($cashCollateral->customer_id)), 'icon' => 'bx bx-user'],
-            ['label' => 'Transaction History', 'url' => '#', 'icon' => 'bx bx-history']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Mikopo ya Wateja', 'url' => route('cash_collaterals.index'), 'icon' => 'bx bx-credit-card'],
+            ['label' => 'Mteja', 'url' => route('customers.show', Hashids::encode($cashCollateral->customer_id)), 'icon' => 'bx bx-user'],
+            ['label' => 'Historia ya Mkopo', 'url' => '#', 'icon' => 'bx bx-history']
         ]" />
 
         <!-- Header Section -->
@@ -19,44 +19,46 @@
                     <div class="card-body">
                         <div class="row align-items-center">
                             <div class="col-md-8">
-                                <h4 class="text-primary mb-2">{{ $cashCollateral->type->name }} - Transaction History</h4>
+                                <h4 class="text-primary mb-2">{{ $cashCollateral->type->name }} - Historia ya Mkopo</h4>
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <p class="mb-1"><strong>Customer:</strong> {{ $cashCollateral->customer->name }}</p>
-                                        <p class="mb-1"><strong>Account Type:</strong> {{ $cashCollateral->type->name }}</p>
+                                        <p class="mb-1"><strong>Mteja:</strong> {{ $cashCollateral->customer->name }}</p>
+                                        <p class="mb-1"><strong>Aina ya Akaunti:</strong> {{ $cashCollateral->type->name }}</p>
                                     </div>
                                     <div class="col-md-6">
-                                        <p class="mb-1"><strong>Current Balance:</strong>
-                                            <span class="badge bg-success fs-6">TSHS {{ number_format($calculatedBalance ?? 0, 2) }}</span>
+                                        <p class="mb-1"><strong>Salio la Sasa:</strong>
+                                            <span class="badge bg-success fs-6">TSH {{ number_format($calculatedBalance ?? 0, 2) }}</span>
                                         </p>
-                                        <p class="mb-1"><strong>Branch:</strong> {{ $cashCollateral->branch->name ?? 'N/A' }}</p>
+                                        <p class="mb-1"><strong>Tawi:</strong> {{ $cashCollateral->branch->name ?? '—' }}</p>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-4 text-end">
                                 <div class="btn-group" role="group">
-                                    @can('deposit cash deposit')
+                                    @can('deposit cash collateral')
                                     <a href="{{ route('cash_collaterals.deposit', Hashids::encode($cashCollateral->id)) }}"
                                         class="btn btn-success btn-sm">
-                                        <i class="bx bx-plus me-1"></i> Deposit
+                                        <i class="bx bx-plus me-1"></i> Toa Mkopo wa Mtaji
                                     </a>
                                     @endcan
 
-                                    @can('withdraw cash deposit')
+                                    @can('withdraw cash collateral')
+                                    @if(($calculatedBalance ?? 0) > 0)
                                     <a href="{{ route('cash_collaterals.withdraw', Hashids::encode($cashCollateral->id)) }}"
                                         class="btn btn-warning btn-sm">
-                                        <i class="bx bx-minus me-1"></i> Withdraw
+                                        <i class="bx bx-minus me-1"></i> Lipa Mkopo kwa Taslim
                                     </a>
+                                    @endif
                                     @endcan
 
                                     <a href="{{ route('cash_collaterals.statement-pdf', Hashids::encode($cashCollateral->id)) }}"
                                         class="btn btn-info btn-sm" target="_blank">
-                                        <i class="bx bx-printer me-1"></i> Print Statement
+                                        <i class="bx bx-printer me-1"></i> Chapisha Taarifa
                                     </a>
 
-                                    <a href="{{ route('customers.show', Hashids::encode($cashCollateral->customer_id)) }}"
+                                    <a href="{{ route('cash_collaterals.index') }}"
                                         class="btn btn-secondary btn-sm">
-                                        <i class="bx bx-arrow-back me-1"></i> Back
+                                        <i class="bx bx-arrow-back me-1"></i> Rudi
                                     </a>
                                 </div>
                             </div>
@@ -72,10 +74,10 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="card-title mb-0">Transaction History</h5>
+                            <h5 class="card-title mb-0">Historia ya Miamala</h5>
                             <a href="{{ route('cash_collaterals.statement-pdf', Hashids::encode($cashCollateral->id)) }}"
                                class="btn btn-primary btn-sm" target="_blank">
-                                <i class="bx bx-download me-1"></i> Download Statement
+                                <i class="bx bx-download me-1"></i> Pakua Taarifa
                             </a>
                         </div>
                         
@@ -85,13 +87,13 @@
                                 <thead class="table-dark">
                                     <tr>
                                         <th width="5%">#</th>
-                                        <th width="8%">Delete</th>
-                                        <th width="12%">Date</th>
-                                        <th width="25%">Narration</th>
-                                        <th width="14%">Created By</th>
-                                        <th width="12%">Cr (Deposit)</th>
-                                        <th width="12%">Dr (Withdraw)</th>
-                                        <th width="12%">Balance</th>
+                                        <th width="8%">Futa</th>
+                                        <th width="12%">Tarehe</th>
+                                        <th width="25%">Maelezo</th>
+                                        <th width="14%">Aliyeandika</th>
+                                        <th width="12%">Mkopo (Ingizo)</th>
+                                        <th width="12%">Malipo (Kutoka)</th>
+                                        <th width="12%">Salio</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -108,11 +110,11 @@
                                                         data-type="{{ $transaction['delete_type'] }}"
                                                         data-amount="{{ $transaction['credit'] > 0 ? $transaction['credit'] : $transaction['debit'] }}"
                                                         data-narration="{{ $transaction['narration'] }}"
-                                                        title="Delete Transaction">
+                                                        title="Futa Muamala">
                                                     <i class="bx bx-trash" style="font-size: 12px;"></i>
                                                 </button>
                                             @else
-                                                <span class="text-muted small">Protected</span>
+                                                <span class="text-muted small">Imelindwa</span>
                                             @endif
                                         </td>
                                         <td>{{ \Carbon\Carbon::parse($transaction['date'])->format('d/m/Y') }}</td>
@@ -124,7 +126,7 @@
                                                     {{ number_format($transaction['credit'], 2) }}
                                                 </span>
                                             @else
-                                                -
+                                                —
                                             @endif
                                         </td>
                                         <td class="text-end">
@@ -133,7 +135,7 @@
                                                     {{ number_format($transaction['debit'], 2) }}
                                                 </span>
                                             @else
-                                                -
+                                                —
                                             @endif
                                         </td>
                                         <td class="text-end">
@@ -144,7 +146,7 @@
                                 </tbody>
                                 <tfoot class="table-light">
                                     <tr>
-                                        <th colspan="5" class="text-end">Totals:</th>
+                                        <th colspan="5" class="text-end">Jumla:</th>
                                         <th class="text-end">
                                             <span class="text-success fw-bold">
                                                 {{ number_format($transactions->sum('credit'), 2) }}
@@ -170,23 +172,23 @@
                             <div class="col-md-3">
                                 <div class="card border-success">
                                     <div class="card-body text-center">
-                                        <h6 class="text-success">Total Deposits</h6>
-                                        <h5 class="text-success mb-0">TSHS {{ number_format($transactions->sum('credit'), 2) }}</h5>
+                                        <h6 class="text-success">Jumla ya Mikopo wa Mtaji</h6>
+                                        <h5 class="text-success mb-0">TSH {{ number_format($transactions->sum('credit'), 2) }}</h5>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="card border-danger">
                                     <div class="card-body text-center">
-                                        <h6 class="text-danger">Total Withdrawals</h6>
-                                        <h5 class="text-danger mb-0">TSHS {{ number_format($transactions->sum('debit'), 2) }}</h5>
+                                        <h6 class="text-danger">Jumla ya Malipo</h6>
+                                        <h5 class="text-danger mb-0">TSH {{ number_format($transactions->sum('debit'), 2) }}</h5>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="card border-info">
                                     <div class="card-body text-center">
-                                        <h6 class="text-info">Total Transactions</h6>
+                                        <h6 class="text-info">Jumla ya Miamala</h6>
                                         <h5 class="text-info mb-0">{{ $transactions->count() }}</h5>
                                     </div>
                                 </div>
@@ -194,8 +196,8 @@
                             <div class="col-md-3">
                                 <div class="card border-primary">
                                     <div class="card-body text-center">
-                                        <h6 class="text-primary">Current Balance</h6>
-                                        <h5 class="text-primary mb-0">TSHS {{ number_format($calculatedBalance ?? 0, 2) }}</h5>
+                                        <h6 class="text-primary">Salio la Sasa</h6>
+                                        <h5 class="text-primary mb-0">TSH {{ number_format($calculatedBalance ?? 0, 2) }}</h5>
                                     </div>
                                 </div>
                             </div>
@@ -205,12 +207,12 @@
                             <div class="mb-3">
                                 <i class="bx bx-history" style="font-size: 4rem; color: #6c757d;"></i>
                             </div>
-                            <h5 class="text-muted">No Transaction History</h5>
-                            <p class="text-muted">No deposits or withdrawals have been made for this account yet.</p>
-                            @can('deposit cash deposit')
+                            <h5 class="text-muted">Hakuna Historia ya Miamala</h5>
+                            <p class="text-muted">Bado hakuna mkopo wa mtaji au malipo kwenye akaunti hii.</p>
+                            @can('deposit cash collateral')
                             <a href="{{ route('cash_collaterals.deposit', Hashids::encode($cashCollateral->id)) }}"
                                 class="btn btn-success">
-                                <i class="bx bx-plus me-1"></i> Make First Deposit
+                                <i class="bx bx-plus me-1"></i> Toa Mkopo wa Mtaji wa Kwanza
                             </a>
                             @endcan
                         </div>
@@ -226,34 +228,30 @@
 @push('scripts')
 <script nonce="{{ $cspNonce ?? '' }}">
 $(document).ready(function() {
-    // Handle delete transaction button click
     $('.delete-transaction-btn').on('click', function() {
         const transactionId = $(this).data('id');
         const transactionType = $(this).data('type');
         const amount = $(this).data('amount');
         const narration = $(this).data('narration');
-        const row = $(this).closest('tr');
         
-        // Confirm deletion
         Swal.fire({
-            title: 'Delete Transaction?',
+            title: 'Futa Muamala?',
             html: `
                 <div class="text-start">
-                    <p><strong>Type:</strong> ${transactionType === 'receipt' ? 'Deposit' : 'Withdrawal'}</p>
-                    <p><strong>Amount:</strong> TSHS ${parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
-                    <p><strong>Description:</strong> ${narration}</p>
-                    <p class="text-warning mt-3"><i class="bx bx-warning"></i> This action cannot be undone!</p>
+                    <p><strong>Aina:</strong> ${transactionType === 'receipt' ? 'Mkopo wa Mtaji' : 'Malipo kwa Taslim'}</p>
+                    <p><strong>Kiasi:</strong> TSH ${parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
+                    <p><strong>Maelezo:</strong> ${narration}</p>
+                    <p class="text-warning mt-3"><i class="bx bx-warning"></i> Hatua hii haiwezi kutenduliwa!</p>
                 </div>
             `,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, Delete It',
-            cancelButtonText: 'Cancel'
+            confirmButtonText: 'Ndiyo, futa',
+            cancelButtonText: 'Ghairi'
         }).then((result) => {
             if (result.isConfirmed) {
-                // Determine the correct route based on transaction type
                 let deleteUrl;
                 if (transactionType === 'receipt') {
                     deleteUrl = `{{ url('cash_collaterals/delete-deposit') }}/${transactionId}`;
@@ -261,10 +259,9 @@ $(document).ready(function() {
                     deleteUrl = `{{ url('cash_collaterals/delete-withdrawal') }}/${transactionId}`;
                 }
                 
-                // Show loading
                 Swal.fire({
-                    title: 'Deleting...',
-                    text: 'Please wait while we delete the transaction.',
+                    title: 'Inafuta...',
+                    text: 'Tafadhali subiri tunapofuta muamala.',
                     allowOutsideClick: false,
                     allowEscapeKey: false,
                     showConfirmButton: false,
@@ -273,7 +270,6 @@ $(document).ready(function() {
                     }
                 });
                 
-                // Send delete request
                 $.ajax({
                     url: deleteUrl,
                     type: 'DELETE',
@@ -283,25 +279,24 @@ $(document).ready(function() {
                     success: function(response) {
                         if (response.success) {
                             Swal.fire({
-                                title: 'Deleted!',
+                                title: 'Imefutwa!',
                                 text: response.message,
                                 icon: 'success',
                                 timer: 2000,
                                 showConfirmButton: false
                             }).then(() => {
-                                // Reload the page to show updated balances
                                 location.reload();
                             });
                         } else {
-                            Swal.fire('Error!', response.message || 'Failed to delete transaction.', 'error');
+                            Swal.fire('Kosa!', response.message || 'Imeshindwa kufuta muamala.', 'error');
                         }
                     },
                     error: function(xhr) {
-                        let errorMessage = 'Failed to delete transaction.';
+                        let errorMessage = 'Imeshindwa kufuta muamala.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             errorMessage = xhr.responseJSON.message;
                         }
-                        Swal.fire('Error!', errorMessage, 'error');
+                        Swal.fire('Kosa!', errorMessage, 'error');
                     }
                 });
             }

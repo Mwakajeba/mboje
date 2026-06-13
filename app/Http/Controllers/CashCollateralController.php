@@ -324,8 +324,8 @@ class CashCollateralController extends Controller
                 return [
                     'id' => $receipt->id,
                     'date' => $receipt->date,
-                    'narration' => $receipt->description ?? 'Cash Deposit',
-                    'created_by' => $receipt->user->name ?? 'System',
+                    'narration' => $receipt->description ?? 'Mkopo wa Mtaji',
+                    'created_by' => $receipt->user->name ?? 'Mfumo',
                     'type' => 'deposit',
                     'credit' => $receipt->amount, // Credit for deposits
                     'debit' => 0,
@@ -345,8 +345,8 @@ class CashCollateralController extends Controller
                 return [
                     'id' => $payment->id,
                     'date' => $payment->date,
-                    'narration' => $payment->description ?? 'Cash Withdrawal',
-                    'created_by' => $payment->user->name ?? 'System',
+                    'narration' => $payment->description ?? 'Malipo ya Mkopo kwa Taslim',
+                    'created_by' => $payment->user->name ?? 'Mfumo',
                     'type' => 'withdrawal',
                     'credit' => 0,
                     'debit' => $payment->amount, // Debit for withdrawals
@@ -370,18 +370,18 @@ class CashCollateralController extends Controller
                 $cashDepositItem = $journal->items->where('chart_account_id', 28)->where('nature', 'debit')->first();
                 
                 // Set appropriate narration based on reference type
-                $narration = $journal->description ?? 'Cash Deposit Payment';
+                $narration = $journal->description ?? 'Malipo kwa Akaunti ya Mkopo';
                 if ($journal->reference_type == 'cash_sale_payment') {
-                    $narration = $journal->description ?? 'Cash Sale Payment (Cash Deposit)';
+                    $narration = $journal->description ?? 'Malipo ya Mauzo Taslim (Akaunti ya Mkopo)';
                 } elseif ($journal->reference_type == 'sales_invoice_payment') {
-                    $narration = $journal->description ?? 'Invoice Payment (Cash Deposit)';
+                    $narration = $journal->description ?? 'Malipo ya Ankara (Akaunti ya Mkopo)';
                 }
                 
                 return [
                     'id' => 'journal_' . $journal->id,
                     'date' => $journal->date,
                     'narration' => $narration,
-                    'created_by' => $journal->user->name ?? 'System',
+                    'created_by' => $journal->user->name ?? 'Mfumo',
                     'type' => 'journal_payment',
                     'credit' => 0,
                     'debit' => $cashDepositItem->amount, // Debit for cash deposit usage
@@ -461,8 +461,8 @@ class CashCollateralController extends Controller
                     return [
                         'id' => $receipt->id,
                         'date' => $receipt->date,
-                        'narration' => $receipt->description ?? 'Cash Deposit',
-                        'created_by' => $receipt->user->name ?? 'System',
+                        'narration' => $receipt->description ?? 'Mkopo wa Mtaji',
+                        'created_by' => $receipt->user->name ?? 'Mfumo',
                         'type' => 'deposit',
                         'credit' => $receipt->amount,
                         'debit' => 0,
@@ -479,8 +479,8 @@ class CashCollateralController extends Controller
                     return [
                         'id' => $payment->id,
                         'date' => $payment->date,
-                        'narration' => $payment->description ?? 'Cash Withdrawal',
-                        'created_by' => $payment->user->name ?? 'System',
+                        'narration' => $payment->description ?? 'Malipo ya Mkopo kwa Taslim',
+                        'created_by' => $payment->user->name ?? 'Mfumo',
                         'type' => 'withdrawal',
                         'credit' => 0,
                         'debit' => $payment->amount,
@@ -500,18 +500,18 @@ class CashCollateralController extends Controller
                     $cashDepositItem = $journal->items->where('chart_account_id', 28)->where('nature', 'debit')->first();
                     
                     // Set appropriate narration based on reference type
-                    $narration = $journal->description ?? 'Cash Deposit Payment';
+                    $narration = $journal->description ?? 'Malipo kwa Akaunti ya Mkopo';
                     if ($journal->reference_type == 'cash_sale_payment') {
-                        $narration = $journal->description ?? 'Cash Sale Payment (Cash Deposit)';
+                        $narration = $journal->description ?? 'Malipo ya Mauzo Taslim (Akaunti ya Mkopo)';
                     } elseif ($journal->reference_type == 'sales_invoice_payment') {
-                        $narration = $journal->description ?? 'Invoice Payment (Cash Deposit)';
+                        $narration = $journal->description ?? 'Malipo ya Ankara (Akaunti ya Mkopo)';
                     }
                     
                     return [
                         'id' => 'journal_' . $journal->id,
                         'date' => $journal->date,
                         'narration' => $narration,
-                        'created_by' => $journal->user->name ?? 'System',
+                        'created_by' => $journal->user->name ?? 'Mfumo',
                         'type' => 'journal_payment',
                         'credit' => 0,
                         'debit' => $cashDepositItem->amount,
@@ -1111,14 +1111,14 @@ class CashCollateralController extends Controller
                 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Deposit transaction deleted successfully.',
+                    'message' => 'Muamala wa mkopo wa mtaji umefutwa kikamilifu.',
                     'amount' => $receipt->amount
                 ]);
             });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete deposit: ' . $e->getMessage()
+                'message' => 'Imeshindwa kufuta mkopo wa mtaji: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -1153,14 +1153,14 @@ class CashCollateralController extends Controller
                 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Withdrawal transaction deleted successfully.',
+                    'message' => 'Muamala wa malipo umefutwa kikamilifu.',
                     'amount' => $payment->amount
                 ]);
             });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete withdrawal: ' . $e->getMessage()
+                'message' => 'Imeshindwa kufuta malipo: ' . $e->getMessage()
             ], 500);
         }
     }
