@@ -78,7 +78,7 @@ class CustomerController extends Controller
                     </div>';
                 })
                 ->addColumn('formatted_credit_limit', function ($customer) {
-                    return $customer->credit_limit ? number_format($customer->credit_limit, 2) : 'N/A';
+                    return $customer->credit_limit ? number_format($customer->credit_limit, 2) : '—';
                 })
                 ->addColumn('status_badge', function ($customer) {
                     $badgeClass = match($customer->status) {
@@ -87,16 +87,22 @@ class CustomerController extends Controller
                         'suspended' => 'bg-warning',
                         default => 'bg-secondary'
                     };
-                    return '<span class="badge ' . $badgeClass . '">' . ucfirst($customer->status) . '</span>';
+                    $label = match($customer->status) {
+                        'active' => 'Hai',
+                        'inactive' => 'Haifanyi kazi',
+                        'suspended' => 'Imesimamishwa',
+                        default => ucfirst($customer->status),
+                    };
+                    return '<span class="badge ' . $badgeClass . '">' . $label . '</span>';
                 })
                 ->addColumn('formatted_phone', function ($customer) {
-                    return $customer->phone ? '<a href="tel:' . $customer->phone . '">' . $customer->phone . '</a>' : 'N/A';
+                    return $customer->phone ? '<a href="tel:' . $customer->phone . '">' . $customer->phone . '</a>' : '—';
                 })
                 ->editColumn('email', function ($customer) {
-                    return $customer->email ? '<a href="mailto:' . $customer->email . '">' . $customer->email . '</a>' : 'N/A';
+                    return $customer->email ? '<a href="mailto:' . $customer->email . '">' . $customer->email . '</a>' : '—';
                 })
                 ->editColumn('branch.name', function ($customer) {
-                    return $customer->branch ? $customer->branch->name : 'N/A';
+                    return $customer->branch ? $customer->branch->name : '—';
                 })
                 ->editColumn('created_at', function ($customer) {
                     return format_date($customer->created_at, 'Y-m-d');

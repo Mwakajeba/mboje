@@ -21,7 +21,7 @@
                             <div class="d-flex gap-2">
                                 @can('update', $item)
                                 <a href="{{ route('inventory.items.edit', $item->hash_id) }}" class="btn btn-primary btn-sm">
-                                    <i class="bx bx-edit me-1"></i> Edit
+                                    <i class="bx bx-edit me-1"></i> Badili
                                 </a>
                                 @endcan
                                 <a href="{{ route('inventory.items.index') }}" class="btn btn-secondary btn-sm">

@@ -1,16 +1,16 @@
 @extends('layouts.main')
 
-@section('title', 'Customer Management')
+@section('title', 'Wateja')
 
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Sales', 'url' => route('sales.index'), 'icon' => 'bx bx-store'],
-            ['label' => 'Customers', 'url' => '#', 'icon' => 'bx bx-group']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Mauzo', 'url' => route('sales.index'), 'icon' => 'bx bx-store'],
+            ['label' => 'Wateja', 'url' => '#', 'icon' => 'bx bx-group']
              ]" />
-        <h6 class="mb-0 text-uppercase">CUSTOMER LIST</h6>
+        <h6 class="mb-0 text-uppercase">ORODHA YA WATEJA</h6>
         <hr />
 
         <!-- Dashboard Stats -->
@@ -20,9 +20,9 @@
                 <div class="card radius-10 border-0 shadow-sm">
                     <div class="card-body d-flex align-items-center">
                         <div class="flex-grow-1">
-                            <p class="text-muted mb-1 small">Total Registered Customers</p>
+                            <p class="text-muted mb-1 small">Jumla ya Wateja Waliosajiliwa</p>
                             <h2 class="mb-0 fw-bold">{{ number_format($totalRegisteredCustomers ?? 0) }}</h2>
-                            <p class="text-muted mb-0 small mt-1">Active + Inactive</p>
+                            <p class="text-muted mb-0 small mt-1">Hai + Haifanyi kazi</p>
                         </div>
                         <div class="widgets-icons bg-gradient-burning text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
                             <i class='bx bx-group fs-4'></i>
@@ -36,10 +36,10 @@
                 <div class="card radius-10 border-0 shadow-sm border-start border-4 border-success">
                     <div class="card-body d-flex align-items-center">
                         <div class="flex-grow-1">
-                            <p class="text-muted mb-1 small">Active Customers</p>
+                            <p class="text-muted mb-1 small">Wateja Hai</p>
                             <h2 class="mb-0 fw-bold text-success">{{ number_format($activeCustomers ?? 0) }}</h2>
                             <p class="text-success mb-0 small mt-1">
-                                <i class='bx bx-check-circle'></i> With transactions
+                                <i class='bx bx-check-circle'></i> Wenye miamala
                             </p>
                         </div>
                         <div class="widgets-icons bg-success text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
@@ -54,10 +54,10 @@
                 <div class="card radius-10 border-0 shadow-sm border-start border-4 border-danger">
                     <div class="card-body d-flex align-items-center">
                         <div class="flex-grow-1">
-                            <p class="text-muted mb-1 small">Dormant Customers</p>
+                            <p class="text-muted mb-1 small">Wateja Waliosinzia</p>
                             <h2 class="mb-0 fw-bold text-danger">{{ number_format($dormantCustomers ?? 0) }}</h2>
                             <p class="text-danger mb-0 small mt-1">
-                                <i class='bx bx-time-five'></i> No activity (3-6 months)
+                                <i class='bx bx-time-five'></i> Hakuna shughuli (miezi 3-6)
                             </p>
                         </div>
                         <div class="widgets-icons bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
@@ -72,22 +72,22 @@
                 <div class="card radius-10 border-0 shadow-sm border-start border-4 border-info">
                     <div class="card-body d-flex align-items-center">
                         <div class="flex-grow-1">
-                            <p class="text-muted mb-1 small">New Customers (This Month)</p>
+                            <p class="text-muted mb-1 small">Wateja Wapya (Mwezi Huu)</p>
                             <h2 class="mb-0 fw-bold text-info">{{ number_format($newCustomersThisMonth ?? 0) }}</h2>
                             <p class="mb-0 small mt-1">
                                 @if(isset($newCustomersIncrease) && $newCustomersIncrease > 0)
                                     <span class="text-success">
                                         <i class='bx bx-trending-up'></i> 
-                                        {{ number_format(abs($newCustomersIncrease), 1) }}% increase
+                                        Ongezeko la {{ number_format(abs($newCustomersIncrease), 1) }}%
                                     </span>
                                 @elseif(isset($newCustomersIncrease) && $newCustomersIncrease < 0)
                                     <span class="text-danger">
                                         <i class='bx bx-trending-down'></i> 
-                                        {{ number_format(abs($newCustomersIncrease), 1) }}% decrease
+                                        Upungufu wa {{ number_format(abs($newCustomersIncrease), 1) }}%
                                     </span>
                                 @else
                                     <span class="text-muted">
-                                        <i class='bx bx-minus'></i> No change
+                                        <i class='bx bx-minus'></i> Hakuna mabadiliko
                                     </span>
                                 @endif
                             </p>
@@ -106,34 +106,32 @@
                 <div class="card radius-10">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h6 class="card-title mb-0">Customers List</h6>
+                            <h6 class="card-title mb-0">Orodha ya Wateja</h6>
                             <div>
                                 @can('create customer')
                                 <a href="{{ route('customers.bulk-upload') }}" class="btn btn-success me-2">
-                                    <i class="bx bx-upload"></i> Bulk Upload
+                                    <i class="bx bx-upload"></i> Pakia Wingi
                                 </a>
                                 <a href="{{ route('customers.create') }}" class="btn btn-primary">
-                                    <i class="bx bx-plus"></i> Add Customer
+                                    <i class="bx bx-plus"></i> Ongeza Mteja
                                 </a>
                                 @endcan
                             </div>
                         </div>
 
-                       
-
                         <div class="table-responsive">
                             <table class="table table-bordered table-striped nowrap" id="customers-table">
                                 <thead>
                                     <tr>
-                                        <th>Customer No</th>
-                                        <th>Name</th>
-                                        <th>Phone</th>
-                                        <th>Email</th>
-                                        <th>Branch</th>
-                                        <th>Credit Limit</th>
-                                        <th>Status</th>
-                                        <th>Created</th>
-                                        <th class="text-center">Actions</th>
+                                        <th>Nambari</th>
+                                        <th>Jina</th>
+                                        <th>Simu</th>
+                                        <th>Barua pepe</th>
+                                        <th>Tawi</th>
+                                        <th>Kikomo cha Mkopo</th>
+                                        <th>Hali</th>
+                                        <th>Tarehe ya Kusajili</th>
+                                        <th class="text-center">Vitendo</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -174,66 +172,69 @@ $(document).ready(function() {
                 searchable: false
             }
         ],
-        order: [[1, 'asc']], // Sort by name ascending
+        order: [[1, 'asc']],
         pageLength: 25,
-        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Zote"]],
         responsive: true,
         dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
              '<"row"<"col-sm-12"tr>>' +
              '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
         language: {
-            processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>',
-            search: "Search Customers:",
-            lengthMenu: "Show _MENU_ customers per page",
-            info: "Showing _START_ to _END_ of _TOTAL_ customers",
-            infoEmpty: "Showing 0 to 0 of 0 customers",
-            infoFiltered: "(filtered from _MAX_ total customers)",
+            processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Inapakia...</span></div>',
+            search: "",
+            searchPlaceholder: "Tafuta wateja...",
+            lengthMenu: "Onyesha _MENU_ kwa ukurasa",
+            info: "Inaonyesha _START_ hadi _END_ kati ya _TOTAL_",
+            infoEmpty: "Inaonyesha 0 hadi 0 kati ya 0",
+            infoFiltered: "(kuchujwa kutoka _MAX_ jumla)",
+            zeroRecords: "Hakuna wateja waliofanana",
+            paginate: {
+                first: "Kwanza",
+                last: "Mwisho",
+                next: "Ijayo",
+                previous: "Iliyotangulia"
+            },
             emptyTable: `
                 <div class="text-center text-muted py-4">
                     <i class="bx bx-group fs-1 d-block mb-2"></i>
-                    <h6>No Customers Found</h6>
-                    <p class="mb-0">Get started by creating your first customer</p>
+                    <h6>Hakuna Wateja</h6>
+                    <p class="mb-0">Anza kwa kusajili mteja wako wa kwanza</p>
                     <a href="{{ route('customers.create') }}" class="btn btn-primary btn-sm mt-2">
-                        <i class="bx bx-plus me-1"></i> Add Customer
+                        <i class="bx bx-plus me-1"></i> Ongeza Mteja
                     </a>
                 </div>
             `
         }
     });
 
-    // Search functionality
     $('#search-input').on('keyup', function() {
         table.search(this.value).draw();
     });
 
-    // Refresh table when needed
     function refreshTable() {
         table.ajax.reload(null, false);
     }
 
-    // Refresh button functionality
     $('#refresh-table').on('click', function() {
         refreshTable();
     });
 
-    // Global function to be called from other scripts
     window.refreshCustomersTable = refreshTable;
     
-    // Handle delete form submissions
     $(document).on('submit', '.delete-form', function(e) {
         e.preventDefault();
         const form = $(this);
         const customerName = form.find('button').data('name');
         
         Swal.fire({
-            title: 'Are you sure?',
-            text: `Are you sure you want to delete customer "${customerName}"? This action cannot be undone.`,
+            title: 'Una uhakika?',
+            text: `Unakaribia kufuta mteja "${customerName}". Hatua hii haiwezi kutenduliwa!`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel'
+            confirmButtonText: 'Ndiyo, futa',
+            cancelButtonText: 'Ghairi'
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -244,23 +245,23 @@ $(document).ready(function() {
                     success: function(response) {
                         if (response.success) {
                             Swal.fire({
-                                title: 'Deleted!',
-                                text: response.message || 'Customer has been deleted successfully.',
+                                title: 'Imefutwa!',
+                                text: response.message || 'Mteja amefutwa kikamilifu.',
                                 icon: 'success',
                                 timer: 2000,
                                 showConfirmButton: false
                             });
-                            table.ajax.reload(); // Reload DataTable
+                            table.ajax.reload();
                         } else {
                             Swal.fire({
-                                title: 'Error!',
-                                text: response.message || 'Failed to delete customer.',
+                                title: 'Kosa!',
+                                text: response.message || 'Imeshindwa kufuta mteja.',
                                 icon: 'error'
                             });
                         }
                     },
                     error: function(xhr) {
-                        let errorMessage = 'Failed to delete customer.';
+                        let errorMessage = 'Imeshindwa kufuta mteja.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             errorMessage = xhr.responseJSON.message;
                         } else if (xhr.responseText) {
@@ -268,7 +269,7 @@ $(document).ready(function() {
                         }
                         
                         Swal.fire({
-                            title: 'Error!',
+                            title: 'Kosa!',
                             text: errorMessage,
                             icon: 'error'
                         });

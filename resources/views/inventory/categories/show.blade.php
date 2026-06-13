@@ -178,7 +178,7 @@
                                                     <i class="bx bx-show"></i>
                                                 </a>
                                                 @can('manage inventory items')
-                                                <a href="{{ route('inventory.items.edit', $item) }}" class="btn btn-sm btn-outline-primary" title="Hariri">
+                                                <a href="{{ route('inventory.items.edit', $item) }}" class="btn btn-sm btn-outline-primary" title="Badili">
                                                     <i class="bx bx-edit"></i>
                                                 </a>
                                                 @endcan

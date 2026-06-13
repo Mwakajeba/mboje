@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Hariri Bidhaa')
+@section('title', 'Badili Bidhaa')
 
 @section('content')
 <div class="page-wrapper">
@@ -9,7 +9,7 @@
             ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Hesabu', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
             ['label' => 'Bidhaa', 'url' => route('inventory.items.index'), 'icon' => 'bx bx-box'],
-            ['label' => 'Hariri Bidhaa', 'url' => '#', 'icon' => 'bx bx-edit']
+            ['label' => 'Badili Bidhaa', 'url' => '#', 'icon' => 'bx bx-edit']
         ]" />
 
         <div class="row">
@@ -17,7 +17,7 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h4 class="mb-0">Hariri Bidhaa — {{ $item->name }}</h4>
+                            <h4 class="mb-0">Badili Bidhaa — {{ $item->name }}</h4>
                             <a href="{{ route('inventory.items.index') }}" class="btn btn-secondary">
                                 <i class="bx bx-arrow-back me-1"></i> Rudi kwa Bidhaa
                             </a>

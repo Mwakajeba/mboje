@@ -500,7 +500,7 @@ class Item extends Model
     {
         $actions = '<div class="btn-group" role="group">';
         $actions .= '<a href="' . route('inventory.items.show', $this->encoded_id) . '" class="btn btn-sm btn-outline-info" title="Angalia"><i class="bx bx-show"></i></a>';
-        $actions .= '<a href="' . route('inventory.items.edit', $this->encoded_id) . '" class="btn btn-sm btn-outline-primary" title="Hariri"><i class="bx bx-edit"></i></a>';
+        $actions .= '<a href="' . route('inventory.items.edit', $this->encoded_id) . '" class="btn btn-sm btn-outline-primary" title="Badili"><i class="bx bx-edit"></i></a>';
         $actions .= '<button type="button" class="btn btn-sm btn-outline-danger delete-btn" data-id="' . $this->encoded_id . '" data-url="' . route('inventory.items.destroy', $this->encoded_id) . '" title="Futa"><i class="bx bx-trash"></i></button>';
         $actions .= '</div>';
         
