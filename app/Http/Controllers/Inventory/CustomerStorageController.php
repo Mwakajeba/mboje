@@ -100,20 +100,26 @@ class CustomerStorageController extends Controller
 
         $idType = ! empty($validated['id_type']) ? strtolower((string) $validated['id_type']) : null;
 
-        $customer = Customer::create([
-            'customerNo' => Customer::nextCustomerNo(),
-            'name' => $validated['name'],
-            'phone' => $validated['phone'] ?? null,
-            'description' => $validated['description'] ?? null,
-            'id_type' => $idType,
-            'id_number' => $validated['id_number'] ?? null,
-            'bank_name' => $validated['bank_name'] ?? null,
-            'bank_account_number' => $validated['bank_account_number'] ?? null,
-            'account_name' => $validated['account_name'] ?? null,
-            'status' => $validated['status'],
-            'branch_id' => $branchId,
-            'company_id' => $companyId,
-        ]);
+        $customer = DB::transaction(function () use ($validated, $idType, $branchId, $companyId) {
+            $customer = Customer::create([
+                'customerNo' => Customer::nextCustomerNo(),
+                'name' => $validated['name'],
+                'phone' => $validated['phone'] ?? null,
+                'description' => $validated['description'] ?? null,
+                'id_type' => $idType,
+                'id_number' => $validated['id_number'] ?? null,
+                'bank_name' => $validated['bank_name'] ?? null,
+                'bank_account_number' => $validated['bank_account_number'] ?? null,
+                'account_name' => $validated['account_name'] ?? null,
+                'status' => $validated['status'],
+                'branch_id' => $branchId,
+                'company_id' => $companyId,
+            ]);
+
+            $customer->ensureLoanAccount();
+
+            return $customer;
+        });
 
         if ($request->boolean('send_welcome_sms')) {
             try {

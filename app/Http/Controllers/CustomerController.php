@@ -359,7 +359,8 @@ class CustomerController extends Controller
         try {
             $customer = \App\Models\Customer::create($data);
 
- 
+            $customer->ensureLoanAccount();
+
             // Send welcome SMS if requested
             if ($request->has('send_welcome_sms') && $request->send_welcome_sms) {
                 try {
@@ -1021,6 +1022,8 @@ class CustomerController extends Controller
                     }
 
                     $customer = Customer::create($customerData);
+
+                    $customer->ensureLoanAccount();
 
                     // Add cash collateral if selected
                     if ($request->has('has_cash_deposit') && $request->deposit_account_id) {

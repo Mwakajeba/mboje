@@ -245,6 +245,40 @@ class Customer extends Model
         return $this->hasMany(CashCollateral::class);
     }
 
+    /**
+     * Create a loan account (cash collateral) for this customer if one does not exist.
+     */
+    public function ensureLoanAccount(?int $typeId = null): ?CashCollateral
+    {
+        $existing = CashCollateral::where('customer_id', $this->id)
+            ->where('company_id', $this->company_id)
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $typeId = $typeId ?? CashCollateralType::where('is_active', 1)->orderBy('id')->value('id');
+
+        if (! $typeId || ! $this->branch_id) {
+            return null;
+        }
+
+        $collateral = CashCollateral::create([
+            'customer_id' => $this->id,
+            'type_id' => $typeId,
+            'amount' => 0,
+            'company_id' => $this->company_id,
+            'branch_id' => $this->branch_id,
+        ]);
+
+        if (! $this->has_cash_deposit) {
+            $this->update(['has_cash_deposit' => true]);
+        }
+
+        return $collateral;
+    }
+
     public function rentalCustomerDeposits()
     {
         return $this->hasMany(\App\Models\RentalEventEquipment\CustomerDeposit::class);

@@ -1,19 +1,19 @@
 @extends('layouts.main')
 
-@section('title', 'Cash Deposits')
+@section('title', 'Mikopo ya Wateja')
 
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Cash Deposits', 'url' => '#', 'icon' => 'bx bx-credit-card']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Mikopo ya Wateja', 'url' => '#', 'icon' => 'bx bx-credit-card']
         ]" />
 
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="mb-0 text-primary">Cash Deposits Management</h5>
+            <h5 class="mb-0 text-primary">Mikopo ya Wateja</h5>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
-                <i class="bx bx-plus me-1"></i>Add New Cash Deposit
+                <i class="bx bx-plus me-1"></i>Weka Akaunti Mpya
             </button>
         </div>
 
@@ -21,7 +21,7 @@
         <div class="alert alert-success d-flex align-items-start" role="alert">
             <i class="bx bx-check-circle me-2 fs-4"></i>
             <div>
-                <strong>Success!</strong>
+                <strong>Mafanikio!</strong>
                 {{ session('success') }}
             </div>
         </div>
@@ -31,7 +31,7 @@
         <div class="alert alert-danger d-flex align-items-start" role="alert">
             <i class="bx bx-error me-2 fs-4"></i>
             <div>
-                <strong>Error!</strong>
+                <strong>Kosa!</strong>
                 {{ session('error') }}
             </div>
         </div>
@@ -44,7 +44,7 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="flex-grow-1">
-                                <p class="text-muted mb-1">Total Deposits</p>
+                                <p class="text-muted mb-1">Jumla ya Akaunti</p>
                                 <h4 class="mb-0 text-primary">{{ $totalCollaterals }}</h4>
                             </div>
                             <div class="widgets-icons bg-gradient-cosmic text-white">
@@ -59,7 +59,7 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="flex-grow-1">
-                                <p class="text-muted mb-1">Total Amount</p>
+                                <p class="text-muted mb-1">Jumla ya Kiasi</p>
                                 <h4 class="mb-0 text-success">{{ number_format($totalAmount ?? 0, 2) }}</h4>
                             </div>
                             <div class="widgets-icons bg-gradient-burning text-white">
@@ -74,7 +74,7 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="flex-grow-1">
-                                <p class="text-muted mb-1">Available Types</p>
+                                <p class="text-muted mb-1">Aina za Akaunti</p>
                                 <h4 class="mb-0 text-secondary">{{ $cashCollateralTypes->count() }}</h4>
                             </div>
                             <div class="widgets-icons bg-gradient-moonlit text-white">
@@ -94,13 +94,13 @@
                         <thead class="table-dark">
                             <tr>
                                 <th width="5%">#</th>
-                                <th width="20%">Customer</th>
-                                <th width="15%">Deposit Type</th>
-                                <th width="20%">Chart Account</th>
-                                <th width="10%">Amount</th>
-                                <th width="10%">Branch</th>
-                                <th width="10%">Date</th>
-                                <th width="10%">Actions</th>
+                                <th width="20%">Mteja</th>
+                                <th width="15%">Aina ya Akaunti</th>
+                                <th width="20%">Akaunti ya Hesabu</th>
+                                <th width="10%">Kiasi</th>
+                                <th width="10%">Tawi</th>
+                                <th width="10%">Tarehe</th>
+                                <th width="10%">Vitendo</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -119,9 +119,9 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="createModalLabel">
-                    <i class="bx bx-plus-circle me-2"></i>Add New Cash Deposit
+                    <i class="bx bx-plus-circle me-2"></i>Weka Akaunti Mpya
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Funga"></button>
             </div>
             <form id="createForm" method="POST" action="{{ route('cash_collaterals.store') }}">
                 @csrf
@@ -129,17 +129,17 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="customer_id" class="form-label">
-                                <i class="bx bx-user me-1"></i>Customer <span class="text-danger">*</span>
+                                <i class="bx bx-user me-1"></i>Mteja <span class="text-danger">*</span>
                             </label>
                             <select class="form-select select2-single"
                                     id="customer_id"
                                     name="customer_id"
                                     required>
-                                <option value="">-- Select Customer --</option>
+                                <option value="">Chagua mteja</option>
                                 @foreach($customers as $customer)
                                 @if(empty($occupiedCustomerIds) || !in_array((int) $customer->id, array_map('intval', $occupiedCustomerIds), true))
                                 <option value="{{ $customer->id }}">
-                                    {{ $customer->name }} - {{ $customer->phone }}
+                                    {{ $customer->name }}@if($customer->phone) - {{ $customer->phone }}@endif
                                 </option>
                                 @endif
                                 @endforeach
@@ -148,13 +148,13 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="type_id" class="form-label">
-                                <i class="bx bx-category me-1"></i>Deposit Type <span class="text-danger">*</span>
+                                <i class="bx bx-category me-1"></i>Aina ya Akaunti <span class="text-danger">*</span>
                             </label>
                             <select class="form-select select2-single"
                                     id="type_id"
                                     name="type_id"
                                     required>
-                                <option value="">-- Select Deposit Type --</option>
+                                <option value="">Chagua aina ya akaunti</option>
                                 @foreach($cashCollateralTypes as $type)
                                 <option value="{{ $type->id }}" data-chart-account="{{ $type->chartAccount->account_code ?? '' }} - {{ $type->chartAccount->account_name ?? '' }}">
                                     {{ $type->name }}
@@ -167,11 +167,11 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bx bx-x me-1"></i>Cancel
+                        <i class="bx bx-x me-1"></i>Ghairi
                     </button>
                     <button type="submit" class="btn btn-primary" id="submitBtn">
                         <span class="btn-text">
-                            <i class="bx bx-check me-1"></i>Create Cash Deposit
+                            <i class="bx bx-check me-1"></i>Weka Akaunti
                         </span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
@@ -187,9 +187,9 @@
         <div class="modal-content">
             <div class="modal-header bg-warning text-white">
                 <h5 class="modal-title" id="editModalLabel">
-                    <i class="bx bx-edit me-2"></i>Edit Cash Deposit
+                    <i class="bx bx-edit me-2"></i>Badili Akaunti ya Mkopo
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Funga"></button>
             </div>
             <form id="editForm" method="POST">
                 @csrf
@@ -198,16 +198,16 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="edit_customer_id" class="form-label">
-                                <i class="bx bx-user me-1"></i>Customer <span class="text-danger">*</span>
+                                <i class="bx bx-user me-1"></i>Mteja <span class="text-danger">*</span>
                             </label>
                             <select class="form-select select2-single" 
                                     id="edit_customer_id" 
                                     name="customer_id" 
                                     required>
-                                <option value="">-- Select Customer --</option>
+                                <option value="">Chagua mteja</option>
                                 @foreach($customers as $customer)
                                 <option value="{{ $customer->id }}">
-                                    {{ $customer->name }} - {{ $customer->phone }}
+                                    {{ $customer->name }}@if($customer->phone) - {{ $customer->phone }}@endif
                                 </option>
                                 @endforeach
                             </select>
@@ -215,13 +215,13 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="edit_type_id" class="form-label">
-                                <i class="bx bx-category me-1"></i>Deposit Type <span class="text-danger">*</span>
+                                <i class="bx bx-category me-1"></i>Aina ya Akaunti <span class="text-danger">*</span>
                             </label>
                             <select class="form-select select2-single" 
                                     id="edit_type_id" 
                                     name="type_id" 
                                     required>
-                                <option value="">-- Select Deposit Type --</option>
+                                <option value="">Chagua aina ya akaunti</option>
                                 @foreach($cashCollateralTypes as $type)
                                 <option value="{{ $type->id }}" data-chart-account="{{ $type->chartAccount->account_code ?? '' }} - {{ $type->chartAccount->account_name ?? '' }}">
                                     {{ $type->name }}
@@ -234,11 +234,11 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bx bx-x me-1"></i>Cancel
+                        <i class="bx bx-x me-1"></i>Ghairi
                     </button>
                     <button type="submit" class="btn btn-warning" id="editSubmitBtn">
                         <span class="btn-text">
-                            <i class="bx bx-check me-1"></i>Update Cash Deposit
+                            <i class="bx bx-check me-1"></i>Sasisha Akaunti
                         </span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
@@ -296,7 +296,6 @@
 
 <script nonce="{{ $cspNonce ?? '' }}">
 $(document).ready(function() {
-    // Initialize DataTable
     var table = $('#cashCollateralsTable').DataTable({
         processing: true,
         serverSide: true,
@@ -318,16 +317,27 @@ $(document).ready(function() {
         pageLength: 25,
         responsive: true,
         language: {
-            processing: '<div class="d-flex justify-content-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>',
-            emptyTable: 'No cash deposits found',
-            zeroRecords: 'No matching records found'
+            processing: '<div class="d-flex justify-content-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Inapakia...</span></div></div>',
+            search: "",
+            searchPlaceholder: "Tafuta mikopo ya wateja...",
+            lengthMenu: "Onyesha _MENU_ kwa ukurasa",
+            info: "Inaonyesha _START_ hadi _END_ kati ya _TOTAL_",
+            infoEmpty: "Inaonyesha 0 hadi 0 kati ya 0",
+            infoFiltered: "(kuchujwa kutoka _MAX_ jumla)",
+            emptyTable: 'Hakuna akaunti za mikopo ya wateja',
+            zeroRecords: 'Hakuna rekodi zinazolingana',
+            paginate: {
+                first: "Kwanza",
+                last: "Mwisho",
+                next: "Ijayo",
+                previous: "Iliyotangulia"
+            }
         },
         drawCallback: function(settings) {
             $('[data-bs-toggle="tooltip"]').tooltip();
         }
     });
 
-    // Initialize Select2 for all modals
     function initializeSelect2(modalId) {
         $(`#${modalId} .select2-single`).select2({
             theme: 'bootstrap-5',
@@ -336,7 +346,6 @@ $(document).ready(function() {
         });
     }
 
-    // Initialize Select2 on modal show
     $('#createModal').on('shown.bs.modal', function() {
         initializeSelect2('createModal');
     });
@@ -345,7 +354,6 @@ $(document).ready(function() {
         initializeSelect2('editModal');
     });
 
-    // Handle create form submission
     $('#createForm').on('submit', function(e) {
         e.preventDefault();
         
@@ -377,7 +385,7 @@ $(document).ready(function() {
                     
                     Swal.fire({
                         icon: 'success',
-                        title: 'Success!',
+                        title: 'Mafanikio!',
                         text: response.message,
                         timer: 3000,
                         showConfirmButton: false
@@ -396,13 +404,13 @@ $(document).ready(function() {
                     }
                     const msg = xhr.responseJSON?.message || (errors && errors.customer_id && errors.customer_id[0]);
                     if (msg) {
-                        Swal.fire({ icon: 'warning', title: 'Cannot create', text: msg });
+                        Swal.fire({ icon: 'warning', title: 'Haiwezekani kusajili', text: msg });
                     }
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: 'Error!',
-                        text: xhr.responseJSON?.message || 'An error occurred while creating the cash deposit.'
+                        title: 'Kosa!',
+                        text: xhr.responseJSON?.message || 'Imeshindwa kuweka akaunti mpya.'
                     });
                 }
             },
@@ -414,7 +422,6 @@ $(document).ready(function() {
         });
     });
 
-    // Handle edit button click
     $(document).on('click', '.edit-btn', function() {
         const data = $(this).data();
         
@@ -425,7 +432,6 @@ $(document).ready(function() {
         $('#editModal').modal('show');
     });
 
-    // Handle edit form submission
     $('#editForm').on('submit', function(e) {
         e.preventDefault();
         
@@ -455,7 +461,7 @@ $(document).ready(function() {
                     
                     Swal.fire({
                         icon: 'success',
-                        title: 'Success!',
+                        title: 'Mafanikio!',
                         text: response.message,
                         timer: 3000,
                         showConfirmButton: false
@@ -474,13 +480,13 @@ $(document).ready(function() {
                     }
                     const msg = xhr.responseJSON?.message || (errors && errors.customer_id && errors.customer_id[0]);
                     if (msg) {
-                        Swal.fire({ icon: 'warning', title: 'Cannot update', text: msg });
+                        Swal.fire({ icon: 'warning', title: 'Haiwezekani kusasisha', text: msg });
                     }
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: 'Error!',
-                        text: xhr.responseJSON?.message || 'An error occurred while updating the cash deposit.'
+                        title: 'Kosa!',
+                        text: xhr.responseJSON?.message || 'Imeshindwa kusasisha akaunti.'
                     });
                 }
             },
@@ -492,32 +498,29 @@ $(document).ready(function() {
         });
     });
 
-    // Handle delete action
     $(document).on('click', '.delete-btn', function(e) {
         e.preventDefault();
         const data = $(this).data();
 
         Swal.fire({
-            title: 'Are you sure?',
-            text: `Do you want to delete this cash deposit account? This action cannot be undone!`,
+            title: 'Una uhakika?',
             html: `
                 <div class="text-start">
-                    <p>Do you want to delete this cash deposit account?</p>
-                    <p class="text-warning mb-0"><i class="bx bx-info-circle"></i> <strong>Note:</strong> Accounts with transactions cannot be deleted.</p>
+                    <p>Unakaribia kufuta akaunti hii ya mkopo ya mteja.</p>
+                    <p class="text-warning mb-0"><i class="bx bx-info-circle"></i> <strong>Kumbuka:</strong> Akaunti zenye miamala haziwezi kufutwa.</p>
                 </div>
             `,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel'
+            confirmButtonText: 'Ndiyo, futa',
+            cancelButtonText: 'Ghairi'
         }).then((result) => {
             if (result.isConfirmed) {
-                // Show loading
                 Swal.fire({
-                    title: 'Deleting...',
-                    text: 'Please wait while we delete the cash deposit account.',
+                    title: 'Inafuta...',
+                    text: 'Tafadhali subiri.',
                     allowOutsideClick: false,
                     allowEscapeKey: false,
                     showConfirmButton: false,
@@ -534,27 +537,26 @@ $(document).ready(function() {
                     },
                     success: function(response) {
                         if (response.success) {
-                            Swal.fire('Deleted!', response.message, 'success');
+                            Swal.fire('Imefutwa!', response.message, 'success');
                             table.ajax.reload();
                         } else {
-                            Swal.fire('Error!', response.message || 'Failed to delete cash deposit account.', 'error');
+                            Swal.fire('Kosa!', response.message || 'Imeshindwa kufuta akaunti.', 'error');
                         }
                     },
                     error: function(xhr) {
-                        let errorMessage = 'An error occurred while deleting the cash deposit account.';
+                        let errorMessage = 'Imeshindwa kufuta akaunti.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             errorMessage = xhr.responseJSON.message;
                         } else if (xhr.status === 422) {
-                            errorMessage = 'Cannot delete cash deposit account. It has existing transactions.';
+                            errorMessage = 'Haiwezekani kufuta akaunti. Ina miamala iliyopo.';
                         }
-                        Swal.fire('Error!', errorMessage, 'error');
+                        Swal.fire('Kosa!', errorMessage, 'error');
                     }
                 });
             }
         });
     });
 
-    // Reset modal when hidden
     $('.modal').on('hidden.bs.modal', function() {
         $(this).find('form')[0].reset();
         $(this).find('.is-invalid').removeClass('is-invalid');
