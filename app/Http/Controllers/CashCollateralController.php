@@ -178,10 +178,10 @@ class CashCollateralController extends Controller
             }
             
             // Withdraw button (only if balance > 0 and user has permission)
-            if ($currentBalance > 0 && auth()->user()->can('withdraw cash collateral')) {
-                $actions .= '<a href="' . route('cash_collaterals.withdraw', $encodedId) . '" 
-                                class="btn btn-sm btn-outline-warning" 
-                                title="Withdraw">
+                if ($currentBalance > 0 && auth()->user()->can('withdraw cash collateral')) {
+                $actions .= '<a href="' . route('cash_collaterals.withdraw', $encodedId) . '"
+                                class="btn btn-sm btn-outline-warning"
+                                title="Lipa Mkopo kwa Taslim">
                                 <i class="bx bx-minus-circle"></i>
                              </a>';
             }
@@ -1042,7 +1042,7 @@ class CashCollateralController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Withdrawal processed successfully.',
+                    'message' => 'Malipo ya mkopo kwa taslim yamechakatwa kikamilifu.',
                     'payment_id' => $payment->id,
                     'receipt_data' => $receiptData,
                     'redirect' => route('cash_collaterals.index')
@@ -1052,7 +1052,7 @@ class CashCollateralController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Withdrawal failed: ' . $e->getMessage()
+                'message' => 'Malipo yameshindwa: ' . $e->getMessage()
             ], 500);
         }
     }
