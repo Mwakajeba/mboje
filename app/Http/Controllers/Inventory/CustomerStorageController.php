@@ -72,15 +72,16 @@ class CustomerStorageController extends Controller
 
         if ($request->filled('phone') && function_exists('normalize_phone_number')) {
             $request->merge(['phone' => normalize_phone_number($request->input('phone'))]);
+        } else {
+            $request->merge(['phone' => $request->input('phone') ?: null]);
         }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => [
-                'required',
+                'nullable',
                 'string',
-                'size:12',
-                'regex:/^[0-9]+$/',
+                Rule::when($request->filled('phone'), ['size:12', 'regex:/^[0-9]+$/']),
             ],
             'description' => 'nullable|string|max:1000',
             'id_type' => ['nullable', Rule::in(array_keys(Customer::idTypeOptions()))],
@@ -92,7 +93,6 @@ class CustomerStorageController extends Controller
             'send_welcome_sms' => 'nullable|boolean',
         ], [
             'name.required' => 'Jina la mteja linahitajika.',
-            'phone.required' => 'Namba ya simu inahitajika.',
             'phone.size' => 'Namba ya simu iwe na tarakimu 12 (mfano: 255712345678).',
             'phone.regex' => 'Namba ya simu iwe na tarakimu tu.',
             'status.required' => 'Hali ya mteja inahitajika.',
@@ -101,9 +101,9 @@ class CustomerStorageController extends Controller
         $idType = ! empty($validated['id_type']) ? strtolower((string) $validated['id_type']) : null;
 
         $customer = Customer::create([
-            'customerNo' => 100000 + (Customer::max('id') ?? 0) + 1,
+            'customerNo' => Customer::nextCustomerNo(),
             'name' => $validated['name'],
-            'phone' => $validated['phone'],
+            'phone' => $validated['phone'] ?? null,
             'description' => $validated['description'] ?? null,
             'id_type' => $idType,
             'id_number' => $validated['id_number'] ?? null,

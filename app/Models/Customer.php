@@ -81,10 +81,22 @@ class Customer extends Model
     public function setCustomerNoAttribute($value)
     {
         if (empty($value)) {
-            $this->attributes['customerNo'] = 100000 + (self::max('id') ?? 0) + 1;
+            $this->attributes['customerNo'] = (string) self::nextCustomerNo();
         } else {
             $this->attributes['customerNo'] = $value;
         }
+    }
+
+    public static function nextCustomerNo(): int
+    {
+        $maxFromId = 100000 + ((int) (self::max('id') ?? 0)) + 1;
+
+        $maxCustomerNo = self::query()
+            ->pluck('customerNo')
+            ->map(fn ($no) => is_numeric($no) ? (int) $no : 0)
+            ->max() ?? 0;
+
+        return max($maxFromId, $maxCustomerNo + 1, 100001);
     }
 
 

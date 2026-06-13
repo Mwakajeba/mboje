@@ -44,8 +44,12 @@ class CustomerController extends Controller
     {
         if ($request->ajax()) {
             $branchId = session('branch_id') ?? auth()->user()->branch_id;
+            $companyId = auth()->user()->company_id;
             $customers = Customer::with(['branch', 'company'])
-                ->where('branch_id', $branchId)
+                ->where('company_id', $companyId)
+                ->when($branchId, function ($query) use ($branchId) {
+                    $query->where('branch_id', $branchId);
+                })
                 ->latest();
 
             return datatables()->of($customers)
@@ -313,10 +317,8 @@ class CustomerController extends Controller
         $data = $request->only([
             'name',
             'description',
-            'phone',
             'id_type',
             'id_number',
-            'email',
             'status',
             'credit_limit',
             'bank_name',
@@ -327,11 +329,9 @@ class CustomerController extends Controller
             'tin_number',
             'vat_number',
         ]);
-        $password = 12345;
-        $date = now()->toDateString();
-
-        $data['customerNo'] = 100000 + (\App\Models\Customer::max('id') ?? 0) + 1;
-        $data['password'] = Hash::make($password);
+        $data['phone'] = $request->input('phone') ?: null;
+        $data['email'] = $request->filled('email') ? $request->input('email') : null;
+        $data['customerNo'] = Customer::nextCustomerNo();
         // Resolve branch reliably (user -> session -> helper)
         $resolvedBranchId = auth()->user()->branch_id
             ?? (session('branch_id') ?: null)
@@ -383,54 +383,62 @@ class CustomerController extends Controller
                     ],
                 ], 201);
             }
-            return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
+            return redirect()->route('customers.index')->with('success', 'Mteja amesajiliwa kikamilifu.');
         } catch (\Illuminate\Database\QueryException $e) {
             DB::rollBack();
-            
-            // Handle duplicate entry errors
+
+            \Log::error('Customer creation failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             if ($e->getCode() == 23000) {
                 $errorMessage = $e->getMessage();
-                
-                // Check for duplicate email
-                if (strpos($errorMessage, 'customers_email_unique') !== false || (strpos($errorMessage, 'Duplicate entry') !== false && strpos($errorMessage, 'email') !== false)) {
-                    $email = $request->input('email');
-                    $friendlyMessage = "A customer with the email address '{$email}' already exists. Please use a different email address or leave it blank.";
-                    
-                    if ($request->ajax() || $request->wantsJson()) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => $friendlyMessage,
-                            'errors' => ['email' => [$friendlyMessage]]
-                        ], 422);
-                    }
-                    return back()->withInput()->withErrors(['email' => $friendlyMessage]);
-                }
-                
-                // Generic duplicate entry message
-                $friendlyMessage = "This customer already exists in the system. Please check the email and try again.";
-                
+                $friendlyMessage = $this->friendlyDuplicateCustomerMessage($errorMessage, $request);
+
                 if ($request->ajax() || $request->wantsJson()) {
                     return response()->json(['success' => false, 'message' => $friendlyMessage], 422);
                 }
                 return back()->withInput()->with('error', $friendlyMessage);
             }
             
-            // Other database errors
-            \Log::error('Customer creation failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            
             if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Failed to create customer. Please try again or contact support if the problem persists.'], 500);
+                return response()->json(['success' => false, 'message' => 'Imeshindwa kusajili mteja. Jaribu tena au wasiliana na msaada.'], 500);
             }
-            return back()->withInput()->with('error', 'Failed to create customer. Please try again or contact support if the problem persists.');
+            return back()->withInput()->with('error', 'Imeshindwa kusajili mteja. Jaribu tena au wasiliana na msaada.');
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Customer creation failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             
             if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Failed to create customer. Please try again or contact support if the problem persists.'], 500);
+                return response()->json(['success' => false, 'message' => 'Imeshindwa kusajili mteja. Jaribu tena au wasiliana na msaada.'], 500);
             }
-            return back()->withInput()->with('error', 'Failed to create customer. Please try again or contact support if the problem persists.');
+            return back()->withInput()->with('error', 'Imeshindwa kusajili mteja. Jaribu tena au wasiliana na msaada.');
         }
+    }
+
+    private function friendlyDuplicateCustomerMessage(string $errorMessage, Request $request): string
+    {
+        if (str_contains($errorMessage, 'cannot be null') && str_contains($errorMessage, 'phone')) {
+            return 'Namba ya simu haiwezi kuwa tupu kwenye hifadhidata. Tafadhali weka namba ya simu au endesha migration ya kufanya simu isiwe lazima.';
+        }
+
+        if (str_contains($errorMessage, 'customerNo') || str_contains($errorMessage, 'customers_customerno_unique')) {
+            return 'Nambari ya mteja tayari ipo kwenye mfumo. Jaribu tena.';
+        }
+
+        if (str_contains($errorMessage, 'customers_email_unique') || (str_contains($errorMessage, 'Duplicate entry') && str_contains($errorMessage, 'email'))) {
+            $email = $request->input('email');
+            return $email
+                ? "Mteja mwenye barua pepe '{$email}' tayari yupo. Tumia barua pepe nyingine au acha tupu."
+                : 'Barua pepe hii tayari imetumika na mteja mwingine.';
+        }
+
+        if (str_contains($errorMessage, 'customers_phone_unique') || (str_contains($errorMessage, 'Duplicate entry') && str_contains($errorMessage, 'phone'))) {
+            $phone = $request->input('phone');
+            return $phone
+                ? "Mteja mwenye namba ya simu '{$phone}' tayari yupo. Tumia namba nyingine."
+                : 'Namba hii ya simu tayari imetumika na mteja mwingine.';
+        }
+
+        return 'Taarifa za mteja zinakinzana na rekodi iliyopo. Angalia nambari ya simu, barua pepe, au nambari ya mteja.';
     }
 
 
@@ -999,7 +1007,7 @@ class CustomerController extends Controller
                         'name' => $name,
                         'phone' => $phone,
                         'description' => $cleanText($rowData['description'] ?? ''),
-                        'customerNo' => 100000 + (Customer::max('id') ?? 0) + 1,
+                        'customerNo' => Customer::nextCustomerNo(),
                         'branch_id' => session('branch_id') ?? auth()->user()->branch_id,
                         'company_id' => auth()->user()->company_id,
                         'registrar' => auth()->id(),
