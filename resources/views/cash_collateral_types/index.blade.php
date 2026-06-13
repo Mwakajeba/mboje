@@ -1,19 +1,19 @@
 @extends('layouts.main')
 
-@section('title', 'Cash Collateral Types')
+@section('title', 'Akaunti za Mikopo')
 
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Cash Deposits', 'url' => '#', 'icon' => 'bx bx-credit-card']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Akaunti za Mikopo', 'url' => '#', 'icon' => 'bx bx-credit-card']
         ]" />
 
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h5 class="mb-0 text-primary">Cash Deposits Management</h5>
+            <h5 class="mb-0 text-primary">Usimamizi wa Akaunti za Mikopo</h5>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
-                <i class="bx bx-plus me-1"></i>Add New Deposit Type
+                <i class="bx bx-plus me-1"></i>Ongeza Akaunti ya Mkopo
             </button>
         </div>
 
@@ -21,7 +21,7 @@
         <div class="alert alert-success d-flex align-items-start" role="alert">
             <i class="bx bx-check-circle me-2 fs-4"></i>
             <div>
-                <strong>Success!</strong>
+                <strong>Mafanikio!</strong>
                 {{ session('success') }}
             </div>
         </div>
@@ -31,7 +31,7 @@
         <div class="alert alert-danger d-flex align-items-start" role="alert">
             <i class="bx bx-error me-2 fs-4"></i>
             <div>
-                <strong>Error!</strong>
+                <strong>Kosa!</strong>
                 {{ session('error') }}
             </div>
         </div>
@@ -44,7 +44,7 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="flex-grow-1">
-                                <p class="text-muted mb-1">Total Types</p>
+                                <p class="text-muted mb-1">Jumla ya Akaunti</p>
                                 <h4 class="mb-0 text-primary">{{ $totalTypes }}</h4>
                             </div>
                             <div class="widgets-icons bg-gradient-cosmic text-white">
@@ -59,7 +59,7 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="flex-grow-1">
-                                <p class="text-muted mb-1">Active Types</p>
+                                <p class="text-muted mb-1">Akaunti Hai</p>
                                 <h4 class="mb-0 text-success">{{ $activeTypes }}</h4>
                             </div>
                             <div class="widgets-icons bg-gradient-burning text-white">
@@ -74,7 +74,7 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="flex-grow-1">
-                                <p class="text-muted mb-1">Inactive Types</p>
+                                <p class="text-muted mb-1">Akaunti Haifanyi Kazi</p>
                                 <h4 class="mb-0 text-secondary">{{ $inactiveTypes }}</h4>
                             </div>
                             <div class="widgets-icons bg-gradient-moonlit text-white">
@@ -94,12 +94,12 @@
                         <thead class="table-dark">
                             <tr>
                                 <th width="5%">#</th>
-                                <th width="20%">Name</th>
-                                <th width="25%">Chart Account</th>
-                                <th width="15%">Account Code</th>
-                                <th width="25%">Description</th>
-                                <th width="10%">Status</th>
-                                <th width="15%">Actions</th>
+                                <th width="20%">Jina</th>
+                                <th width="25%">Akaunti ya Hesabu</th>
+                                <th width="15%">Nambari ya Akaunti</th>
+                                <th width="25%">Maelezo</th>
+                                <th width="10%">Hali</th>
+                                <th width="15%">Vitendo</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -118,9 +118,9 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="createModalLabel">
-                    <i class="bx bx-plus-circle me-2"></i>Add New Cash Deposit Type
+                    <i class="bx bx-plus-circle me-2"></i>Sajili Akaunti ya Mkopo
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Funga"></button>
             </div>
             <form id="createForm" method="POST" action="{{ route('cash_collateral_types.store') }}">
                 @csrf
@@ -128,25 +128,25 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="name" class="form-label">
-                                <i class="bx bx-tag me-1"></i>Deposit Type Name <span class="text-danger">*</span>
+                                <i class="bx bx-tag me-1"></i>Jina la Akaunti <span class="text-danger">*</span>
                             </label>
                             <input type="text" 
                                    class="form-control" 
                                    id="name" 
                                    name="name" 
-                                   placeholder="Enter deposit type name"
+                                   placeholder="Weka jina la akaunti ya mkopo"
                                    required>
                             <div class="invalid-feedback"></div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="chart_account_id" class="form-label">
-                                <i class="bx bx-book me-1"></i>Chart Account <span class="text-danger">*</span>
+                                <i class="bx bx-book me-1"></i>Akaunti ya Hesabu <span class="text-danger">*</span>
                             </label>
                             <select class="form-select select2-single" 
                                     id="chart_account_id" 
                                     name="chart_account_id" 
                                     required>
-                                <option value="">-- Select Chart Account --</option>
+                                <option value="">Chagua akaunti ya hesabu</option>
                                 @foreach($chartAccounts as $account)
                                 <option value="{{ $account->id }}">
                                     {{ $account->account_code }} - {{ $account->account_name }}
@@ -159,13 +159,13 @@
                     <div class="row">
                         <div class="col-12 mb-3">
                             <label for="description" class="form-label">
-                                <i class="bx bx-text me-1"></i>Description
+                                <i class="bx bx-text me-1"></i>Maelezo
                             </label>
                             <textarea class="form-control" 
                                       id="description" 
                                       name="description" 
                                       rows="3" 
-                                      placeholder="Enter description (optional)"></textarea>
+                                      placeholder="Weka maelezo (si lazima)"></textarea>
                             <div class="invalid-feedback"></div>
                         </div>
                     </div>
@@ -179,7 +179,7 @@
                                        value="1" 
                                        checked>
                                 <label class="form-check-label" for="is_active">
-                                    <i class="bx bx-check-circle me-1"></i>Active
+                                    <i class="bx bx-check-circle me-1"></i>Hai
                                 </label>
                             </div>
                         </div>
@@ -187,11 +187,11 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bx bx-x me-1"></i>Cancel
+                        <i class="bx bx-x me-1"></i>Ghairi
                     </button>
                     <button type="submit" class="btn btn-primary" id="submitBtn">
                         <span class="btn-text">
-                            <i class="bx bx-check me-1"></i>Create Deposit Type
+                            <i class="bx bx-check me-1"></i>Sajili Akaunti
                         </span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
@@ -207,9 +207,9 @@
         <div class="modal-content">
             <div class="modal-header bg-warning text-white">
                 <h5 class="modal-title" id="editModalLabel">
-                    <i class="bx bx-edit me-2"></i>Edit Cash Deposit Type
+                    <i class="bx bx-edit me-2"></i>Badili Akaunti ya Mkopo
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Funga"></button>
             </div>
             <form id="editForm" method="POST">
                 @csrf
@@ -218,25 +218,25 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="edit_name" class="form-label">
-                                <i class="bx bx-tag me-1"></i>Deposit Type Name <span class="text-danger">*</span>
+                                <i class="bx bx-tag me-1"></i>Jina la Akaunti <span class="text-danger">*</span>
                             </label>
                             <input type="text" 
                                    class="form-control" 
                                    id="edit_name" 
                                    name="name" 
-                                   placeholder="Enter deposit type name"
+                                   placeholder="Weka jina la akaunti ya mkopo"
                                    required>
                             <div class="invalid-feedback"></div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="edit_chart_account_id" class="form-label">
-                                <i class="bx bx-book me-1"></i>Chart Account <span class="text-danger">*</span>
+                                <i class="bx bx-book me-1"></i>Akaunti ya Hesabu <span class="text-danger">*</span>
                             </label>
                             <select class="form-select select2-single" 
                                     id="edit_chart_account_id" 
                                     name="chart_account_id" 
                                     required>
-                                <option value="">-- Select Chart Account --</option>
+                                <option value="">Chagua akaunti ya hesabu</option>
                                 @foreach($chartAccounts as $account)
                                 <option value="{{ $account->id }}">
                                     {{ $account->account_code }} - {{ $account->account_name }}
@@ -249,13 +249,13 @@
                     <div class="row">
                         <div class="col-12 mb-3">
                             <label for="edit_description" class="form-label">
-                                <i class="bx bx-text me-1"></i>Description
+                                <i class="bx bx-text me-1"></i>Maelezo
                             </label>
                             <textarea class="form-control" 
                                       id="edit_description" 
                                       name="description" 
                                       rows="3" 
-                                      placeholder="Enter description (optional)"></textarea>
+                                      placeholder="Weka maelezo (si lazima)"></textarea>
                             <div class="invalid-feedback"></div>
                         </div>
                     </div>
@@ -268,7 +268,7 @@
                                        name="is_active" 
                                        value="1">
                                 <label class="form-check-label" for="edit_is_active">
-                                    <i class="bx bx-check-circle me-1"></i>Active
+                                    <i class="bx bx-check-circle me-1"></i>Hai
                                 </label>
                             </div>
                         </div>
@@ -276,11 +276,11 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bx bx-x me-1"></i>Cancel
+                        <i class="bx bx-x me-1"></i>Ghairi
                     </button>
                     <button type="submit" class="btn btn-warning" id="editSubmitBtn">
                         <span class="btn-text">
-                            <i class="bx bx-check me-1"></i>Update Deposit Type
+                            <i class="bx bx-check me-1"></i>Sasisha Akaunti
                         </span>
                         <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                     </button>
@@ -358,7 +358,7 @@ $(document).ready(function() {
                     if (data && data.length > 50) {
                         return data.substring(0, 50) + '...';
                     }
-                    return data || '<span class="text-muted">No description</span>';
+                    return data || '<span class="text-muted">Hakuna maelezo</span>';
                 }
             },
             { data: 'status', name: 'is_active', orderable: false },
@@ -368,9 +368,21 @@ $(document).ready(function() {
         pageLength: 25,
         responsive: true,
         language: {
-            processing: '<div class="d-flex justify-content-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>',
-            emptyTable: 'No cash collateral types found',
-            zeroRecords: 'No matching records found'
+            processing: '<div class="d-flex justify-content-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Inapakia...</span></div></div>',
+            search: "",
+            searchPlaceholder: "Tafuta akaunti za mikopo...",
+            lengthMenu: "Onyesha _MENU_ kwa ukurasa",
+            info: "Inaonyesha _START_ hadi _END_ kati ya _TOTAL_",
+            infoEmpty: "Inaonyesha 0 hadi 0 kati ya 0",
+            infoFiltered: "(kuchujwa kutoka _MAX_ jumla)",
+            emptyTable: 'Hakuna akaunti za mikopo',
+            zeroRecords: 'Hakuna rekodi zinazolingana',
+            paginate: {
+                first: "Kwanza",
+                last: "Mwisho",
+                next: "Ijayo",
+                previous: "Iliyotangulia"
+            }
         },
         drawCallback: function(settings) {
             // Initialize tooltips for action buttons
@@ -437,7 +449,7 @@ $(document).ready(function() {
                     // Show success message
                     Swal.fire({
                         icon: 'success',
-                        title: 'Success!',
+                        title: 'Mafanikio!',
                         text: response.message,
                         timer: 3000,
                         showConfirmButton: false
@@ -456,8 +468,8 @@ $(document).ready(function() {
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: 'Error!',
-                        text: 'An error occurred while creating the cash deposit type.'
+                        title: 'Kosa!',
+                        text: 'Imeshindwa kusajili akaunti ya mkopo.'
                     });
                 }
             },
@@ -519,7 +531,7 @@ $(document).ready(function() {
                     // Show success message
                     Swal.fire({
                         icon: 'success',
-                        title: 'Success!',
+                        title: 'Mafanikio!',
                         text: response.message,
                         timer: 3000,
                         showConfirmButton: false
@@ -538,8 +550,8 @@ $(document).ready(function() {
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: 'Error!',
-                        text: 'An error occurred while updating the cash deposit type.'
+                        title: 'Kosa!',
+                        text: 'Imeshindwa kusasisha akaunti ya mkopo.'
                     });
                 }
             },
@@ -559,14 +571,14 @@ $(document).ready(function() {
         const name = $(this).data('name');
 
         Swal.fire({
-            title: 'Are you sure?',
-            text: `Do you want to delete "${name}"? This action cannot be undone!`,
+            title: 'Una uhakika?',
+            text: `Unakaribia kufuta "${name}". Hatua hii haiwezi kutenduliwa!`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!',
-            cancelButtonText: 'Cancel'
+            confirmButtonText: 'Ndiyo, futa',
+            cancelButtonText: 'Ghairi'
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -577,14 +589,14 @@ $(document).ready(function() {
                     },
                     success: function(response) {
                         if (response.success) {
-                            Swal.fire('Deleted!', response.message, 'success');
+                            Swal.fire('Imefutwa!', response.message, 'success');
                             table.ajax.reload();
                         } else {
-                            Swal.fire('Error!', response.message, 'error');
+                            Swal.fire('Kosa!', response.message, 'error');
                         }
                     },
                     error: function(xhr) {
-                        Swal.fire('Error!', 'An error occurred while deleting the cash deposit type.', 'error');
+                        Swal.fire('Kosa!', 'Imeshindwa kufuta akaunti ya mkopo.', 'error');
                     }
                 });
             }

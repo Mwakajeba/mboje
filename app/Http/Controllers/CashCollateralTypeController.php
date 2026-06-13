@@ -41,15 +41,15 @@ class CashCollateralTypeController extends Controller
         return DataTables::of($query)
             ->addIndexColumn()
             ->addColumn('chart_account_name', function ($row) {
-                return $row->chartAccount ? $row->chartAccount->account_name : 'N/A';
+                return $row->chartAccount ? $row->chartAccount->account_name : '—';
             })
             ->addColumn('chart_account_code', function ($row) {
-                return $row->chartAccount ? $row->chartAccount->account_code : 'N/A';
+                return $row->chartAccount ? $row->chartAccount->account_code : '—';
             })
             ->addColumn('status', function ($row) {
                 return $row->is_active ? 
-                    '<span class="badge bg-success">Active</span>' : 
-                    '<span class="badge bg-secondary">Inactive</span>';
+                    '<span class="badge bg-success">Hai</span>' : 
+                    '<span class="badge bg-secondary">Haifanyi kazi</span>';
             })
             ->addColumn('action', function ($row) {
                 $editBtn = '<button type="button" 
@@ -59,16 +59,16 @@ class CashCollateralTypeController extends Controller
                                data-chart-account-id="' . $row->chart_account_id . '"
                                data-description="' . htmlspecialchars($row->description ?? '') . '"
                                data-active="' . $row->is_active . '"
-                               title="Edit">
-                               <i class="bx bx-edit"></i> Edit
+                               title="Badili">
+                               <i class="bx bx-edit"></i> Badili
                            </button>';
                 
                 $deleteBtn = '<button type="button" 
                                  class="btn btn-sm btn-outline-danger delete-btn" 
                                  data-id="' . $row->id . '" 
                                  data-name="' . htmlspecialchars($row->name) . '" 
-                                 title="Delete">
-                                 <i class="bx bx-trash"></i> Delete
+                                 title="Futa">
+                                 <i class="bx bx-trash"></i> Futa
                              </button>';
 
                 return $editBtn . $deleteBtn;
@@ -108,13 +108,13 @@ class CashCollateralTypeController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Cash collateral type created successfully.',
+                'message' => 'Akaunti ya mkopo imesajiliwa kikamilifu.',
                 'data' => $cashCollateralType->load('chartAccount')
             ]);
         }
 
         return redirect()->route('cash_collateral_types.index')
-            ->with('success', 'Cash collateral type created successfully.');
+            ->with('success', 'Akaunti ya mkopo imesajiliwa kikamilifu.');
     }
 
     /**
@@ -161,13 +161,13 @@ class CashCollateralTypeController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Cash collateral type updated successfully.',
+                'message' => 'Akaunti ya mkopo imesasishwa kikamilifu.',
                 'data' => $cashCollateralType->load('chartAccount')
             ]);
         }
 
         return redirect()->route('cash_collateral_types.index')
-            ->with('success', 'Cash collateral type updated successfully.');
+            ->with('success', 'Akaunti ya mkopo imesasishwa kikamilifu.');
     }
 
     /**
@@ -181,12 +181,12 @@ class CashCollateralTypeController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Cash collateral type deleted successfully.'
+                'message' => 'Akaunti ya mkopo imefutwa kikamilifu.'
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error deleting cash collateral type: ' . $e->getMessage()
+                'message' => 'Imeshindwa kufuta akaunti ya mkopo: ' . $e->getMessage()
             ], 500);
         }
     }

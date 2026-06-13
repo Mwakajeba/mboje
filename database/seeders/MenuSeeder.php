@@ -79,7 +79,7 @@ class MenuSeeder extends Seeder
             'Cash Deposits' => [
                 'icon' => 'bx bx-outline',
                 'visibleRoutes' => [
-                    ['name' => 'Cash Deposit Accounts', 'route' => 'cash_collateral_types.index'],
+                    ['name' => 'Akaunti za Mikopo', 'route' => 'cash_collateral_types.index'],
                     ['name' => 'Cash Deposits', 'route' => 'cash_collaterals.index'],
                 ],
                 'hiddenRoutes' => ['cash_collateral_types.create', 'cash_collateral_types.edit', 'cash_collateral_types.destroy', 'cash_collateral_types.show', 'cash_collaterals.create', 'cash_collaterals.edit', 'cash_collaterals.destroy', 'cash_collaterals.show'],
