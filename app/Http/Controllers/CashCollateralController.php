@@ -170,9 +170,9 @@ class CashCollateralController extends Controller
             
             // Deposit button (with permission check)
             if (auth()->user()->can('deposit cash collateral')) {
-                $actions .= '<a href="' . route('cash_collaterals.deposit', $encodedId) . '" 
-                                class="btn btn-sm btn-outline-success" 
-                                title="Make Deposit">
+                $actions .= '<a href="' . route('cash_collaterals.deposit', $encodedId) . '"
+                                class="btn btn-sm btn-outline-success"
+                                title="Toa Mkopo wa Mtaji">
                                 <i class="bx bx-plus-circle"></i>
                              </a>';
             }
@@ -868,13 +868,13 @@ class CashCollateralController extends Controller
                 ];
 
                 return redirect()->route('cash_collaterals.index')
-                    ->with('success', 'Cash deposit processed successfully. Amount: TSHS' . number_format($request->amount, 2))
+                    ->with('success', 'Mkopo wa mtaji umechakatwa kikamilifu. Kiasi: TSH ' . number_format($request->amount, 2))
                     ->with('print_receipt', true)
                     ->with('receipt_data', $receiptData);
             });
         } catch (\Throwable $th) {
             return redirect()->back()
-                ->withErrors(['error' => 'Failed to process deposit: ' . $th->getMessage()])
+                ->withErrors(['error' => 'Imeshindwa kuchakata mkopo wa mtaji: ' . $th->getMessage()])
                 ->withInput();
         }
     }

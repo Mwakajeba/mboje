@@ -1,15 +1,15 @@
 @extends('layouts.main')
 
-@section('title', 'Cash Deposit')
+@section('title', 'Toa Mkopo wa Mtaji')
 
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Customers', 'url' => route('customers.index'), 'icon' => 'bx bx-group'],
-            ['label' => 'Customer', 'url' => route('customers.show', Hashids::encode($customer->id)), 'icon' => 'bx bx-user'],
-            ['label' => 'Deposit', 'url' => '#', 'icon' => 'bx bx-money']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Mikopo ya Wateja', 'url' => route('cash_collaterals.index'), 'icon' => 'bx bx-credit-card'],
+            ['label' => 'Mteja', 'url' => route('customers.show', Hashids::encode($customer->id)), 'icon' => 'bx bx-user'],
+            ['label' => 'Toa Mkopo wa Mtaji', 'url' => '#', 'icon' => 'bx bx-money']
         ]" />
         
         <div class="row mb-4">
@@ -17,12 +17,12 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
                         <h4 class="mb-1 fw-bold text-primary">
-                            <i class="bx bx-money me-2"></i>Cash Deposit
+                            <i class="bx bx-money me-2"></i>Toa Mkopo wa Mtaji
                         </h4>
-                        <p class="text-muted mb-0">Process a new cash deposit for customer collateral</p>
+                        <p class="text-muted mb-0">Toa mkopo wa mtaji kwa mteja na kuongeza salio la akaunti ya mikopo</p>
                     </div>
                     <a href="{{ route('customers.show', Hashids::encode($customer->id)) }}" class="btn btn-outline-secondary">
-                        <i class="bx bx-arrow-back me-1"></i> Back to Customer
+                        <i class="bx bx-arrow-back me-1"></i> Rudi kwa Mteja
                     </a>
                 </div>
             </div>
@@ -42,7 +42,7 @@
                                     <div>
                                         <h5 class="mb-1 fw-bold">{{ $customer->name }}</h5>
                                         <p class="text-muted mb-0 small">
-                                            <i class="bx bx-id-card me-1"></i>Customer #{{ $customer->customerNo }}
+                                            <i class="bx bx-id-card me-1"></i>Mteja #{{ $customer->customerNo }}
                                             @if($customer->phone)
                                                 <span class="ms-3"><i class="bx bx-phone me-1"></i>{{ $customer->phone }}</span>
                                             @endif
@@ -52,9 +52,9 @@
                             </div>
                             <div class="col-md-4 text-md-end mt-3 mt-md-0">
                                 <div class="bg-light rounded p-3 d-inline-block">
-                                    <small class="text-muted d-block mb-1">Current Balance</small>
+                                    <small class="text-muted d-block mb-1">Salio la Sasa</small>
                                     <h4 class="mb-0 fw-bold text-success">
-                                        TSHS {{ number_format($collateral->current_balance ?? 0, 2) }}
+                                        TSH {{ number_format($collateral->current_balance ?? 0, 2) }}
                                     </h4>
                                 </div>
                             </div>
@@ -70,7 +70,7 @@
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-white border-bottom py-3">
                         <h6 class="mb-0 fw-semibold text-primary">
-                            <i class="bx bx-credit-card me-2"></i>Deposit Information
+                            <i class="bx bx-credit-card me-2"></i>Taarifa za Mkopo wa Mtaji
                         </h6>
                     </div>
                     <div class="card-body p-4">
@@ -82,11 +82,11 @@
                                 <!-- Bank Account -->
                                 <div class="col-md-6">
                                     <label for="bank_account_id" class="form-label fw-semibold mb-2">
-                                        <i class="bx bx-building me-2 text-primary"></i>Received To (Bank Account)
+                                        <i class="bx bx-building me-2 text-primary"></i>Imepokelewa Kwenye (Akaunti ya Benki)
                                         <span class="text-danger">*</span>
                                     </label>
                                     <select name="bank_account_id" id="bank_account_id" class="form-select form-select-lg select2-single" required>
-                                        <option value="">-- Select Bank Account --</option>
+                                        <option value="">Chagua akaunti ya benki</option>
                                         @foreach($bankAccounts as $bankAccount)
                                         <option value="{{ $bankAccount->id }}"
                                             {{ old('bank_account_id') == $bankAccount->id ? 'selected' : '' }}>
@@ -104,7 +104,7 @@
                                 <!-- Deposit Date -->
                                 <div class="col-md-6">
                                     <label for="deposit_date" class="form-label fw-semibold mb-2">
-                                        <i class="bx bx-calendar me-2 text-primary"></i>Deposit Date
+                                        <i class="bx bx-calendar me-2 text-primary"></i>Tarehe ya Mkopo
                                         <span class="text-danger">*</span>
                                     </label>
                                     <input type="date"
@@ -123,12 +123,12 @@
                                 <!-- Amount -->
                                 <div class="col-md-6">
                                     <label for="amount" class="form-label fw-semibold mb-2">
-                                        <i class="bx bx-money me-2 text-primary"></i>Deposit Amount
+                                        <i class="bx bx-money me-2 text-primary"></i>Kiasi cha Mkopo wa Mtaji
                                         <span class="text-danger">*</span>
                                     </label>
                                     <div class="input-group input-group-lg">
                                         <span class="input-group-text bg-light border-end-0">
-                                            <i class="bx bx-dollar text-primary"></i> TSHS
+                                            <i class="bx bx-dollar text-primary"></i> TSH
                                         </span>
                                         <input type="number"
                                             class="form-control border-start-0"
@@ -150,17 +150,17 @@
                                 <!-- Notes -->
                                 <div class="col-12">
                                     <label for="notes" class="form-label fw-semibold mb-2">
-                                        <i class="bx bx-note me-2 text-primary"></i>Notes
+                                        <i class="bx bx-note me-2 text-primary"></i>Maelezo
                                         <span class="text-danger">*</span>
                                     </label>
                                     <textarea class="form-control form-control-lg"
                                         id="notes"
                                         name="notes"
                                         rows="4"
-                                        placeholder="Enter notes about this deposit..."
+                                        placeholder="Weka maelezo kuhusu mkopo wa mtaji..."
                                         required>{{ old('notes') }}</textarea>
                                     <small class="text-muted">
-                                        <i class="bx bx-info-circle me-1"></i>Provide details about this deposit transaction
+                                        <i class="bx bx-info-circle me-1"></i>Eleza muamala wa kutoa mkopo wa mtaji
                                     </small>
                                     @error('notes')
                                     <div class="text-danger small mt-1">
@@ -175,11 +175,11 @@
                                 <div class="col-12">
                                     <div class="d-flex justify-content-end gap-2">
                                         <a href="{{ route('customers.show', Hashids::encode($customer->id)) }}" class="btn btn-lg btn-outline-secondary">
-                                            <i class="bx bx-x me-1"></i> Cancel
+                                            <i class="bx bx-x me-1"></i> Ghairi
                                         </a>
                                         <button type="submit" class="btn btn-lg btn-primary" id="submitBtn">
                                             <span class="btn-text">
-                                                <i class="bx bx-check me-1"></i> Process Deposit
+                                                <i class="bx bx-check me-1"></i> Toa Mkopo wa Mtaji
                                             </span>
                                             <span class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
                                         </button>
@@ -196,28 +196,28 @@
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header bg-white border-bottom py-3">
                         <h6 class="mb-0 fw-semibold text-primary">
-                            <i class="bx bx-info-circle me-2"></i>Transaction Summary
+                            <i class="bx bx-info-circle me-2"></i>Muhtasari wa Muamala
                         </h6>
                     </div>
                     <div class="card-body p-4">
                         <div class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="text-muted">Current Balance</span>
+                                <span class="text-muted">Salio la Sasa</span>
                                 <span class="fw-bold fs-5 text-success">
-                                    TSHS {{ number_format($collateral->current_balance ?? 0, 2) }}
+                                    TSH {{ number_format($collateral->current_balance ?? 0, 2) }}
                                 </span>
                             </div>
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="text-muted">Deposit Amount</span>
+                                <span class="text-muted">Kiasi cha Mkopo</span>
                                 <span class="fw-bold fs-5 text-primary" id="depositAmountPreview">
-                                    TSHS 0.00
+                                    TSH 0.00
                                 </span>
                             </div>
                             <hr class="my-3">
                             <div class="d-flex justify-content-between align-items-center">
-                                <span class="fw-semibold">New Balance</span>
+                                <span class="fw-semibold">Salio Jipya</span>
                                 <span class="fw-bold fs-4 text-success" id="newBalancePreview">
-                                    TSHS {{ number_format($collateral->current_balance ?? 0, 2) }}
+                                    TSH {{ number_format($collateral->current_balance ?? 0, 2) }}
                                 </span>
                             </div>
                         </div>
@@ -226,7 +226,7 @@
                             <div class="d-flex align-items-start">
                                 <i class="bx bx-info-circle fs-5 me-2 mt-1"></i>
                                 <div class="small">
-                                    <strong>Note:</strong> The deposit will be processed immediately and reflected in the customer's balance.
+                                    <strong>Kumbuka:</strong> Mkopo wa mtaji utachakatwa mara moja na kuongezwa kwenye salio la akaunti ya mteja.
                                 </div>
                             </div>
                         </div>
@@ -242,11 +242,10 @@
 @push('scripts')
 <script nonce="{{ $cspNonce ?? '' }}">
     $(document).ready(function() {
-        // Initialize Select2 for bank account dropdown
         $('#bank_account_id').select2({
             theme: 'bootstrap-5',
             width: '100%',
-            placeholder: '-- Select Bank Account --',
+            placeholder: 'Chagua akaunti ya benki',
             allowClear: false
         });
 
@@ -258,59 +257,61 @@
         const depositDateInput = $('#deposit_date');
         const currentBalance = {{ $collateral->current_balance ?? 0 }};
 
-        // Auto-select today's date if not already set
         if (!depositDateInput.val()) {
             depositDateInput.val(new Date().toISOString().split('T')[0]);
         }
 
-        // Calculate and update preview
+        function formatAmount(value) {
+            return 'TSH ' + value.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
         function updatePreview() {
             const depositAmount = parseFloat(amountInput.val()) || 0;
             const newBalance = currentBalance + depositAmount;
             
-            $('#depositAmountPreview').text('TSHS ' + depositAmount.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }));
-            
-            $('#newBalancePreview').text('TSHS ' + newBalance.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }));
+            $('#depositAmountPreview').text(formatAmount(depositAmount));
+            $('#newBalancePreview').text(formatAmount(newBalance));
         }
 
-        // Update preview on amount change
         amountInput.on('input', updatePreview);
 
-        // Handle form submission with loading state
         form.on('submit', function(e) {
-            // Disable the submit button to prevent double submission
+            const depositAmount = parseFloat(amountInput.val()) || 0;
+
+            if (depositAmount <= 0) {
+                e.preventDefault();
+                alert('Tafadhali weka kiasi halali cha mkopo wa mtaji zaidi ya 0.');
+                return false;
+            }
+
+            if (!confirm('Una uhakika unataka kutoa mkopo wa mtaji kiasi cha ' + formatAmount(depositAmount) + '?')) {
+                e.preventDefault();
+                return false;
+            }
+
             submitBtn.prop('disabled', true);
-            
-            // Show loading state
-            btnText.html('<i class="bx bx-loader-alt bx-spin me-1"></i> Processing...');
+            btnText.html('<i class="bx bx-loader-alt bx-spin me-1"></i> Inachakata...');
             spinner.removeClass('d-none');
-            
-            // Add loading class for visual feedback
             submitBtn.addClass('loading');
         });
 
-        // Re-enable button if form validation fails (page doesn't redirect)
         setTimeout(function() {
             if (submitBtn.prop('disabled')) {
                 submitBtn.prop('disabled', false);
-                btnText.html('<i class="bx bx-check me-1"></i> Process Deposit');
+                btnText.html('<i class="bx bx-check me-1"></i> Toa Mkopo wa Mtaji');
                 spinner.addClass('d-none');
                 submitBtn.removeClass('loading');
             }
-        }, 5000); // Reset after 5 seconds if still on page
+        }, 5000);
     });
 </script>
 @endpush
 
 @push('styles')
 <style>
-    /* Enhanced Card Styling */
     .card {
         border-radius: 0.75rem;
         transition: box-shadow 0.15s ease-in-out;
@@ -331,7 +332,6 @@
         padding: 1.5rem;
     }
 
-    /* Form Field Enhancements */
     .form-label {
         margin-bottom: 0.5rem;
         color: #495057;
@@ -354,7 +354,6 @@
         font-size: 1rem;
     }
 
-    /* Input Group Styling */
     .input-group-text {
         background-color: #f8f9fa;
         border: 1px solid #ced4da;
@@ -365,7 +364,6 @@
         padding: 0.75rem 1rem;
     }
 
-    /* Button Styling */
     .btn {
         border-radius: 0.5rem;
         font-weight: 500;
@@ -394,24 +392,20 @@
         height: 1rem;
     }
 
-    /* Avatar Styling */
     .avatar-lg {
         width: 60px;
         height: 60px;
     }
 
-    /* Alert Styling */
     .alert {
         border-radius: 0.5rem;
     }
 
-    /* Summary Card Styling */
     #depositAmountPreview,
     #newBalancePreview {
         font-family: 'Courier New', monospace;
     }
 
-    /* Responsive adjustments */
     @media (max-width: 768px) {
         .card-body {
             padding: 1rem;
