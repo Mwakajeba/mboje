@@ -71,6 +71,17 @@
                                             <div class="col-sm-4"><strong>Unit:</strong></div>
                                             <div class="col-sm-8">{{ $item->unit_of_measure ?: 'N/A' }}</div>
                                         </div>
+                                        @if($item->package_name || $item->package_quantity)
+                                        <div class="row mb-3">
+                                            <div class="col-sm-4"><strong>Package:</strong></div>
+                                            <div class="col-sm-8">
+                                                {{ $item->package_name ?: '—' }}
+                                                @if($item->package_quantity)
+                                                    ({{ number_format((float) $item->package_quantity, 2) }})
+                                                @endif
+                                            </div>
+                                        </div>
+                                        @endif
                                         <div class="row mb-0">
                                             <div class="col-sm-4"><strong>Status:</strong></div>
                                             <div class="col-sm-8">{!! $item->status_badge !!}</div>

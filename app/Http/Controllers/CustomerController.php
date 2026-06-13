@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SmsHelper;
 use App\Models\BankAccount;
 use App\Models\CashDepositAccount;
 use App\Models\Customer;
@@ -13,6 +14,7 @@ use App\Models\User;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\DB;
 use Vinkla\Hashids\Facades\Hashids;
@@ -285,6 +287,11 @@ class CustomerController extends Controller
                 })
             ],
             'status' => 'required|in:active,inactive,suspended',
+            'id_type' => ['nullable', Rule::in(array_keys(Customer::idTypeOptions()))],
+            'id_number' => 'nullable|string|max:100',
+            'bank_name' => 'nullable|string|max:255',
+            'bank_account_number' => 'nullable|string|max:50',
+            'account_name' => 'nullable|string|max:255',
             'credit_limit' => 'nullable|numeric|min:0',
             'company_name' => 'nullable|string|max:255',
             'company_registration_number' => 'nullable|string|max:100',
@@ -296,7 +303,23 @@ class CustomerController extends Controller
         $validated = $request->validate($rules);
 
         // Prepare customer data
-        $data = $request->except(['customerNo']);
+        $data = $request->only([
+            'name',
+            'description',
+            'phone',
+            'id_type',
+            'id_number',
+            'email',
+            'status',
+            'credit_limit',
+            'bank_name',
+            'bank_account_number',
+            'account_name',
+            'company_name',
+            'company_registration_number',
+            'tin_number',
+            'vat_number',
+        ]);
         $password = 12345;
         $date = now()->toDateString();
 
@@ -321,8 +344,9 @@ class CustomerController extends Controller
         }
         
         $data['status'] = $request->status ?? 'active'; // Use status from request or default to active
-
-
+        if (! empty($data['id_type'])) {
+            $data['id_type'] = strtolower((string) $data['id_type']);
+        }
 
         DB::beginTransaction();
         try {
@@ -650,6 +674,11 @@ class CustomerController extends Controller
             'status' => 'required|in:active,inactive,suspended',
             'has_cash_deposit' => 'nullable|boolean',
             'deposit_account_id' => 'nullable|exists:cash_deposit_accounts,id',
+            'id_type' => ['nullable', Rule::in(array_keys(Customer::idTypeOptions()))],
+            'id_number' => 'nullable|string|max:100',
+            'bank_name' => 'nullable|string|max:255',
+            'bank_account_number' => 'nullable|string|max:50',
+            'account_name' => 'nullable|string|max:255',
             'credit_limit' => 'nullable|numeric|min:0',
             'company_name' => 'nullable|string|max:255',
             'company_registration_number' => 'nullable|string|max:100',
@@ -658,15 +687,33 @@ class CustomerController extends Controller
 
         ]);
 
-        $data = $request->except(['customerNo', 'deposit_account_id']);
+        $data = $request->only([
+            'name',
+            'description',
+            'phone',
+            'id_type',
+            'id_number',
+            'email',
+            'status',
+            'has_cash_deposit',
+            'credit_limit',
+            'bank_name',
+            'bank_account_number',
+            'account_name',
+            'company_name',
+            'company_registration_number',
+            'tin_number',
+            'vat_number',
+        ]);
 
         // Set these from logged-in user
         $data['branch_id'] = session('branch_id') ?? auth()->user()->branch_id;
         $data['company_id'] = auth()->user()->company_id;
         $data['registrar'] = auth()->id();
         $data['has_cash_deposit'] = $request->has('has_cash_deposit') ? true : false; // Set boolean value
-
-
+        if (! empty($data['id_type'])) {
+            $data['id_type'] = strtolower((string) $data['id_type']);
+        }
 
         DB::beginTransaction();
         try {
@@ -1125,63 +1172,22 @@ class CustomerController extends Controller
      */
     private function sendWelcomeSMS($customer)
     {
-        $apiKey = config('services.beem.api_key');
-        $secretKey = config('services.beem.secret_key');
-        $senderId = config('services.beem.sender_id', 'SAFCO');
-
-        if (!$apiKey || !$secretKey) {
-            throw new \Exception('Beem SMS configuration not found');
+        if (! SmsHelper::isConfigured()) {
+            throw new \Exception('SMS haijasanidiwa.');
         }
 
-        // Format the phone number
-        $formattedPhone = $this->formatPhoneNumber($customer->phone);
-        
-        \Log::info('Sending SMS to formatted number: ' . $formattedPhone . ' (original: ' . $customer->phone . ')');
+        $formattedPhone = function_exists('normalize_phone_number')
+            ? normalize_phone_number($customer->phone)
+            : $this->formatPhoneNumber($customer->phone);
 
-        $message = "Karibu {$customer->name}! Umesajiliwa kwenye mfumo wetu. Nambari yako ya mteja ni: {$customer->customerNo}. Asante!";
-        
-        $url = 'https://apisms.beem.africa/v1/send';
-        
-        $data = [
-            'source_addr' => $senderId,
-            'schedule_time' => '',
-            'encoding' => 0,
-            'message' => $message,
-            'recipients' => [
-                [
-                    'recipient_id' => 1,
-                    'dest_addr' => $formattedPhone
-                ]
-            ]
-        ];
+        $message = "Karibu {$customer->name} katika Gala letu ya MBOJI MILLIS";
 
-        $headers = [
-            'Content-Type: application/json',
-            'Authorization: Basic ' . base64_encode($apiKey . ':' . $secretKey)
-        ];
+        $result = SmsHelper::send($formattedPhone, $message);
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200) {
-            throw new \Exception('SMS sending failed. HTTP Code: ' . $httpCode . ', Response: ' . $response);
+        if (! ($result['success'] ?? false)) {
+            throw new \Exception($result['error'] ?? 'Imeshindikana kutuma SMS ya kukaribisha.');
         }
 
-        $result = json_decode($response, true);
-        
-        if (isset($result['successful']) && $result['successful'] === false) {
-            throw new \Exception('SMS sending failed: ' . ($result['message'] ?? 'Unknown error'));
-        }
-
-        \Log::info('Welcome SMS sent successfully to customer: ' . $customer->name . ' (' . $formattedPhone . ')');
+        \Log::info('Welcome SMS sent successfully to customer: '.$customer->name.' ('.$formattedPhone.')');
     }
 }

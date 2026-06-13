@@ -4,10 +4,10 @@
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Inventory', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
-            ['label' => 'Items', 'url' => route('inventory.items.index'), 'icon' => 'bx bx-box'],
-            ['label' => 'Edit Item', 'url' => '#', 'icon' => 'bx bx-edit']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Hesabu', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
+            ['label' => 'Bidhaa', 'url' => route('inventory.items.index'), 'icon' => 'bx bx-box'],
+            ['label' => 'Hariri Bidhaa', 'url' => '#', 'icon' => 'bx bx-edit']
         ]" />
 
         <div class="row">
@@ -16,7 +16,7 @@
                     <div class="card-header">
                         <div class="d-flex align-items-center">
                             <div class="flex-grow-1">
-                                <h5 class="card-title mb-0">Edit Item - {{ $item->name }}</h5>
+                                <h5 class="card-title mb-0">Hariri Bidhaa - {{ $item->name }}</h5>
                             </div>
                         </div>
                     </div>
@@ -30,10 +30,10 @@
                             <div class="row mt-4">
                                 <div class="col-12">
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="bx bx-save me-1"></i> Update Item
+                                        <i class="bx bx-save me-1"></i> Hifadhi Mabadiliko
                                     </button>
                                     <a href="{{ route('inventory.items.index') }}" class="btn btn-secondary ms-2">
-                                        <i class="bx bx-x me-1"></i> Cancel
+                                        <i class="bx bx-x me-1"></i> Ghairi
                                     </a>
                                 </div>
                             </div>
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('.select2-multi').select2({
             theme: 'bootstrap-5',
             width: '100%',
-            placeholder: 'All branches',
+            placeholder: 'Matawi yote',
             closeOnSelect: false
         });
     }

@@ -1,15 +1,15 @@
 @extends('layouts.main')
-@section('title', 'Edit Customer')
+@section('title', 'Hariri Mteja')
 
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">        
         <x-breadcrumbs :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard')],
-            ['label' => 'Customers', 'url' => route('customers.index')],
-            ['label' => 'Edit Customer']
+            ['label' => 'Dashibodi', 'url' => route('dashboard')],
+            ['label' => 'Wateja', 'url' => route('customers.index')],
+            ['label' => 'Hariri Mteja']
         ]" />
-        <h6 class="mb-0 text-uppercase">EDIT CUSTOMER</h6>
+        <h6 class="mb-0 text-uppercase">HARIRI MTEJA</h6>
         <hr/>
         <div class="card">
             <div class="card-body">

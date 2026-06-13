@@ -1,15 +1,15 @@
 @extends('layouts.main')
 
-@section('title', 'Inventory Management')
+@section('title', 'Usimamizi wa Hesabu')
 
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Inventory Management', 'url' => '#', 'icon' => 'bx bx-package']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Usimamizi wa Hesabu', 'url' => '#', 'icon' => 'bx bx-package']
         ]" />
-        <h6 class="mb-0 text-uppercase">INVENTORY MANAGEMENT</h6>
+        <h6 class="mb-0 text-uppercase">USIMAMIZI WA HESABU</h6>
         <hr />
 
         <div class="row">
@@ -21,25 +21,25 @@
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
                             <i class="bx bx-check-circle me-2"></i>
                             {{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Funga"></button>
                         </div>
                         @endif
 
                         @if(isset($errors) && $errors->any())
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
                             <i class="bx bx-error-circle me-2"></i>
-                            Please fix the following errors:
+                            Tafadhali rekebisha makosa yafuatayo:
                             <ul class="mb-0 mt-2">
                                 @foreach($errors->all() as $error)
                                 <li>{{ $error }}</li>
                                 @endforeach
                             </ul>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Funga"></button>
                         </div>
                         @endif
 
                         <div class="row">
-                            <!-- Categories Management -->
+                            <!-- Usimamizi wa Makundi -->
                             @can('manage inventory categories')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-primary position-relative">
@@ -47,49 +47,49 @@
                                         <!-- Count Badge -->
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
                                             {{ $categoriesCount }}
-                                            <span class="visually-hidden">categories count</span>
+                                            <span class="visually-hidden">idadi ya makundi</span>
                                         </span>
                                         <div class="mb-3">
                                             <i class="bx bx-category fs-1 text-primary"></i>
                                         </div>
-                                        <h5 class="card-title">Categories</h5>
-                                        <p class="card-text">Manage inventory categories and product classifications.</p>
+                                        <h5 class="card-title">Makundi</h5>
+                                        <p class="card-text">Simamia makundi ya bidhaa na aina za uainishaji.</p>
                                         <a href="{{ route('inventory.categories.index') }}" class="btn btn-primary">
-                                            <i class="bx bx-list-ul me-1"></i> Manage Categories
+                                            <i class="bx bx-list-ul me-1"></i> Simamia Makundi
                                         </a>
                                     </div>
                                 </div>
                             </div>
                             @endcan
 
-                            <!-- Inventory Value -->
+                            {{-- Inventory Value (hidden)
                             @canany(['view inventory items', 'manage inventory items'])
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <a href="{{ session('location_id') ? route('inventory.value.show', session('location_id')) : route('inventory.value.index') }}" class="text-decoration-none text-body">
                                 <div class="card border-teal position-relative h-100">
                                     <div class="card-body text-center">
                                         @if(isset($inventoryValueAtLocation) && $inventoryValueAtLocation !== null)
-                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-teal text-white" title="Cost value at current location">
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-teal text-white" title="Thamani ya gharama kwenye eneo la sasa">
                                             {{ number_format($inventoryValueAtLocation, 0) }}
-                                            <span class="visually-hidden">inventory value</span>
+                                            <span class="visually-hidden">thamani ya hesabu</span>
                                         </span>
                                         @endif
                                         <div class="mb-3">
                                             <i class="bx bx-dollar-circle fs-1 text-teal"></i>
                                         </div>
-                                        <h5 class="card-title">Thamani ya Bidhaa <small class="text-muted">(Inventory Value)</small></h5>
-                                        <p class="card-text">Current stock by location with total cost and selling value per item.</p>
+                                        <h5 class="card-title">Thamani ya Bidhaa</h5>
+                                        <p class="card-text">Stoo ya sasa kwa eneo pamoja na jumla ya gharama na thamani ya uuzaji kwa kila bidhaa.</p>
                                         <span class="btn btn-teal">
                                             <i class="bx bx-bar-chart-alt-2 me-1"></i>
                                             @if(session('location_id'))
-                                                View at this location
+                                                Angalia kwenye eneo hili
                                             @else
-                                                Choose location
+                                                Chagua eneo
                                             @endif
                                         </span>
                                         @if(isset($inventoryValueCurrency) && isset($inventoryValueAtLocation))
                                         <p class="small text-muted mt-2 mb-0">
-                                            Location cost total: {{ number_format($inventoryValueAtLocation, 2) }} {{ $inventoryValueCurrency }}
+                                            Jumla ya gharama kwa eneo: {{ number_format($inventoryValueAtLocation, 2) }} {{ $inventoryValueCurrency }}
                                         </p>
                                         @endif
                                     </div>
@@ -97,8 +97,9 @@
                                 </a>
                             </div>
                             @endcanany
+                            --}}
 
-                            <!-- Items Management -->
+                            <!-- Usimamizi wa Bidhaa -->
                             @can('manage inventory items')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-success position-relative">
@@ -106,68 +107,90 @@
                                         <!-- Count Badge -->
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
                                             {{ $itemsCount }}
-                                            <span class="visually-hidden">items count</span>
+                                            <span class="visually-hidden">idadi ya bidhaa</span>
                                         </span>
                                         <div class="mb-3">
                                             <i class="bx bx-box fs-1 text-success"></i>
                                         </div>
-                                        <h5 class="card-title">Inventory Items</h5>
-                                        <p class="card-text">Manage products, services, and inventory items.</p>
+                                        <h5 class="card-title">Bidhaa</h5>
+                                        <p class="card-text">Simamia bidhaa, huduma, na vitu vya hesabu.</p>
                                         <a href="{{ route('inventory.items.index') }}" class="btn btn-success">
-                                            <i class="bx bx-package me-1"></i> Manage Items
+                                            <i class="bx bx-package me-1"></i> Simamia Bidhaa
                                         </a>
                                     </div>
                                 </div>
                             </div>
                             @endcan
 
-                            <!-- Movements Management -->
+                            <!-- Uhifadhi wa Wateja -->
+                            @can('manage inventory items')
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card border-info position-relative">
+                                    <div class="card-body text-center">
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info">
+                                            {{ $customerStorageCount ?? 0 }}
+                                            <span class="visually-hidden">idadi ya uhifadhi wa wateja</span>
+                                        </span>
+                                        <div class="mb-3">
+                                            <i class="bx bx-user-pin fs-1 text-info"></i>
+                                        </div>
+                                        <h5 class="card-title">Uhifadhi wa Wateja</h5>
+                                        <p class="card-text">Pokea na fuatilia zao wateja wanalohifadhi (idadi).</p>
+                                        <a href="{{ route('inventory.customer-storage.index') }}" class="btn btn-info">
+                                            <i class="bx bx-archive-in me-1"></i> Simamia Uhifadhi
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            @endcan
+
+                            {{-- Stock Movements (hidden)
                             @can('view inventory adjustments')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-warning position-relative">
                                     <div class="card-body text-center">
-                                        <!-- Count Badge -->
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">
                                             {{ $movementsCount }}
-                                            <span class="visually-hidden">movements count</span>
+                                            <span class="visually-hidden">idadi ya mielekeo</span>
                                         </span>
                                         <div class="mb-3">
                                             <i class="bx bx-transfer fs-1 text-warning"></i>
                                         </div>
-                                        <h5 class="card-title">Stock Movements</h5>
-                                        <p class="card-text">Track stock movements, receipts, and adjustments.</p>
+                                        <h5 class="card-title">Mielekeo ya Stoo</h5>
+                                        <p class="card-text">Fuatilia mielekeo ya stoo, mapokezi, na marekebisho.</p>
                                         <a href="{{ route('inventory.movements.index') }}" class="btn btn-warning">
-                                            <i class="bx bx-transfer-alt me-1"></i> Manage Movements
+                                            <i class="bx bx-transfer-alt me-1"></i> Simamia Mielekeo
                                         </a>
                                     </div>
                                 </div>
                             </div>
                             @endcan
+                            --}}
 
-                            <!-- Adjustments Management -->
+                            {{-- Stock Adjustments (hidden)
                             @can('manage inventory movements')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-danger position-relative">
                                     <div class="card-body text-center">
-                                        <!-- Count Badge -->
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                                             {{ $adjustmentsCount ?? 0 }}
-                                            <span class="visually-hidden">adjustments count</span>
+                                            <span class="visually-hidden">idadi ya marekebisho</span>
                                         </span>
                                         <div class="mb-3">
                                             <i class="bx bx-adjust fs-1 text-danger"></i>
                                         </div>
-                                        <h5 class="card-title">Stock Adjustments</h5>
-                                        <p class="card-text">Make inventory adjustments and corrections.</p>
+                                        <h5 class="card-title">Marekebisho ya Stoo</h5>
+                                        <p class="card-text">Fanya marekebisho na usahihishaji wa hesabu.</p>
                                         @can('create inventory adjustments')
                                         <a href="{{ route('inventory.movements.create') }}?defaultMovementType=adjustment_in" class="btn btn-danger">
-                                            <i class="bx bx-adjust me-1"></i> Make Adjustment
+                                            <i class="bx bx-adjust me-1"></i> Fanya Marekebisho
                                         </a>
                                         @endcan
                                     </div>
                                 </div>
                             </div>
                             @endcan
+                            --}}
 
                             {{-- Branch Transfers (hidden)
                             @can('view inventory transfer')
@@ -177,15 +200,15 @@
                                         <!-- Count Badge -->
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info">
                                             {{ $transfersCount ?? 0 }}
-                                            <span class="visually-hidden">transfers count</span>
+                                            <span class="visually-hidden">idadi ya uhamishaji</span>
                                         </span>
                                         <div class="mb-3">
                                             <i class="bx bx-transfer fs-1 text-info"></i>
                                         </div>
-                                        <h5 class="card-title">Branch Transfers</h5>
-                                        <p class="card-text">Transfer items between branches.</p>
+                                        <h5 class="card-title">Uhamishaji wa Tawi</h5>
+                                        <p class="card-text">Hamisha bidhaa kati ya matawi.</p>
                                         <a href="{{ route('inventory.transfers.index') }}" class="btn btn-info">
-                                            <i class="bx bx-list-ul me-1"></i> Manage Transfers
+                                            <i class="bx bx-list-ul me-1"></i> Simamia Uhamishaji
                                         </a>
                                     </div>
                                 </div>
@@ -201,15 +224,15 @@
                                         <!-- Count Badge -->
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark">
                                             {{ $writeOffsCount ?? 0 }}
-                                            <span class="visually-hidden">write-offs count</span>
+                                            <span class="visually-hidden">idadi ya kuondolewa</span>
                                         </span>
                                         <div class="mb-3">
                                             <i class="bx bx-x-circle fs-1 text-dark"></i>
                                         </div>
-                                        <h5 class="card-title">Write-offs &amp; Stock-outs</h5>
-                                        <p class="card-text">Record damaged, expired, or internally consumed inventory.</p>
+                                        <h5 class="card-title">Kuondolewa na Kutoka Stoo</h5>
+                                        <p class="card-text">Rekodi bidhaa zilizoharibika, zilizomalizika muda, au zilizotumika ndani.</p>
                                         <a href="{{ route('inventory.write-offs.index') }}" class="btn btn-dark">
-                                            <i class="bx bx-list-ul me-1"></i> Manage Records
+                                            <i class="bx bx-list-ul me-1"></i> Simamia Rekodi
                                         </a>
                                     </div>
                                 </div>
@@ -220,30 +243,30 @@
                             <!-- Transfer Requests Management -->
                           
 
-                            <!-- Locations Management -->
+                            {{-- Locations (hidden)
                             @can('manage inventory locations')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-info position-relative">
                                     <div class="card-body text-center">
-                                        <!-- Count Badge -->
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info">
                                             {{ $locationsCount }}
-                                            <span class="visually-hidden">locations count</span>
+                                            <span class="visually-hidden">idadi ya maeneo</span>
                                         </span>
                                         <div class="mb-3">
                                             <i class="bx bx-building fs-1 text-info"></i>
                                         </div>
-                                        <h5 class="card-title">Locations</h5>
-                                        <p class="card-text">Manage warehouse locations and storage areas.</p>
+                                        <h5 class="card-title">Maeneo</h5>
+                                        <p class="card-text">Simamia maeneo ya ghala na sehemu za kuhifadhi.</p>
                                         <a href="{{ route('settings.inventory.locations.index') }}" class="btn btn-info">
-                                            <i class="bx bx-building me-1"></i> Manage Locations
+                                            <i class="bx bx-building me-1"></i> Simamia Maeneo
                                         </a>
                                     </div>
                                 </div>
                             </div>
                             @endcan
+                            --}}
 
-                            <!-- Opening Balance -->
+                            {{-- Opening Balance (hidden)
                             @can('manage inventory opening balances')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-warning position-relative">
@@ -251,15 +274,16 @@
                                         <div class="mb-3">
                                             <i class="bx bx-layer-plus fs-1 text-warning"></i>
                                         </div>
-                                        <h5 class="card-title">Opening Balance</h5>
-                                        <p class="card-text">Initialize starting stock by location. Applies to current login location.</p>
+                                        <h5 class="card-title">Salio la Kufungua</h5>
+                                        <p class="card-text">Weka stoo ya kuanzia kwa eneo. Inatumika kwa eneo la sasa la kuingia.</p>
                                         <a href="{{ route('inventory.opening-balances.index') }}" class="btn btn-warning">
-                                            <i class="bx bx-list-ul me-1"></i> View Opening Balances
+                                            <i class="bx bx-list-ul me-1"></i> Angalia Salio la Kufungua
                                         </a>
                                     </div>
                                 </div>
                             </div>
                             @endcan
+                            --}}
 
                             {{-- Stock Taking/Count (hidden)
                             @can('manage inventory locations')
@@ -269,15 +293,15 @@
                                         <!-- Count Badge -->
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-purple">
                                             {{ $countSessionsCount ?? 0 }}
-                                            <span class="visually-hidden">locations count</span>
+                                            <span class="visually-hidden">idadi ya hesabu</span>
                                         </span>
                                         <div class="mb-3">
                                             <i class="bx bx-message-square-dots fs-1 text-purple"></i>
                                         </div>
-                                        <h5 class="card-title">Stock Taking/Count</h5>
-                                        <p class="card-text">Take stock of inventory items and locations.</p>
+                                        <h5 class="card-title">Hesabu ya Stoo</h5>
+                                        <p class="card-text">Fanya hesabu ya bidhaa na maeneo.</p>
                                         <a href="{{ route('inventory.counts.index') }}" class="btn btn-info">
-                                            <i class="bx bx-building me-1"></i> Manage Locations
+                                            <i class="bx bx-building me-1"></i> Simamia Hesabu
                                         </a>
                                     </div>
                                 </div>
@@ -285,38 +309,38 @@
                              @endcan
                             --}}
 
-                            <!-- Inventory Settings -->
+                            {{-- Inventory Settings (hidden)
                             @can('manage inventory settings')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-secondary position-relative">
                                     <div class="card-body text-center">
-                                        <!-- Count Badge -->
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-secondary">
                                             1
-                                            <span class="visually-hidden">settings</span>
+                                            <span class="visually-hidden">mipangilio</span>
                                         </span>
                                         <div class="mb-3">
                                             <i class="bx bx-cog fs-1 text-secondary"></i>
                                         </div>
-                                        <h5 class="card-title">Inventory Settings</h5>
-                                        <p class="card-text">Configure inventory system settings and preferences.</p>
+                                        <h5 class="card-title">Mipangilio ya Hesabu</h5>
+                                        <p class="card-text">Sanidi mipangilio na mapendeleo ya mfumo wa hesabu.</p>
                                         <a href="{{ route('settings.inventory') }}" class="btn btn-secondary">
-                                            <i class="bx bx-cog me-1"></i> Configure
+                                            <i class="bx bx-cog me-1"></i> Sanidi
                                         </a>
                                     </div>
                                 </div>
                             </div>
                             @endcan
+                            --}}
                         </div>
 
-                        <!-- Recent Movements Overview -->
+                        {{-- Recent Stock Movements (hidden)
                         @if($recentMovements->count() > 0)
                         <div class="row mt-4">
                             <div class="col-12">
                                 <div class="card">
                                     <div class="card-header">
                                         <h5 class="card-title mb-0">
-                                            <i class="bx bx-time-five me-2"></i>Recent Stock Movements
+                                            <i class="bx bx-time-five me-2"></i>Mielekeo ya Stoo ya Hivi Karibuni
                                         </h5>
                                     </div>
                                     <div class="card-body">
@@ -324,11 +348,11 @@
                                             <table class="table table-striped table-hover">
                                                 <thead>
                                                     <tr>
-                                                        <th>Item</th>
-                                                        <th>Movement Type</th>
-                                                        <th>Quantity</th>
-                                                        <th>User</th>
-                                                        <th>Date</th>
+                                                        <th>Bidhaa</th>
+                                                        <th>Aina ya Mielekeo</th>
+                                                        <th>Kiasi</th>
+                                                        <th>Mtumiaji</th>
+                                                        <th>Tarehe</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -353,14 +377,14 @@
                                                                     'write_off' => ($movement->writeoff_type === 'stock_out' ? 'bg-warning text-dark' : 'bg-dark')
                                                                 ];
                                                                 $typeLabels = [
-                                                                    'opening_balance' => 'Opening Balance',
-                                                                    'transfer_in' => 'Transfer In',
-                                                                    'transfer_out' => 'Transfer Out',
-                                                                    'sold' => 'Sold',
-                                                                    'purchased' => 'Purchased',
-                                                                    'adjustment_in' => 'Adjustment In',
-                                                                    'adjustment_out' => 'Adjustment Out',
-                                                                    'write_off' => ($movement->writeoff_type === 'stock_out' ? 'Stock-out' : 'Write-off')
+                                                                    'opening_balance' => 'Salio la Kufungua',
+                                                                    'transfer_in' => 'Uingizaji wa Uhamishaji',
+                                                                    'transfer_out' => 'Utoaji wa Uhamishaji',
+                                                                    'sold' => 'Imeuzwa',
+                                                                    'purchased' => 'Imenunuliwa',
+                                                                    'adjustment_in' => 'Marekebisho ya Kuongeza',
+                                                                    'adjustment_out' => 'Marekebisho ya Kupunguza',
+                                                                    'write_off' => ($movement->writeoff_type === 'stock_out' ? 'Kutoka Stoo' : 'Kuondolewa')
                                                                 ];
                                                             @endphp
                                                             <span class="badge {{ $typeClasses[$movement->movement_type] ?? 'bg-secondary' }}">
@@ -369,7 +393,7 @@
                                                         </td>
                                                         <td>
                                                             <span class="fw-bold">{{ number_format($movement->quantity, 2) }}</span>
-                                                            {{ $movement->item->unit_of_measure ?? 'units' }}
+                                                            {{ $movement->item->unit_of_measure ?? 'vipimo' }}
                                                         </td>
                                                         <td>{{ $movement->user->name }}</td>
                                                         <td>{{ $movement->created_at->format('M j, Y H:i') }}</td>
@@ -380,7 +404,7 @@
                                         </div>
                                         <div class="text-center mt-3">
                                             <a href="{{ route('inventory.movements.index') }}" class="btn btn-outline-primary">
-                                                <i class="bx bx-list-ul me-1"></i> View All Movements
+                                                <i class="bx bx-list-ul me-1"></i> Angalia Mielekeo Yote
                                             </a>
                                         </div>
                                     </div>
@@ -388,6 +412,7 @@
                             </div>
                         </div>
                         @endif
+                        --}}
                     </div>
                 </div>
             </div>

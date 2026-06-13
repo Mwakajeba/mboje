@@ -1,15 +1,15 @@
 @extends('layouts.main')
 
-@section('title', 'Create Inventory Item')
+@section('title', 'Sajili Bidhaa')
 
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Inventory', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
-            ['label' => 'Items', 'url' => route('inventory.items.index'), 'icon' => 'bx bx-box'],
-            ['label' => 'Create Item', 'url' => '#', 'icon' => 'bx bx-plus']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Hesabu', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
+            ['label' => 'Bidhaa', 'url' => route('inventory.items.index'), 'icon' => 'bx bx-box'],
+            ['label' => 'Sajili Bidhaa', 'url' => '#', 'icon' => 'bx bx-plus']
         ]" />
 
         <div class="row">
@@ -17,9 +17,9 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h4 class="mb-0">Create New Inventory Item</h4>
+                            <h4 class="mb-0">Sajili Bidhaa Mpya</h4>
                             <a href="{{ route('inventory.items.index') }}" class="btn btn-secondary">
-                                <i class="bx bx-arrow-back me-1"></i> Back to Items
+                                <i class="bx bx-arrow-back me-1"></i> Rudi kwa Bidhaa
                             </a>
                         </div>
 
@@ -31,11 +31,6 @@
                         </div>
                         @endif
 
-                        <div class="alert alert-info mb-3">
-                            <i class="bx bx-info-circle me-2"></i>
-                            <strong>Pricing:</strong> Set default cost and selling price here. After saving, use <strong>Edit</strong> on this item to set <strong>Prices by branch</strong> and <strong>Prices by location</strong> (those sections appear only on the Edit form).
-                        </div>
-
                         <form action="{{ route('inventory.items.store') }}" method="POST">
                             @csrf
                             
@@ -44,10 +39,10 @@
                             <div class="row mt-4">
                                 <div class="col-12">
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="bx bx-save me-1"></i> Create Item
+                                        <i class="bx bx-save me-1"></i> Sajili Bidhaa
                                     </button>
                                     <a href="{{ route('inventory.items.index') }}" class="btn btn-secondary ms-2">
-                                        <i class="bx bx-x me-1"></i> Cancel
+                                        <i class="bx bx-x me-1"></i> Ghairi
                                     </a>
                                 </div>
                             </div>
@@ -71,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
         $('.select2-multi').select2({
             theme: 'bootstrap-5',
             width: '100%',
-            placeholder: 'All branches',
+            placeholder: 'Matawi yote',
             closeOnSelect: false
         });
     }

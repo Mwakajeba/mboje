@@ -17,6 +17,16 @@ class Item extends Model
 {
     use HasFactory, LogsActivity;
 
+    /** @return array<string, string> */
+    public static function unitOfMeasureOptions(): array
+    {
+        return [
+            'kg' => 'kg',
+            'ltr' => 'ltr',
+            'each' => 'each',
+        ];
+    }
+
     protected $table = 'inventory_items';
 
     protected $fillable = [
@@ -26,6 +36,8 @@ class Item extends Model
         'code',
         'description',
         'unit_of_measure',
+        'package_name',
+        'package_quantity',
         'item_type',
         'cost_price',
         'unit_price',
@@ -47,6 +59,7 @@ class Item extends Model
 
     protected $casts = [
         'cost_price' => 'decimal:2',
+        'package_quantity' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'has_wholesale' => 'boolean',
         'wholesale_unit_price' => 'decimal:2',
@@ -391,14 +404,14 @@ class Item extends Model
     // Accessors
     public function getStatusBadgeAttribute()
     {
-        return $this->is_active 
-            ? '<span class="badge bg-success">Active</span>' 
-            : '<span class="badge bg-danger">Inactive</span>';
+        return $this->is_active
+            ? '<span class="badge bg-success">Hai</span>'
+            : '<span class="badge bg-danger">Haifanyi kazi</span>';
     }
 
     public function getCategoryNameAttribute()
     {
-        return $this->category ? $this->category->name : 'No Category';
+        return $this->category ? $this->category->name : 'Hakuna kategoria';
     }
 
     public function getLocationNameAttribute()
@@ -486,9 +499,9 @@ class Item extends Model
     public function getActionsAttribute()
     {
         $actions = '<div class="btn-group" role="group">';
-        $actions .= '<a href="' . route('inventory.items.show', $this->encoded_id) . '" class="btn btn-sm btn-outline-info" title="View"><i class="bx bx-show"></i></a>';
-        $actions .= '<a href="' . route('inventory.items.edit', $this->encoded_id) . '" class="btn btn-sm btn-outline-primary" title="Edit"><i class="bx bx-edit"></i></a>';
-        $actions .= '<button type="button" class="btn btn-sm btn-outline-danger delete-btn" data-id="' . $this->encoded_id . '" data-url="' . route('inventory.items.destroy', $this->encoded_id) . '" title="Delete"><i class="bx bx-trash"></i></button>';
+        $actions .= '<a href="' . route('inventory.items.show', $this->encoded_id) . '" class="btn btn-sm btn-outline-info" title="Angalia"><i class="bx bx-show"></i></a>';
+        $actions .= '<a href="' . route('inventory.items.edit', $this->encoded_id) . '" class="btn btn-sm btn-outline-primary" title="Hariri"><i class="bx bx-edit"></i></a>';
+        $actions .= '<button type="button" class="btn btn-sm btn-outline-danger delete-btn" data-id="' . $this->encoded_id . '" data-url="' . route('inventory.items.destroy', $this->encoded_id) . '" title="Futa"><i class="bx bx-trash"></i></button>';
         $actions .= '</div>';
         
         return $actions;

@@ -14,17 +14,38 @@ class Customer extends Model
 {
     use HasFactory,LogsActivity;
 
+    public const ID_TYPE_NIDA = 'nida';
+
+    public const ID_TYPE_KUPIGA_KURA = 'kupiga kura';
+
+    public const ID_TYPE_LESENI = 'leseni ya udereva';
+
+    /** @return array<string, string> */
+    public static function idTypeOptions(): array
+    {
+        return [
+            self::ID_TYPE_NIDA => self::ID_TYPE_NIDA,
+            self::ID_TYPE_KUPIGA_KURA => self::ID_TYPE_KUPIGA_KURA,
+            self::ID_TYPE_LESENI => self::ID_TYPE_LESENI,
+        ];
+    }
+
     protected $fillable = [
         'customerNo',
         'name',
         'description',
         'phone',
+        'id_type',
+        'id_number',
         'email',
         'branch_id',
         'company_id',
         'has_cash_deposit',
         'status',
         'credit_limit',
+        'bank_name',
+        'bank_account_number',
+        'account_name',
         'company_name',
         'company_registration_number',
         'tin_number',

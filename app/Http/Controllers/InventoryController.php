@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Inventory\Category;
 use App\Models\Inventory\Item;
 use App\Models\Inventory\Movement;
+use App\Models\Inventory\CustomerStorageBalance;
 use App\Models\InventoryLocation;
 use App\Services\InventoryValueService;
 
@@ -99,6 +100,11 @@ class InventoryController extends Controller
             ->whereIn('status', ['draft', 'frozen', 'counting', 'completed'])
             ->count();
 
+        $customerStorageCount = CustomerStorageBalance::where('company_id', auth()->user()->company_id)
+            ->when($currentBranchId, fn ($q) => $q->where('branch_id', $currentBranchId))
+            ->where('quantity_on_hand', '>', 0)
+            ->count();
+
         $inventoryValueAtLocation = null;
         $inventoryValueCurrency = null;
         if ($loginLocationId) {
@@ -120,6 +126,7 @@ class InventoryController extends Controller
             'writeOffsCount',
             'recentMovements',
             'countSessionsCount',
+            'customerStorageCount',
             'inventoryValueAtLocation',
             'inventoryValueCurrency'
         ));

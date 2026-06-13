@@ -82,17 +82,17 @@ class ItemController extends Controller
                 })
                 ->addColumn('expiry_tracking_badge', function ($item) {
                     if ($item->track_expiry) {
-                        return '<span class="badge bg-success">Tracks Expiry</span>';
-                    } else {
-                        return '<span class="badge bg-secondary">No Expiry</span>';
+                        return '<span class="badge bg-success">Inafuatilia Mwisho</span>';
                     }
+
+                    return '<span class="badge bg-secondary">Haina Mwisho</span>';
                 })
                 ->addColumn('status_badge', function ($item) {
                     return $item->status_badge;
                 })
                 ->addColumn('branches_scope', function ($item) {
                     if ($item->visibilityBranches->isEmpty()) {
-                        return '<span class="badge bg-info">All branches</span>';
+                        return '<span class="badge bg-info">Matawi yote</span>';
                     }
 
                     return e($item->visibilityBranches->pluck('name')->implode(', '));
@@ -128,52 +128,7 @@ class ItemController extends Controller
                 ->make(true);
         }
 
-        // Get categories and locations for import modal
-        $categories = Category::where('company_id', Auth::user()->company_id)->get();
-        $locations = InventoryLocation::where('company_id', Auth::user()->company_id)->get();
-
-        // Summary cards for login location
-        $loginLocationId = session('location_id');
-        $loginLocationName = null;
-        if ($loginLocationId) {
-            $loginLocationName = \App\Models\InventoryLocation::where('id', $loginLocationId)->value('name');
-        }
-        $stockService = new InventoryStockService();
-        
-        if ($loginLocationId) {
-            // Get stock summary for specific location
-            $locationStock = $stockService->getLocationStockSummary($loginLocationId);
-            $lowStockItems = $stockService->getLowStockItemsAtLocation($loginLocationId);
-            $outOfStockItems = $stockService->getOutOfStockItemsAtLocation($loginLocationId);
-            
-            $totalItems = $locationStock->count();
-            $inStock = $locationStock->where('quantity', '>', 0)->count();
-            $lowStock = $lowStockItems->count();
-            $outOfStock = $outOfStockItems->count();
-        } else {
-            // Company-level fallback - get all items and calculate totals
-            $allItems = Item::where('company_id', Auth::user()->company_id)
-                ->visibleInSessionBranch($sessionBranchId)
-                ->get();
-            $totalItems = $allItems->count();
-            $inStock = 0;
-            $lowStock = 0;
-            $outOfStock = 0;
-            
-            foreach ($allItems as $item) {
-                $totalStock = $stockService->getItemTotalStock($item->id);
-                if ($totalStock > 0) {
-                    $inStock++;
-                    if ($totalStock <= ($item->reorder_level ?? 0)) {
-                        $lowStock++;
-                    }
-                } else {
-                    $outOfStock++;
-                }
-            }
-        }
-
-        return view('inventory.items.index', compact('categories', 'locations', 'totalItems', 'inStock', 'lowStock', 'outOfStock', 'loginLocationName'));
+        return view('inventory.items.index');
     }
 
     public function create(Request $request)
@@ -262,7 +217,9 @@ class ItemController extends Controller
             'description' => 'nullable|string',
             'category_id' => 'nullable|exists:inventory_categories,id',
             'item_type' => 'required|in:product,service',
-            'unit_of_measure' => 'nullable|string|max:50',
+            'unit_of_measure' => ['required', Rule::in(array_keys(Item::unitOfMeasureOptions()))],
+            'package_name' => 'nullable|string|max:255',
+            'package_quantity' => 'nullable|numeric|min:0',
             'cost_price' => 'nullable|numeric|min:0',
             'unit_price' => 'required|numeric|min:0',
             'has_wholesale' => 'nullable|boolean',
@@ -316,8 +273,10 @@ class ItemController extends Controller
                 'description' => $request->description,
                 'item_type' => $request->item_type,
                 'unit_of_measure' => $request->unit_of_measure,
+                'package_name' => $request->package_name,
+                'package_quantity' => $request->package_quantity,
                 'cost_price' => $costPrice,
-                'unit_price' => $request->unit_price,
+                'unit_price' => $request->unit_price ?? 0,
                 'has_wholesale' => $hasWholesale,
                 'wholesale_unit_price' => $wholesaleUnitPrice,
                 'minimum_stock' => $request->minimum_stock,
@@ -582,7 +541,11 @@ class ItemController extends Controller
         $this->authorize('update', $item);
 
         $allowedBranchIds = Auth::user()->permittedBranchIds();
-        
+        $allowedUnits = array_keys(Item::unitOfMeasureOptions());
+        if ($item->unit_of_measure && ! in_array($item->unit_of_measure, $allowedUnits, true)) {
+            $allowedUnits[] = $item->unit_of_measure;
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:inventory_items,code,' . $item->id,
@@ -590,7 +553,9 @@ class ItemController extends Controller
             'category_id' => 'nullable|exists:inventory_categories,id',
             'location_id' => 'nullable|exists:inventory_locations,id',
             'item_type' => 'required|in:product,service',
-            'unit_of_measure' => 'nullable|string|max:50',
+            'unit_of_measure' => ['required', Rule::in($allowedUnits)],
+            'package_name' => 'nullable|string|max:255',
+            'package_quantity' => 'nullable|numeric|min:0',
             'cost_price' => 'nullable|numeric|min:0',
             'unit_price' => 'required|numeric|min:0',
             'has_wholesale' => 'nullable|boolean',
@@ -673,8 +638,10 @@ class ItemController extends Controller
                 'location_id' => $request->location_id,
                 'item_type' => $request->item_type,
                 'unit_of_measure' => $request->unit_of_measure,
+                'package_name' => $request->package_name,
+                'package_quantity' => $request->package_quantity,
                 'cost_price' => $costPrice,
-                'unit_price' => $request->unit_price,
+                'unit_price' => $request->unit_price ?? 0,
                 'has_wholesale' => $hasWholesale,
                 'wholesale_unit_price' => $wholesaleUnitPrice,
                 'minimum_stock' => $request->minimum_stock,

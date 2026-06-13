@@ -1,21 +1,25 @@
+@php
+$isEdit = isset($item);
+@endphp
+
 @if($errors->any())
 <div class="alert alert-danger alert-dismissible fade show" role="alert">
     <i class="bx bx-error-circle me-2"></i>
-    Please fix the following errors:
+    Tafadhali rekebisha makosa yafuatayo:
     <ul class="mb-0 mt-2">
         @foreach($errors->all() as $error)
         <li>{{ $error }}</li>
         @endforeach
     </ul>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Funga"></button>
 </div>
 @endif
 
-<!-- Basic Information -->
+<!-- Taarifa za Msingi -->
 <div class="row">
     <div class="col-12">
-        <h6 class="text-uppercase">Basic Information</h6>
-        <p class="text-muted mb-2">Choose which branches can see this item in inventory and sales (or leave branch selection empty for <strong>all branches</strong>). Use <strong>Edit</strong> after save for <strong>Prices by branch</strong> and <strong>Prices by location</strong>.</p>
+        <h6 class="text-uppercase">Taarifa za Msingi</h6>
+        <p class="text-muted mb-2">Chagua matawi yanayoweza kuona bidhaa hii katika hesabu na mauzo (au acha bila kuchagua kwa <strong>matawi yote</strong>). Baada ya kuhifadhi, tumia <strong>Hariri</strong> kuweka <strong>Bei kwa tawi</strong> na <strong>Bei kwa eneo</strong>.</p>
         <hr>
     </div>
 </div>
@@ -29,9 +33,9 @@
 @endphp
 <div class="row">
     <div class="col-12 mb-3">
-        <label class="form-label">Visible in branches</label>
-        <p class="text-muted small mb-1">Leave <strong>none</strong> selected for <strong>all branches</strong>. Otherwise pick one or more branches (from those assigned to you).</p>
-        <select name="branch_ids[]" id="item_visibility_branches" class="form-select select2-multi @error('branch_ids') is-invalid @enderror" multiple="multiple" data-placeholder="All branches">
+        <label class="form-label">Inaonekana katika matawi</label>
+        <p class="text-muted small mb-1">Usichague chochote kwa <strong>matawi yote</strong>. Vinginevyo chagua tawi moja au zaidi (kutoka matawi uliyopewa).</p>
+        <select name="branch_ids[]" id="item_visibility_branches" class="form-select select2-multi @error('branch_ids') is-invalid @enderror" multiple="multiple" data-placeholder="Matawi yote">
             @foreach($assignableBranches as $branch)
             <option value="{{ $branch->id }}" {{ in_array((int) $branch->id, array_map('intval', $selectedBranchIds), true) ? 'selected' : '' }}>
                 {{ $branch->name }}
@@ -47,48 +51,52 @@
 @endif
 
 <div class="row">
-    <!-- Product Type -->
+    <!-- Aina ya Bidhaa -->
     <div class="col-md-6 mb-3">
-        <label class="form-label">Product Type <span class="text-danger">*</span></label>
+        <label class="form-label">Aina ya Bidhaa <span class="text-danger">*</span></label>
         <select name="item_type" id="item_type" class="form-select select2-single @error('item_type') is-invalid @enderror" >
-            <option value="">Select Product Type</option>
-            <option value="product" {{ old('item_type', $item->item_type ?? '') == 'product' ? 'selected' : '' }}>Product</option>
-            <option value="service" {{ old('item_type', $item->item_type ?? '') == 'service' ? 'selected' : '' }}>Service</option>
+            <option value="">Chagua aina ya bidhaa</option>
+            <option value="product" {{ old('item_type', $item->item_type ?? '') == 'product' ? 'selected' : '' }}>Bidhaa</option>
+            <option value="service" {{ old('item_type', $item->item_type ?? '') == 'service' ? 'selected' : '' }}>Huduma</option>
         </select>
         @error('item_type') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
 </div>
 
 <div class="row">
-    <!-- Item Code -->
+    <!-- Nambari ya Bidhaa -->
     <div class="col-md-6 mb-3">
-        <label class="form-label">Item Code <span class="text-danger">*</span></label>
+        <label class="form-label">Nambari ya Bidhaa <span class="text-danger">*</span></label>
         <input type="text" name="code" class="form-control @error('code') is-invalid @enderror"
-            value="{{ old('code', $item->code ?? '') }}" placeholder="Enter item code" >
+            value="{{ old('code', $item->code ?? '') }}" placeholder="Weka nambari ya bidhaa" >
         @error('code') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
 
-    <!-- Item Name -->
+    <!-- Jina la Bidhaa -->
     <div class="col-md-6 mb-3">
-        <label class="form-label">Item Name <span class="text-danger">*</span></label>
+        <label class="form-label">Jina la Bidhaa <span class="text-danger">*</span></label>
         <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
-            value="{{ old('name', $item->name ?? '') }}" placeholder="Enter item name" >
+            value="{{ old('name', $item->name ?? '') }}" placeholder="Weka jina la bidhaa" >
         @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
 
-    <!-- Description -->
+    @if($isEdit)
+    <input type="hidden" name="description" value="{{ old('description', $item->description ?? '') }}">
+    @endif
+    {{-- Maelezo (Description) — imefichwa
     <div class="col-md-12 mb-3 field-product">
-        <label class="form-label">Description</label>
+        <label class="form-label">Maelezo</label>
         <textarea name="description" class="form-control @error('description') is-invalid @enderror"
-                  rows="3" placeholder="Enter item description">{{ old('description', $item->description ?? '') }}</textarea>
+                  rows="3" placeholder="Weka maelezo ya bidhaa">{{ old('description', $item->description ?? '') }}</textarea>
         @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
+    --}}
 
-    <!-- Category -->
+    <!-- Kategoria -->
     <div class="col-md-4 mb-3">
-        <label class="form-label">Category</label>
+        <label class="form-label">Kategoria</label>
         <select name="category_id" class="form-select select2-single @error('category_id') is-invalid @enderror" required>
-            <option value="">Select Category</option>
+            <option value="">Chagua kategoria</option>
             @foreach($categories as $category)
             <option value="{{ $category->id }}" {{ old('category_id', $item->category_id ?? ($prefillCategoryId ?? '')) == $category->id ? 'selected' : '' }}>
                 {{ $category->name }}
@@ -101,19 +109,54 @@
 
     <!-- Unit of Measure -->
     <div class="col-md-4 mb-3">
-        <label class="form-label">Unit of Measure<span class="text-danger">*</span></label>
-        <input type="text" name="unit_of_measure" class="form-control @error('unit_of_measure') is-invalid @enderror"
-            value="{{ old('unit_of_measure', $item->unit_of_measure ?? '') }}" 
-            placeholder="e.g., pieces, kg, liters" required>
+        @php
+            $selectedUnit = old('unit_of_measure', $item->unit_of_measure ?? '');
+            $unitOptions = \App\Models\Inventory\Item::unitOfMeasureOptions();
+        @endphp
+        <label class="form-label">Kipimo<span class="text-danger">*</span></label>
+        <select name="unit_of_measure" class="form-select select2-single @error('unit_of_measure') is-invalid @enderror" required>
+            <option value="">Chagua kipimo</option>
+            @foreach($unitOptions as $value => $label)
+                <option value="{{ $value }}" {{ $selectedUnit === $value ? 'selected' : '' }}>{{ $label }}</option>
+            @endforeach
+            @if($selectedUnit && ! array_key_exists($selectedUnit, $unitOptions))
+                <option value="{{ $selectedUnit }}" selected>{{ $selectedUnit }}</option>
+            @endif
+        </select>
         @error('unit_of_measure') <div class="invalid-feedback">{{ $message }}</div> @enderror
+    </div>
+
+    <div class="col-md-6 mb-3 field-product">
+        <label class="form-label">Jina la Kifurushi</label>
+        <input type="text" name="package_name" class="form-control @error('package_name') is-invalid @enderror"
+            value="{{ old('package_name', $item->package_name ?? '') }}" placeholder="mf. karatasi, gunia, boksi">
+        @error('package_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+    </div>
+
+    <div class="col-md-6 mb-3 field-product">
+        <label class="form-label">Idadi ya Kifurushi</label>
+        <input type="number" step="0.01" min="0" name="package_quantity" class="form-control @error('package_quantity') is-invalid @enderror"
+            value="{{ old('package_quantity', $item->package_quantity ?? '') }}" placeholder="mf. 12">
+        @error('package_quantity') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
 </div>
 
-<!-- Pricing Information -->
+@if(!$isEdit)
+<input type="hidden" name="unit_price" value="0">
+<input type="hidden" name="cost_price" value="0">
+<input type="hidden" name="minimum_stock" value="0">
+<input type="hidden" name="maximum_stock" value="0">
+<input type="hidden" name="reorder_level" value="0">
+<input type="hidden" name="is_active" value="1">
+<input type="hidden" name="track_stock" value="1">
+@endif
+
+@if($isEdit)
+<!-- Taarifa za Bei -->
 <div class="row pricing-section">
     <div class="col-12">
-        <h6 class="text-uppercase">Pricing Information</h6>
-        <p class="text-muted small mb-0">Default cost and selling price. Use <strong>Prices by branch</strong> and <strong>Prices by location</strong> below as the source of truth per location; these are fallbacks when no branch/location price is set.</p>
+        <h6 class="text-uppercase">Taarifa za Bei</h6>
+        <p class="text-muted small mb-0">Gharama na bei ya kuuza chaguomsingi. Tumia <strong>Bei kwa tawi</strong> na <strong>Bei kwa eneo</strong> hapa chini kama chanzo cha kweli kwa kila eneo; hizi ni mbadala ikiwa bei ya tawi/eneo haijawekwa.</p>
         <hr>
     </div>
 </div>
@@ -121,7 +164,7 @@
 <div class="row pricing-section">
     <!-- Cost Price (default) -->
     <div class="col-md-6 mb-3 field-product">
-        <label class="form-label">Default cost price</label>
+        <label class="form-label">Gharama chaguomsingi</label>
         <input type="number" step="0.01" name="cost_price" class="form-control @error('cost_price') is-invalid @enderror"
             value="{{ old('cost_price', $item->cost_price ?? '') }}" placeholder="0.00">
         @error('cost_price') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -129,10 +172,10 @@
 
     <!-- Selling Price (default only) -->
     <div class="col-md-6 mb-3">
-        <label class="form-label">Default selling price <span class="text-danger">*</span></label>
+        <label class="form-label">Bei ya kuuza chaguomsingi <span class="text-danger">*</span></label>
         <input type="number" step="0.01" name="unit_price" class="form-control @error('unit_price') is-invalid @enderror"
-            value="{{ old('unit_price', $item->unit_price ?? '') }}" placeholder="0.00" >
-        <small class="text-muted">Used only when no branch/location price is set.</small>
+            value="{{ old('unit_price', $item->unit_price ?? 0) }}" placeholder="0.00" >
+        <small class="text-muted">Inatumika tu ikiwa bei ya tawi/eneo haijawekwa.</small>
         @error('unit_price') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
 </div>
@@ -147,18 +190,18 @@
         <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" name="has_wholesale" value="1" id="has_wholesale"
                 {{ $wholesaleChecked ? 'checked' : '' }}>
-            <label class="form-check-label" for="has_wholesale">Wholesale pricing</label>
+            <label class="form-check-label" for="has_wholesale">Bei ya jumla</label>
         </div>
-        <small class="text-muted">When enabled, staff can choose <strong>retail</strong> or <strong>wholesale</strong> per line on invoices, POS, and cash sales. Retail stays the default selling price above.</small>
+        <small class="text-muted">Ikiwashwa, wafanyakazi wanaweza kuchagua <strong>rejareja</strong> au <strong>jumla</strong> kwa kila mstari kwenye ankara, POS, na mauzo ya taslimu.</small>
     </div>
     <div class="col-md-6 mb-3" id="wholesale_unit_price_wrap">
-        <label class="form-label" for="wholesale_unit_price">Default wholesale unit price</label>
+        <label class="form-label" for="wholesale_unit_price">Bei ya jumla chaguomsingi</label>
         <input type="number" step="0.01" min="0" name="wholesale_unit_price" id="wholesale_unit_price"
             class="form-control @error('wholesale_unit_price') is-invalid @enderror"
             value="{{ old('wholesale_unit_price', $item->wholesale_unit_price ?? '') }}"
-            placeholder="Required when wholesale is on">
+            placeholder="Inahitajika bei ya jumla ikiwashwa">
         @error('wholesale_unit_price') <div class="invalid-feedback">{{ $message }}</div> @enderror
-        <small class="text-muted">Override per branch or location in the tables below when set.</small>
+        <small class="text-muted">Badilisha kwa tawi au eneo kwenye jedwali hapa chini.</small>
     </div>
 </div>
 
@@ -166,16 +209,16 @@
 <!-- Prices by branch (override cost & selling price per branch) -->
 <div class="row mt-3">
     <div class="col-12">
-        <h6 class="text-uppercase">Prices by branch</h6>
-        <p class="text-muted small mb-2">Set different cost and selling prices per branch. Leave blank to use the default prices above.</p>
+        <h6 class="text-uppercase">Bei kwa tawi</h6>
+        <p class="text-muted small mb-2">Weka gharama na bei tofauti kwa kila tawi. Acha tupu kutumia bei chaguomsingi hapo juu.</p>
         <div class="table-responsive">
             <table class="table table-sm table-bordered">
                 <thead>
                     <tr>
-                        <th>Branch</th>
-                        <th>Cost price</th>
-                        <th>Retail (selling)</th>
-                        <th>Wholesale</th>
+                        <th>Tawi</th>
+                        <th>Gharama</th>
+                        <th>Rejareja (kuuza)</th>
+                        <th>Jumla</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -206,16 +249,16 @@
 @if(isset($locations) && $locations->isNotEmpty())
 <div class="row mt-2">
     <div class="col-12">
-        <h6 class="text-uppercase mt-2">Prices by location (optional)</h6>
-        <p class="text-muted small mb-2">Override prices for specific locations. Falls back to branch price or default if not set.</p>
+        <h6 class="text-uppercase mt-2">Bei kwa eneo (si lazima)</h6>
+        <p class="text-muted small mb-2">Badilisha bei kwa maeneo maalum. Ikiwa haijawekwa, inatumia bei ya tawi au chaguomsingi.</p>
         <div class="table-responsive">
             <table class="table table-sm table-bordered">
                 <thead>
                     <tr>
-                        <th>Location</th>
-                        <th>Cost price</th>
-                        <th>Retail (selling)</th>
-                        <th>Wholesale</th>
+                        <th>Eneo</th>
+                        <th>Gharama</th>
+                        <th>Rejareja (kuuza)</th>
+                        <th>Jumla</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -244,11 +287,13 @@
 </div>
 @endif
 @endif
+@endif
 
-<!-- Stock Management -->
+@if($isEdit)
+<!-- Usimamizi wa Stoo -->
 <div class="row field-product">
     <div class="col-12">
-        <h6 class="text-uppercase">Stock Management</h6>
+        <h6 class="text-uppercase">Usimamizi wa Stoo</h6>
         <hr>
     </div>
 </div>
@@ -256,7 +301,7 @@
 <div class="row field-product">
     <!-- Minimum Stock -->
     <div class="col-md-4 mb-3 field-product">
-        <label class="form-label">Minimum Stock</label>
+        <label class="form-label">Stoo ya Chini</label>
         <input type="number" name="minimum_stock" class="form-control @error('minimum_stock') is-invalid @enderror"
             value="{{ old('minimum_stock', $item->minimum_stock ?? 0) }}" placeholder="0">
         @error('minimum_stock') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -264,7 +309,7 @@
 
     <!-- Maximum Stock -->
     <div class="col-md-4 mb-3 field-product">
-        <label class="form-label">Maximum Stock</label>
+        <label class="form-label">Stoo ya Juu</label>
         <input type="number" name="maximum_stock" class="form-control @error('maximum_stock') is-invalid @enderror"
             value="{{ old('maximum_stock', $item->maximum_stock ?? '') }}" placeholder="0">
         @error('maximum_stock') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -272,7 +317,7 @@
 
     <!-- Reorder Level -->
     <div class="col-md-4 mb-3 field-product">
-        <label class="form-label">Reorder Level</label>
+        <label class="form-label">Kiwango cha Kuagiza</label>
         <input type="number" name="reorder_level" class="form-control @error('reorder_level') is-invalid @enderror"
             value="{{ old('reorder_level', $item->reorder_level ?? '') }}" placeholder="0">
         @error('reorder_level') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -281,18 +326,20 @@
     @if(isset($item))
     <div class="col-md-12 mb-2">
         <div class="alert alert-info py-2 mb-0">
-            <strong>Current Stock:</strong> {{ number_format($item->current_stock ?? 0, 2) }} {{ $item->unit_of_measure }}
+            <strong>Stoo ya Sasa:</strong> {{ number_format($item->current_stock ?? 0, 2) }} {{ $item->unit_of_measure }}
         </div>
     </div>
     @endif
 </div>
+@endif
 
 <!-- Accounting Integration section removed -->
 
-<!-- Options -->
+@if($isEdit)
+<!-- Chaguo -->
 <div class="row">
     <div class="col-12">
-        <h6 class="text-uppercase">Options</h6>
+        <h6 class="text-uppercase">Chaguo</h6>
         <hr>
     </div>
 </div>
@@ -305,7 +352,7 @@
                    {{ old('is_active', $item->is_active ?? true) ? 'checked' : '' }} 
                    id="is_active">
             <label class="form-check-label" for="is_active">
-                Active Item
+                Bidhaa Hai
             </label>
         </div>
     </div>
@@ -317,7 +364,7 @@
                    {{ old('track_stock', $item->track_stock ?? true) ? 'checked' : '' }} 
                    id="track_stock">
             <label class="form-check-label" for="track_stock">
-                Track Stock
+                Fuatilia Stoo
             </label>
         </div>
     </div>
@@ -329,17 +376,19 @@
                    {{ old('track_expiry', $item->track_expiry ?? false) ? 'checked' : '' }} 
                    id="track_expiry">
             <label class="form-check-label" for="track_expiry">
-                Track Expiry Dates
+                Fuatilia Tarehe ya Mwisho
             </label>
         </div>
-        <small class="text-muted">Enable expiry date tracking for perishable items. Warning days are configured globally in Settings.</small>
+        <small class="text-muted">Washa ufuatiliaji wa tarehe ya mwisho kwa bidhaa zinazoharibika. Siku za onyo zimewekwa kwenye Mipangilio.</small>
     </div>
 </div>
+@endif
 
-<!-- Sales Revenue Account -->
+@if($isEdit)
+<!-- Akaunti ya Mapato ya Mauzo -->
 <div class="row">
     <div class="col-12">
-        <h6 class="text-uppercase">Sales Revenue Account</h6>
+        <h6 class="text-uppercase">Akaunti ya Mapato ya Mauzo</h6>
         <hr>
     </div>
 </div>
@@ -352,17 +401,16 @@
                    {{ old('has_different_sales_revenue_account', $item->has_different_sales_revenue_account ?? false) ? 'checked' : '' }} 
                    id="has_different_sales_revenue_account">
             <label class="form-check-label" for="has_different_sales_revenue_account">
-                Use Different Sales Revenue Account
+                Tumia Akaunti Tofauti ya Mapato ya Mauzo
             </label>
         </div>
-        <small class="text-muted">If enabled, this item will use a specific sales revenue account instead of the default from Inventory Settings.</small>
+        <small class="text-muted">Ikiwashwa, bidhaa hii itatumia akaunti maalum ya mapato badala ya chaguomsingi kutoka Mipangilio ya Hesabu.</small>
     </div>
 
-    <!-- Sales Revenue Account -->
     <div class="col-md-6 mb-3" id="sales_revenue_account_field" style="display: none;">
-        <label class="form-label">Sales Revenue Account</label>
+        <label class="form-label">Akaunti ya Mapato ya Mauzo</label>
         <select name="sales_revenue_account_id" class="form-select select2-single @error('sales_revenue_account_id') is-invalid @enderror">
-            <option value="">Select Sales Revenue Account</option>
+            <option value="">Chagua akaunti ya mapato ya mauzo</option>
             @foreach($salesAccounts ?? [] as $account)
             <option value="{{ $account->id }}" 
                     {{ old('sales_revenue_account_id', $item->sales_revenue_account_id ?? '') == $account->id ? 'selected' : '' }}>
@@ -371,11 +419,10 @@
             @endforeach
         </select>
         @error('sales_revenue_account_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
-        <small class="text-muted">Default: {{ \App\Models\SystemSetting::where('key', 'inventory_default_sales_account')->value('value') ? \App\Models\ChartAccount::find(\App\Models\SystemSetting::where('key', 'inventory_default_sales_account')->value('value'))->account_code . ' - ' . \App\Models\ChartAccount::find(\App\Models\SystemSetting::where('key', 'inventory_default_sales_account')->value('value'))->account_name : 'Not set' }}</small>
+        <small class="text-muted">Chaguomsingi: {{ \App\Models\SystemSetting::where('key', 'inventory_default_sales_account')->value('value') ? \App\Models\ChartAccount::find(\App\Models\SystemSetting::where('key', 'inventory_default_sales_account')->value('value'))->account_code . ' - ' . \App\Models\ChartAccount::find(\App\Models\SystemSetting::where('key', 'inventory_default_sales_account')->value('value'))->account_name : 'Haijawekwa' }}</small>
     </div>
 </div>
-
-    
+@endif
 
 <script nonce="{{ $cspNonce ?? '' }}">
 document.addEventListener('DOMContentLoaded', function() {

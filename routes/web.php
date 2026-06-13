@@ -169,6 +169,7 @@ use App\Http\Controllers\Sales\CashSaleController;
 use App\Http\Controllers\Sales\PosSaleController;
 use App\Http\Controllers\ChangeBranchController;
 use App\Http\Controllers\Inventory\OpeningBalanceController;
+use App\Http\Controllers\Inventory\CustomerStorageController;
 // Public Job Portal Routes (no authentication required)
 Route::prefix('jobs')->name('public.job-portal.')->group(function () {
     Route::get('/', [App\Http\Controllers\Public\JobPortalController::class, 'index'])->name('index');
@@ -1068,6 +1069,13 @@ Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'company.sco
     Route::get('/categories/{encodedId}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
     Route::put('/categories/{encodedId}', [CategoryController::class, 'update'])->name('categories.update');
     Route::delete('/categories/{encodedId}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+
+    // Customer product storage (uhifadhi wa bidhaa za wateja)
+    Route::get('/customer-storage', [CustomerStorageController::class, 'index'])->name('customer-storage.index');
+    Route::post('/customer-storage', [CustomerStorageController::class, 'store'])->name('customer-storage.store');
+    Route::post('/customer-storage/quick-customer', [CustomerStorageController::class, 'quickStoreCustomer'])->name('customer-storage.quick-customer');
+    Route::post('/customer-storage/quick-item', [CustomerStorageController::class, 'quickStoreItem'])->name('customer-storage.quick-item');
+    Route::get('/customer-storage/history', [CustomerStorageController::class, 'history'])->name('customer-storage.history');
 
     // Stock Movements
     Route::get('/movements', [MovementController::class, 'index'])->name('movements.index');
