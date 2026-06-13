@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', $category->name . ' - Category Items')
+@section('title', $category->name . ' - Bidhaa za Kategoria')
 
 @push('styles')
 <style>
@@ -81,24 +81,24 @@
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Inventory', 'url' => '#', 'icon' => 'bx bx-package'],
-            ['label' => 'Categories', 'url' => route('inventory.categories.index'), 'icon' => 'bx bx-category'],
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Usimamizi wa Hesabu', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
+            ['label' => 'Makundi', 'url' => route('inventory.categories.index'), 'icon' => 'bx bx-category'],
             ['label' => $category->name, 'url' => '#', 'icon' => 'bx bx-show']
         ]" />
 
         <div class="d-flex align-items-center justify-content-between mb-4">
             <div>
-                <h6 class="mb-0 text-uppercase">{{ $category->name }} - Category Items</h6>
-                <p class="mb-0 text-muted">View all items in this category</p>
+                <h6 class="mb-0 text-uppercase">{{ $category->name }} - Bidhaa za Kategoria</h6>
+                <p class="mb-0 text-muted">Angalia bidhaa zote katika kategoria hii</p>
             </div>
             <div>
                 <a href="{{ route('inventory.categories.index') }}" class="btn btn-secondary me-2">
-                    <i class="bx bx-arrow-back me-1"></i>Back to Categories
+                    <i class="bx bx-arrow-back me-1"></i>Rudi kwa Makundi
                 </a>
                 @can('manage inventory items')
                 <a href="{{ route('inventory.items.create', ['category_id' => $category->encoded_id]) }}" class="btn btn-primary">
-                    <i class="bx bx-plus me-1"></i>Add New Item
+                    <i class="bx bx-plus me-1"></i>Ongeza Bidhaa
                 </a>
                 @endcan
             </div>
@@ -111,10 +111,10 @@
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <div>
                                 <h4 class="mb-0">{{ $category->name }}</h4>
-                                <p class="text-muted mb-0">{{ $category->description ?? 'No description available' }}</p>
+                                <p class="text-muted mb-0">{{ $category->description ?? 'Hakuna maelezo' }}</p>
                             </div>
                             <div class="text-end">
-                                <span class="badge bg-primary fs-6">{{ $items->count() }} Items</span>
+                                <span class="badge bg-primary fs-6">{{ $items->count() }} Bidhaa</span>
                             </div>
                         </div>
 
@@ -138,14 +138,14 @@
                             <table id="categoryItemsTable" class="table table-striped table-bordered dt-responsive nowrap" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
                                 <thead>
                                     <tr>
-                                        <th>Name</th>
-                                        <th>Code</th>
-                                        <th>Location</th>
-                                        <th>Cost Price</th>
-                                        <th>Selling Price</th>
-                                        <th>Current Stock</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
+                                        <th>Jina</th>
+                                        <th>Nambari</th>
+                                        <th>Eneo</th>
+                                        <th>Gharama</th>
+                                        <th>Bei ya Kuuza</th>
+                                        <th>Stoo ya Sasa</th>
+                                        <th>Hali</th>
+                                        <th>Vitendo</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -153,7 +153,7 @@
                                     <tr>
                                         <td>{{ $item->name }}</td>
                                         <td>{{ $item->code }}</td>
-                                        <td>{{ $item->location->name ?? 'N/A' }}</td>
+                                        <td>{{ $item->location->name ?? '—' }}</td>
                                         <td>{{ number_format($item->resolved_cost_price ?? $item->cost_price, 2) }}</td>
                                         <td>{{ number_format($item->resolved_unit_price ?? $item->unit_price, 2) }}</td>
                                         <td>
@@ -164,21 +164,21 @@
                                         <td>
                                             @if($item->is_active)
                                                 <span class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3">
-                                                    <i class="bx bxs-circle me-1"></i>Active
+                                                    <i class="bx bxs-circle me-1"></i>Hai
                                                 </span>
                                             @else
                                                 <span class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3">
-                                                    <i class="bx bxs-circle me-1"></i>Inactive
+                                                    <i class="bx bxs-circle me-1"></i>Haifanyi kazi
                                                 </span>
                                             @endif
                                         </td>
                                         <td>
                                             <div class="d-flex gap-1">
-                                                <a href="{{ route('inventory.items.show', $item) }}" class="btn btn-sm btn-outline-info" title="View">
+                                                <a href="{{ route('inventory.items.show', $item) }}" class="btn btn-sm btn-outline-info" title="Angalia">
                                                     <i class="bx bx-show"></i>
                                                 </a>
                                                 @can('manage inventory items')
-                                                <a href="{{ route('inventory.items.edit', $item) }}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                                <a href="{{ route('inventory.items.edit', $item) }}" class="btn btn-sm btn-outline-primary" title="Hariri">
                                                     <i class="bx bx-edit"></i>
                                                 </a>
                                                 @endcan
@@ -206,20 +206,20 @@ $(document).ready(function() {
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         language: {
-            processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>',
-            emptyTable: '<div class="text-center p-4"><i class="bx bx-package font-24 text-muted"></i><p class="text-muted mt-2">No items found in this category.</p></div>',
+            processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Inapakia...</span></div>',
+            emptyTable: '<div class="text-center p-4"><i class="bx bx-package font-24 text-muted"></i><p class="text-muted mt-2">Hakuna bidhaa katika kategoria hii.</p></div>',
             search: "",
-            searchPlaceholder: "Search items...",
-            lengthMenu: "Show _MENU_ entries per page",
-            info: "Showing _START_ to _END_ of _TOTAL_ entries",
-            infoEmpty: "Showing 0 to 0 of 0 entries",
-            infoFiltered: "(filtered from _MAX_ total entries)",
-            zeroRecords: "No matching items found",
+            searchPlaceholder: "Tafuta bidhaa...",
+            lengthMenu: "Onyesha _MENU_ kwa ukurasa",
+            info: "Inaonyesha _START_ hadi _END_ kati ya _TOTAL_",
+            infoEmpty: "Inaonyesha 0 hadi 0 kati ya 0",
+            infoFiltered: "(kuchujwa kutoka _MAX_ jumla)",
+            zeroRecords: "Hakuna bidhaa zinazolingana",
             paginate: {
-                first: "First",
-                last: "Last",
-                next: "Next",
-                previous: "Previous"
+                first: "Kwanza",
+                last: "Mwisho",
+                next: "Ijayo",
+                previous: "Iliyotangulia"
             }
         },
         dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +

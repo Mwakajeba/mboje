@@ -33,11 +33,11 @@ class CategoryController extends Controller
                 ->addColumn('status_badge', function ($category) {
                     if ($category->is_active) {
                         return '<span class="badge rounded-pill text-success bg-light-success p-2 text-uppercase px-3">
-                                <i class="bx bxs-circle me-1"></i>Active
+                                <i class="bx bxs-circle me-1"></i>Hai
                                 </span>';
                     } else {
                         return '<span class="badge rounded-pill text-danger bg-light-danger p-2 text-uppercase px-3">
-                                <i class="bx bxs-circle me-1"></i>Inactive
+                                <i class="bx bxs-circle me-1"></i>Haifanyi kazi
                                 </span>';
                     }
                 })
@@ -45,21 +45,21 @@ class CategoryController extends Controller
                     $actions = '<div class="d-flex gap-1">';
                     
                     // View button (always show)
-                    $actions .= '<a href="' . route('inventory.categories.show', $category->encoded_id) . '" class="btn btn-sm btn-outline-info" title="View Items">
+                    $actions .= '<a href="' . route('inventory.categories.show', $category->encoded_id) . '" class="btn btn-sm btn-outline-info" title="Angalia Bidhaa">
                                 <i class="bx bx-show"></i>
                                 </a>';
                     
                     // Check permissions directly
                     if (auth()->user()->hasPermissionTo('manage inventory categories')) {
                         // Edit button
-                        $actions .= '<a href="' . route('inventory.categories.edit', $category->encoded_id) . '" class="btn btn-sm btn-outline-primary" title="Edit">
+                        $actions .= '<a href="' . route('inventory.categories.edit', $category->encoded_id) . '" class="btn btn-sm btn-outline-primary" title="Hariri">
                                     <i class="bx bx-edit"></i>
                                     </a>';
                         
                         // Delete button
                         $actions .= '<form method="POST" action="' . route('inventory.categories.destroy', $category->encoded_id) . '" class="d-inline">
                                     ' . csrf_field() . method_field('DELETE') . '
-                                    <button type="submit" class="btn btn-sm btn-outline-danger delete-category" data-name="' . $category->name . '" title="Delete">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger delete-category" data-name="' . $category->name . '" title="Futa">
                                         <i class="bx bx-trash"></i>
                                     </button>
                                     </form>';
@@ -69,7 +69,7 @@ class CategoryController extends Controller
                     return $actions;
                 })
                 ->editColumn('description', function ($category) {
-                    return $category->description ?? '<span class="text-muted">N/A</span>';
+                    return $category->description ?? '<span class="text-muted">—</span>';
                 })
                 ->editColumn('items_count', function ($category) {
                     $count = $category->items_count ?? 0;
@@ -145,7 +145,7 @@ class CategoryController extends Controller
         ]);
 
         return redirect()->route('inventory.categories.index')
-            ->with('success', 'Category created successfully.');
+            ->with('success', 'Kategoria imesajiliwa kikamilifu.');
     }
 
     public function edit(string $encodedId)
@@ -191,7 +191,7 @@ class CategoryController extends Controller
         ]);
 
         return redirect()->route('inventory.categories.index')
-            ->with('success', 'Category updated successfully.');
+            ->with('success', 'Kategoria imesasishwa kikamilifu.');
     }
 
     public function destroy(string $encodedId)
@@ -209,12 +209,12 @@ class CategoryController extends Controller
         
         // Check if category has any items
         if ($category->items()->exists()) {
-            return back()->with('error', 'Cannot delete category with existing items.');
+            return back()->with('error', 'Huwezi kufuta kategoria iliyo na bidhaa.');
         }
 
         $category->delete();
 
         return redirect()->route('inventory.categories.index')
-            ->with('success', 'Category deleted successfully.');
+            ->with('success', 'Kategoria imefutwa kikamilifu.');
     }
 }

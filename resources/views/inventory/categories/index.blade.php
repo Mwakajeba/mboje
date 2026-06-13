@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Inventory Categories')
+@section('title', 'Makundi')
 
 @push('styles')
 <style>
@@ -81,19 +81,19 @@
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Inventory', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
-            ['label' => 'Categories', 'url' => route('inventory.categories.index'), 'icon' => 'bx bx-category']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Usimamizi wa Hesabu', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
+            ['label' => 'Makundi', 'url' => route('inventory.categories.index'), 'icon' => 'bx bx-category']
         ]" />
 
         <div class="d-flex align-items-center justify-content-between mb-4">
             <div>
-                <h6 class="mb-0 text-uppercase">Inventory Categories</h6>
-                <p class="mb-0 text-muted">Manage your inventory categories</p>
+                <h6 class="mb-0 text-uppercase">MAKUNDI</h6>
+                <p class="mb-0 text-muted">Simamia makundi ya bidhaa</p>
             </div>
             @can('manage inventory categories')
             <a href="{{ route('inventory.categories.create') }}" class="btn btn-primary">
-                <i class="bx bx-plus me-1"></i>Add Category
+                <i class="bx bx-plus me-1"></i>Ongeza Kategoria
             </a>
             @endcan
         </div>
@@ -102,7 +102,7 @@
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="bx bx-check-circle me-2"></i>
                 {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Funga"></button>
             </div>
         @endif
 
@@ -110,7 +110,7 @@
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <i class="bx bx-error-circle me-2"></i>
                 {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Funga"></button>
             </div>
         @endif
 
@@ -120,13 +120,13 @@
                     <table id="categoriesTable" class="table table-striped table-bordered dt-responsive nowrap" style="border-collapse: collapse; border-spacing: 0; width: 100%;">
                         <thead>
                             <tr>
-                                <th>Code</th>
-                                <th>Name</th>
-                                <th>Description</th>
-                                <th>Items Count</th>
-                                <th>Status</th>
-                                <th>Created Date</th>
-                                <th>Actions</th>
+                                <th>Nambari</th>
+                                <th>Jina</th>
+                                <th>Maelezo</th>
+                                <th>Idadi ya Bidhaa</th>
+                                <th>Hali</th>
+                                <th>Tarehe ya Kusajili</th>
+                                <th>Vitendo</th>
                             </tr>
                         </thead>
                     </table>
@@ -178,20 +178,20 @@ $(document).ready(function() {
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         responsive: true,
         language: {
-            processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>',
-            emptyTable: '<div class="text-center p-4"><i class="bx bx-folder-open font-24 text-muted"></i><p class="text-muted mt-2">No categories found.</p></div>',
+            processing: '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Inapakia...</span></div>',
+            emptyTable: '<div class="text-center p-4"><i class="bx bx-folder-open font-24 text-muted"></i><p class="text-muted mt-2">Hakuna makundi yaliyopatikana.</p></div>',
             search: "",
-            searchPlaceholder: "Search categories...",
-            lengthMenu: "Show _MENU_ entries per page",
-            info: "Showing _START_ to _END_ of _TOTAL_ entries",
-            infoEmpty: "Showing 0 to 0 of 0 entries",
-            infoFiltered: "(filtered from _MAX_ total entries)",
-            zeroRecords: "No matching categories found",
+            searchPlaceholder: "Tafuta makundi...",
+            lengthMenu: "Onyesha _MENU_ kwa ukurasa",
+            info: "Inaonyesha _START_ hadi _END_ kati ya _TOTAL_",
+            infoEmpty: "Inaonyesha 0 hadi 0 kati ya 0",
+            infoFiltered: "(kuchujwa kutoka _MAX_ jumla)",
+            zeroRecords: "Hakuna makundi yanayolingana",
             paginate: {
-                first: "First",
-                last: "Last",
-                next: "Next",
-                previous: "Previous"
+                first: "Kwanza",
+                last: "Mwisho",
+                next: "Ijayo",
+                previous: "Iliyotangulia"
             }
         },
         dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
@@ -206,13 +206,14 @@ $(document).ready(function() {
         const categoryName = $(this).data('name');
         
         Swal.fire({
-            title: 'Are you sure?',
-            text: `You are about to delete the category "${categoryName}". This action cannot be undone!`,
+            title: 'Una uhakika?',
+            text: `Unakaribia kufuta kategoria "${categoryName}". Hatua hii haiwezi kutenduliwa!`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
             cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, delete it!'
+            confirmButtonText: 'Ndiyo, futa',
+            cancelButtonText: 'Ghairi'
         }).then((result) => {
             if (result.isConfirmed) {
                 form.submit();
