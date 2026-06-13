@@ -1,17 +1,17 @@
 @extends('layouts.main')
 
-@section('title', 'Customer Profile')
+@section('title', 'Wasifu wa Mteja')
 
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">
         <x-breadcrumbs-with-icons :links="[
-            ['label' => 'Dashboard', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
-            ['label' => 'Customers', 'url' => route('customers.index'), 'icon' => 'bx bx-group'],
-            ['label' => 'Customer', 'url' => '#', 'icon' => 'bx bx-user']
+            ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
+            ['label' => 'Wateja', 'url' => route('customers.index'), 'icon' => 'bx bx-group'],
+            ['label' => 'Wasifu wa Mteja', 'url' => '#', 'icon' => 'bx bx-user']
         ]" />
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="mb-0 text-uppercase">Customer Profile</h6>
+            <h6 class="mb-0 text-uppercase">Wasifu wa Mteja</h6>
         </div>
         <div class="row">
             <!-- Cash Deposit Balance -->
@@ -20,12 +20,12 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div>
-                                <p class="mb-0 text-secondary">Cash Deposit Balance</p>
+                                <p class="mb-0 text-secondary">Salio la Mkopo</p>
                                 <h4 class="my-1">
                                     {{ number_format($correctCashDepositBalance ?? $customer->cash_deposit_balance, 2) }}
                                 </h4>
                                 <p class="mb-0 font-13 text-success">
-                                    <i class="bx bxs-wallet align-middle"></i> Available
+                                    <i class="bx bxs-wallet align-middle"></i> Inapatikana
                                 </p>
                             </div>
                             <div class="widgets-icons bg-light-success text-success ms-auto">
@@ -58,13 +58,13 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div>
-                                <p class="mb-0 text-secondary">Account Balance</p>
+                                <p class="mb-0 text-secondary">Salio la Akaunti</p>
                                 <h4 class="my-1">
                                     {{ number_format($customer->account_balance, 2) }}
                                 </h4>
                                 <p class="mb-0 font-13 {{ $customer->account_balance >= 0 ? 'text-success' : 'text-danger' }}">
                                     <i class="bx {{ $customer->account_balance >= 0 ? 'bxs-up-arrow' : 'bxs-down-arrow' }} align-middle"></i> 
-                                    {{ $customer->account_balance >= 0 ? 'Credit' : 'Debit' }}
+                                    {{ $customer->account_balance >= 0 ? 'Mkopo' : 'Deni' }}
                                 </p>
                             </div>
                             <div class="widgets-icons {{ $customer->account_balance >= 0 ? 'bg-light-success text-success' : 'bg-light-danger text-danger' }} ms-auto">
@@ -81,12 +81,12 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div>
-                                <p class="mb-0 text-secondary">Credit Limit</p>
+                                <p class="mb-0 text-secondary">Kiwango cha Mkopo</p>
                                 <h4 class="my-1">
                                     {{ number_format($customer->credit_limit ?? 0, 2) }}
                                 </h4>
                                 <p class="mb-0 font-13 text-info">
-                                    <i class="bx bxs-credit-card align-middle"></i> Available
+                                    <i class="bx bxs-credit-card align-middle"></i> Inapatikana
                                 </p>
                             </div>
                             <div class="widgets-icons bg-light-info text-info ms-auto">
@@ -103,12 +103,12 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div>
-                                <p class="mb-0 text-secondary">Total Due Invoices</p>
+                                <p class="mb-0 text-secondary">Ankara Zisizolipwa</p>
                                 <h4 class="my-1">
                                     {{ number_format($customer->total_due_invoices, 2) }}
                                 </h4>
                                 <p class="mb-0 font-13 text-warning">
-                                    <i class="bx bxs-time-five align-middle"></i> Outstanding
+                                    <i class="bx bxs-time-five align-middle"></i> Bado
                                 </p>
                             </div>
                             <div class="widgets-icons bg-light-warning text-warning ms-auto">
@@ -127,10 +127,10 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div>
-                                <p class="mb-0 text-secondary">Total Orders</p>
+                                <p class="mb-0 text-secondary">Jumla ya Maagizo</p>
                                 <h4 class="my-1">{{ $customer->total_orders }}</h4>
                                 <p class="mb-0 font-13 text-primary">
-                                    <i class="bx bxs-shopping-bag align-middle"></i> Sales Orders
+                                    <i class="bx bxs-shopping-bag align-middle"></i> Maagizo ya Mauzo
                                 </p>
                             </div>
                             <div class="widgets-icons bg-light-primary text-primary ms-auto">
@@ -147,10 +147,10 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div>
-                                <p class="mb-0 text-secondary">Total Proformas</p>
+                                <p class="mb-0 text-secondary">Jumla ya Proforma</p>
                                 <h4 class="my-1">{{ $customer->total_proformas }}</h4>
                                 <p class="mb-0 font-13 text-secondary">
-                                    <i class="bx bxs-file align-middle"></i> Quotations
+                                    <i class="bx bxs-file align-middle"></i> Makadirio
                                 </p>
                             </div>
                             <div class="widgets-icons bg-light-secondary text-secondary ms-auto">
@@ -167,10 +167,10 @@
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div>
-                                <p class="mb-0 text-secondary">Total Invoices</p>
+                                <p class="mb-0 text-secondary">Jumla ya Ankara</p>
                                 <h4 class="my-1">{{ $customer->total_invoices }}</h4>
                                 <p class="mb-0 font-13 text-info">
-                                    <i class="bx bxs-receipt align-middle"></i> Generated
+                                    <i class="bx bxs-receipt align-middle"></i> Zilizotengenezwa
                                 </p>
                             </div>
                             <div class="widgets-icons bg-light-info text-info ms-auto">
@@ -200,7 +200,7 @@
                                     width="110" />
                             </div>
                             <h5 class="font-size-16 mb-1 text-truncate">{{ $customer->name }}</h5>
-                            <p class="text-muted text-truncate mb-3">{{ $customer->phone ?? 'No phone' }}</p>
+                            <p class="text-muted text-truncate mb-3">{{ $customer->phone ?? 'Hakuna simu' }}</p>
                         </div>
 
                         <hr class="my-4">
@@ -210,43 +210,43 @@
                                 <table class="table table-borderless mb-0">
                                     <tbody>
                                         <tr>
-                                            <th scope="row">Customer ID :</th>
+                                            <th scope="row">Nambari ya Mteja :</th>
                                             <td>{{ $customer->customerNo }}</td>
                                         </tr>
                                         <tr>
-                                            <th scope="row">Phone :</th>
-                                            <td>{{ $customer->phone }}</td>
+                                            <th scope="row">Simu :</th>
+                                            <td>{{ $customer->phone ?: '—' }}</td>
                                         </tr>
                                         <tr>
-                                            <th scope="row">Email :</th>
-                                            <td>{{ $customer->email ?: 'No email provided' }}</td>
+                                            <th scope="row">Barua pepe :</th>
+                                            <td>{{ $customer->email ?: 'Hakuna barua pepe' }}</td>
                                         </tr>
                                         <tr>
-                                            <th scope="row">Credit Limit :</th>
-                                            <td>{{ $customer->credit_limit ? number_format($customer->credit_limit, 2) : 'N/A' }}</td>
+                                            <th scope="row">Kiwango cha Mkopo :</th>
+                                            <td>{{ $customer->credit_limit ? number_format($customer->credit_limit, 2) : '—' }}</td>
                                         </tr>
                                         <tr>
-                                            <th scope="row">Branch :</th>
-                                            <td>{{ $customer->branch->name ?? 'N/A' }}</td>
+                                            <th scope="row">Tawi :</th>
+                                            <td>{{ $customer->branch->name ?? '—' }}</td>
                                         </tr>
                                         <tr>
-                                            <th scope="row">Company :</th>
-                                            <td>{{ $customer->company->name ?? 'N/A' }}</td>
+                                            <th scope="row">Kampuni :</th>
+                                            <td>{{ $customer->company->name ?? '—' }}</td>
                                         </tr>
                                         <tr>
-                                            <th scope="row">Description :</th>
-                                            <td>{{ $customer->description ?? 'N/A' }}</td>
+                                            <th scope="row">Maelezo :</th>
+                                            <td>{{ $customer->description ?? '—' }}</td>
                                         </tr>
                                         <tr>
-                                            <th scope="row">Registrar :</th>
-                                            <td>{{ $customer->user->name ?? 'N/A' }}</td>
+                                            <th scope="row">Msajili :</th>
+                                            <td>{{ $customer->user->name ?? '—' }}</td>
                                         </tr>
                                         <tr>
-                                            <th scope="row">Joined :</th>
+                                            <th scope="row">Alijiandikisha :</th>
                                             <td>{{ $customer->created_at->format('M d, Y') }}</td>
                                         </tr>
                                         <tr>
-                                            <th scope="row">Last Updated :</th>
+                                            <th scope="row">Imesasishwa :</th>
                                             <td>{{ $customer->updated_at->format('M d, Y') }}</td>
                                         </tr>
                                     </tbody>
@@ -258,19 +258,19 @@
                         <!-- Action Buttons -->
                         <div class="mt-4 d-flex flex-wrap gap-2">
                             <a href="{{ route('customers.edit', Hashids::encode($customer->id)) }}" class="btn btn-sm btn-warning flex-fill">
-                                <i class="bx bx-edit"></i> Edit
+                                <i class="bx bx-edit"></i> Badili
                             </a>
                             <a href="{{ route('sales.invoices.create', ['customer_id' => Hashids::encode($customer->id)]) }}" class="btn btn-sm btn-primary flex-fill">
-                                <i class="bx bx-plus"></i> Create Invoice
+                                <i class="bx bx-plus"></i> Tengeneza Ankara
                             </a>
                             <button type="button" class="btn btn-sm btn-info flex-fill" data-bs-toggle="modal" data-bs-target="#sendCustomerSmsModal">
-                                <i class="bx bx-envelope"></i> Send SMS
+                                <i class="bx bx-envelope"></i> Tuma SMS
                             </button>
                             <form action="{{ route('customers.destroy', Hashids::encode($customer->id)) }}" method="POST" class="flex-fill delete-form" style="display:inline;">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="btn btn-sm btn-danger w-100" data-name="{{ $customer->name }}">
-                                    <i class="bx bx-trash"></i> Delete
+                                    <i class="bx bx-trash"></i> Futa
                                 </button>
                             </form>
                         </div>
@@ -282,7 +282,7 @@
                 @if($customer->company_name || $customer->company_registration_number || $customer->tin_number || $customer->vat_number)
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title mb-4">Company Information</h5>
+                        <h5 class="card-title mb-4">Taarifa za Kampuni</h5>
                         <hr class="my-4">
 
                         <div class="table-responsive">
@@ -290,25 +290,25 @@
                                 <tbody>
                                     @if($customer->company_name)
                                     <tr>
-                                        <th scope="row">Company Name :</th>
+                                        <th scope="row">Jina la Kampuni :</th>
                                         <td>{{ $customer->company_name }}</td>
                                     </tr>
                                     @endif
                                     @if($customer->company_registration_number)
                                     <tr>
-                                        <th scope="row">Registration Number :</th>
+                                        <th scope="row">Nambari ya Usajili :</th>
                                         <td>{{ $customer->company_registration_number }}</td>
                                     </tr>
                                     @endif
                                     @if($customer->tin_number)
                                     <tr>
-                                        <th scope="row">TIN Number :</th>
+                                        <th scope="row">Nambari ya TIN :</th>
                                         <td>{{ $customer->tin_number }}</td>
                                     </tr>
                                     @endif
                                     @if($customer->vat_number)
                                     <tr>
-                                        <th scope="row">VAT Number :</th>
+                                        <th scope="row">Nambari ya VAT :</th>
                                         <td>{{ $customer->vat_number }}</td>
                                     </tr>
                                     @endif
@@ -321,17 +321,17 @@
                 @endif
             </div>
 
-            <!-- Cash Deposits and Unpaid Invoices - Right Side -->
+            <!-- Mikopo na Uhifadhi wa Zao - Upande wa Kulia -->
             <div class="col-xl-8">
-                <!-- Cash Deposits Card -->
+                <!-- Mikopo ya Mteja -->
                 <div class="card mb-4">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h5 class="card-title mb-0">Cash Deposits</h5>
+                            <h5 class="card-title mb-0">Mikopo ya Mteja</h5>
                             <div class="btn-group">
                                 @can('create cash deposit')
                                 <a href="{{ route('cash_collaterals.create') }}?customer_id={{ Hashids::encode($customer->id) }}" class="btn btn-sm btn-primary">
-                                    <i class="bx bx-plus"></i> New Deposit Account
+                                    <i class="bx bx-plus"></i> Weka Akaunti Mpya
                                 </a>
                                 @endcan
                             </div>
@@ -342,10 +342,10 @@
                             <table class="table table-bordered dt-responsive nowrap table-striped" id="cashDepositsTable">
                                 <thead>
                                     <tr>
-                                        <th>Deposit Type</th>
-                                        <th>Current Balance</th>
-                                        <th>Date Created</th>
-                                        <th class="text-center">Actions</th>
+                                        <th>Aina ya Akaunti</th>
+                                        <th>Salio la Sasa</th>
+                                        <th>Tarehe ya Kusajiliwa</th>
+                                        <th class="text-center">Vitendo</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -355,27 +355,30 @@
                     </div>
                 </div>
 
-                <!-- Customer Unpaid Invoices Card -->
+                <!-- Zao Aliyohifadhi -->
                 <div class="card">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="font-size-16 text-truncate mb-0">Customer Unpaid Invoices</h5>
-                            <a href="{{ route('sales.invoices.create', ['customer_id' => Hashids::encode($customer->id)]) }}" class="btn btn-sm btn-primary">
-                                <i class="bx bx-plus"></i> Create New Invoice
-                            </a>
+                            <h5 class="font-size-16 text-truncate mb-0">Zao Aliyohifadhi</h5>
+                            <div class="btn-group">
+                                <a href="{{ route('inventory.customer-storage.history', ['customer_id' => $customer->id]) }}" class="btn btn-sm btn-outline-info">
+                                    <i class="bx bx-history"></i> Historia ya Uletaji
+                                </a>
+                                <a href="{{ route('inventory.customer-storage.index') }}" class="btn btn-sm btn-primary">
+                                    <i class="bx bx-plus"></i> Pokea Zao la Mteja
+                                </a>
+                            </div>
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped" id="unpaidInvoicesTable">
+                            <table class="table table-bordered table-striped" id="customerStorageTable">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th>#</th>
-                                        <th>Invoice No</th>
-                                        <th>Date</th>
-                                        <th>Total Amount</th>
-                                        <th>Balance Due</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
+                                        <th>Zao</th>
+                                        <th>Nambari</th>
+                                        <th>Idadi</th>
+                                        <th>Kifurushi</th>
+                                        <th class="text-center">Vitendo</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -392,30 +395,30 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="sendCustomerSmsModalLabel">Send SMS to {{ $customer->name }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <h5 class="modal-title" id="sendCustomerSmsModalLabel">Tuma SMS kwa {{ $customer->name }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Funga"></button>
                     </div>
                     <form id="sendCustomerSmsForm" action="{{ route('customers.send-sms', Hashids::encode($customer->id)) }}" method="POST">
                         @csrf
                         <div class="modal-body">
                             <div class="mb-3">
-                                <label for="customer_message_title" class="form-label">Message Title</label>
+                                <label for="customer_message_title" class="form-label">Kichwa cha Ujumbe</label>
                                 <select class="form-select" id="customer_message_title" name="message_title" required>
-                                    <option value="">Select a title...</option>
-                                    <option value="Payment Reminder">Payment Reminder</option>
-                                    <option value="Custom">Custom Title</option>
+                                    <option value="">Chagua kichwa...</option>
+                                    <option value="Payment Reminder">Ukumbusho wa Malipo</option>
+                                    <option value="Custom">Kichwa Maalum</option>
                                 </select>
                             </div>
                             <div class="mb-3" id="customer_message_content_wrapper">
-                                <label for="customer_message_content" class="form-label">Message Content</label>
+                                <label for="customer_message_content" class="form-label">Maudhui ya Ujumbe</label>
                                 <textarea class="form-control" id="customer_message_content" name="bulk_message_content" rows="4" maxlength="500"></textarea>
-                                <div class="form-text"><span id="customer_character_count">0</span>/500 characters</div>
+                                <div class="form-text"><span id="customer_character_count">0</span>/500 herufi</div>
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ghairi</button>
                             <button type="submit" class="btn btn-primary" id="sendCustomerSmsBtn">
-                                <i class="bx bx-send me-1"></i> Send SMS
+                                <i class="bx bx-send me-1"></i> Tuma SMS
                             </button>
                         </div>
                     </form>
@@ -455,66 +458,64 @@
                     ],
                     responsive: true,
                     pageLength: 10,
-                    lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
-                    order: [[2, 'desc']], // Sort by date descending
+                    lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "Zote"]],
+                    order: [[2, 'desc']],
                     language: {
-                        search: "Search deposit accounts:",
-                        lengthMenu: "Show _MENU_ accounts per page",
-                        info: "Showing _START_ to _END_ of _TOTAL_ deposit accounts",
-                        infoEmpty: "Showing 0 to 0 of 0 deposit accounts",
-                        infoFiltered: "(filtered from _MAX_ total accounts)",
-                        zeroRecords: "No deposit accounts found",
-                        processing: "Loading deposit accounts..."
+                        search: "Tafuta akaunti:",
+                        lengthMenu: "Onyesha _MENU_ akaunti kwa ukurasa",
+                        info: "Inaonyesha _START_ hadi _END_ kati ya _TOTAL_ akaunti",
+                        infoEmpty: "Hakuna akaunti",
+                        infoFiltered: "(kuchujwa kutoka _MAX_ jumla)",
+                        zeroRecords: "Hakuna akaunti za mikopo",
+                        processing: "Inapakia akaunti..."
                     }
                 });
 
-                // Unpaid Invoices Table
-                $('#unpaidInvoicesTable').DataTable({
+                // Zao Aliyohifadhi
+                $('#customerStorageTable').DataTable({
                     processing: true,
                     serverSide: true,
                     ajax: {
-                        url: '{{ route("customers.invoices.datatable", Hashids::encode($customer->id)) }}',
+                        url: '{{ route("customers.storage.datatable", Hashids::encode($customer->id)) }}',
                         type: 'GET'
                     },
                     columns: [
-                        {data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false},
-                        {data: 'invoice_number', name: 'invoice_number'},
-                        {data: 'formatted_date', name: 'invoice_date'},
-                        {data: 'formatted_total', name: 'total_amount', className: 'text-end'},
-                        {data: 'formatted_balance', name: 'balance_due', className: 'text-end'},
-                        {data: 'status_badge', name: 'status'},
-                        {data: 'actions', name: 'actions', orderable: false, searchable: false}
+                        {data: 'item_name', name: 'item_name'},
+                        {data: 'item_code', name: 'item_code'},
+                        {data: 'quantity_display', name: 'quantity_on_hand', orderable: false, searchable: false},
+                        {data: 'package_display', name: 'package_display', orderable: false, searchable: false},
+                        {data: 'history_link', name: 'history_link', orderable: false, searchable: false, className: 'text-center'}
                     ],
                     responsive: true,
                     pageLength: 10,
-                    lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "All"]],
-                    order: [[2, 'desc']], // Sort by date descending
+                    lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "Zote"]],
+                    order: [[0, 'asc']],
                     language: {
-                        search: "Search invoices:",
-                        lengthMenu: "Show _MENU_ invoices per page",
-                        info: "Showing _START_ to _END_ of _TOTAL_ invoices",
-                        infoEmpty: "Showing 0 to 0 of 0 invoices",
-                        infoFiltered: "(filtered from _MAX_ total invoices)",
-                        zeroRecords: "No invoices found",
-                        processing: "Loading invoices..."
+                        search: "Tafuta zao:",
+                        lengthMenu: "Onyesha _MENU_ kwa ukurasa",
+                        info: "Inaonyesha _START_ hadi _END_ kati ya _TOTAL_",
+                        infoEmpty: "Hakuna zao lililohifadhiwa",
+                        infoFiltered: "(kuchujwa kutoka _MAX_ jumla)",
+                        zeroRecords: "Mteja hana zao lililohifadhiwa",
+                        processing: "Inapakia..."
                     }
                 });
 
-                // Delete confirmation
+                // Uthibitisho wa kufuta
                 $('.delete-form').on('submit', function(e) {
                     e.preventDefault();
                     const form = $(this);
                     const customerName = form.find('button').data('name');
                     
                     Swal.fire({
-                        title: 'Are you sure?',
-                        text: `Are you sure you want to delete customer "${customerName}"? This action cannot be undone.`,
+                        title: 'Una uhakika?',
+                        text: `Unataka kufuta mteja "${customerName}"? Hatua hii haiwezi kutenduliwa.`,
                         icon: 'warning',
                         showCancelButton: true,
                         confirmButtonColor: '#d33',
                         cancelButtonColor: '#3085d6',
-                        confirmButtonText: 'Yes, delete it!',
-                        cancelButtonText: 'Cancel'
+                        confirmButtonText: 'Ndiyo, futa!',
+                        cancelButtonText: 'Ghairi'
                     }).then((result) => {
                         if (result.isConfirmed) {
                             $.ajax({
@@ -525,8 +526,8 @@
                                 success: function(response) {
                                     if (response.success) {
                                         Swal.fire({
-                                            title: 'Deleted!',
-                                            text: response.message || 'Customer has been deleted successfully.',
+                                            title: 'Imefutwa!',
+                                            text: response.message || 'Mteja amefutwa kikamilifu.',
                                             icon: 'success',
                                             timer: 2000,
                                             showConfirmButton: false
@@ -535,14 +536,14 @@
                                         });
                                     } else {
                                         Swal.fire({
-                                            title: 'Error!',
-                                            text: response.message || 'Failed to delete customer.',
+                                            title: 'Kosa!',
+                                            text: response.message || 'Imeshindwa kufuta mteja.',
                                             icon: 'error'
                                         });
                                     }
                                 },
                                 error: function(xhr) {
-                                    let errorMessage = 'Failed to delete customer.';
+                                    let errorMessage = 'Imeshindwa kufuta mteja.';
                                     if (xhr.responseJSON && xhr.responseJSON.message) {
                                         errorMessage = xhr.responseJSON.message;
                                     } else if (xhr.responseText) {
@@ -550,7 +551,7 @@
                                     }
                                     
                                     Swal.fire({
-                                        title: 'Error!',
+                                        title: 'Kosa!',
                                         text: errorMessage,
                                         icon: 'error'
                                     });
@@ -571,9 +572,8 @@
             }
             function toggleContent(){
                 if (titleEl.value === 'Payment Reminder') {
-                    // Prefill a template; hide the content box
                     if (!contentEl.value || contentEl.getAttribute('data-autofilled') !== 'yes') {
-                        contentEl.value = 'Dear Customer, this is a friendly reminder to clear your outstanding balance. Please make your payment at your earliest convenience. Thank you.';
+                        contentEl.value = 'Mpendwa Mteja, tunakukumbusha kulipa deni lako lililobaki. Tafadhali fanya malipo mapema iwezekanavyo. Asante.';
                         contentEl.setAttribute('data-autofilled','yes');
                     }
                     wrapperEl.style.display = 'none';
@@ -591,21 +591,21 @@
                 e.preventDefault();
                 const btn = document.getElementById('sendCustomerSmsBtn');
                 const original = btn.innerHTML;
-                btn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Sending...';
+                btn.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i>Inatuma...';
                 btn.disabled = true;
                 const data = new FormData(form);
                 fetch(form.action, { method:'POST', body:data, headers:{ 'X-Requested-With':'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content } })
                     .then(r => r.json())
                     .then(resp => {
                         if (resp.success) {
-                            Swal.fire({ icon:'success', title:'SMS Sent', timer:2000, showConfirmButton:false });
+                            Swal.fire({ icon:'success', title:'SMS Imetumwa', timer:2000, showConfirmButton:false });
                             const m = bootstrap.Modal.getInstance(document.getElementById('sendCustomerSmsModal'));
                             m && m.hide();
                         } else {
-                            Swal.fire({ icon:'error', title:'Failed', text: resp.message || 'Failed to send SMS' });
+                            Swal.fire({ icon:'error', title:'Imeshindwa', text: resp.message || 'Imeshindwa kutuma SMS' });
                         }
                     })
-                    .catch(() => Swal.fire({ icon:'error', title:'Network Error', text:'Please try again.' }))
+                    .catch(() => Swal.fire({ icon:'error', title:'Kosa la Mtandao', text:'Tafadhali jaribu tena.' }))
                     .finally(() => { btn.innerHTML = original; btn.disabled = false; });
             });
         })();

@@ -1591,7 +1591,7 @@ Route::middleware(['auth', 'require.branch'])->group(function () {
 
     // Customer DataTable routes
     Route::get('customers/{encodedId}/deposits-datatable', [CustomerController::class, 'cashDepositsDataTable'])->name('customers.deposits.datatable');
-    Route::get('customers/{encodedId}/invoices-datatable', [CustomerController::class, 'unpaidInvoicesDataTable'])->name('customers.invoices.datatable');
+    Route::get('customers/{encodedId}/storage-datatable', [CustomerController::class, 'customerStorageDataTable'])->name('customers.storage.datatable');
     Route::get('api/customers/{id}/cash-deposits', [CustomerController::class, 'getCashDeposits'])->name('api.customers.cash-deposits');
 });
 

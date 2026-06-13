@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Helpers\SmsHelper;
 use App\Models\BankAccount;
 use App\Models\CashDepositAccount;
-use App\Models\Customer;
+use App\Models\Inventory\CustomerStorageBalance;
+use App\Models\Inventory\Item;
 use App\Models\Branch;
 use App\Models\Company;
 
@@ -519,7 +520,7 @@ class CustomerController extends Controller
 
         return datatables()->of($deposits)
             ->addColumn('type_name', function ($deposit) {
-                return $deposit->type->name ?? 'N/A';
+                return $deposit->type->name ?? '—';
             })
             ->addColumn('formatted_amount', function ($deposit) {
                 // Calculate actual current balance instead of using static amount field
@@ -556,27 +557,24 @@ class CustomerController extends Controller
                 
                 // View button
                 if (auth()->user()->can('view cash deposits')) {
-                    $actions .= '<a href="' . route('cash_collaterals.show', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-info" title="View Details">
+                    $actions .= '<a href="' . route('cash_collaterals.show', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-info" title="Angalia">
                         <i class="bx bx-show"></i>
                     </a>';
                 }
                 
-                // Deposit button  
-                if (auth()->user()->can('deposit cash deposit')) {
-                    $actions .= '<a href="' . route('cash_collaterals.deposit', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-success" title="Make Deposit">
+                if (auth()->user()->can('deposit cash collateral')) {
+                    $actions .= '<a href="' . route('cash_collaterals.deposit', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-success" title="Toa Mkopo wa Mtaji">
                         <i class="bx bx-plus-circle"></i>
                     </a>';
                 }
                 
-                // Withdraw button
-                if (auth()->user()->can('withdraw cash deposit')) {
-                    $actions .= '<a href="' . route('cash_collaterals.withdraw', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-warning" title="Make Withdrawal">
+                if (auth()->user()->can('withdraw cash collateral')) {
+                    $actions .= '<a href="' . route('cash_collaterals.withdraw', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-warning" title="Lipa Mkopo kwa Taslim">
                         <i class="bx bx-minus-circle"></i>
                     </a>';
                 }
                 
-                // Print statement button
-                $actions .= '<a href="' . route('cash_collaterals.statement-pdf', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-primary" title="Print Statement" target="_blank">
+                $actions .= '<a href="' . route('cash_collaterals.statement-pdf', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-primary" title="Chapisha Taarifa" target="_blank">
                     <i class="bx bx-printer"></i>
                 </a>';
                 
@@ -598,47 +596,76 @@ class CustomerController extends Controller
         ]);
     }
 
-    // DataTable for customer unpaid invoices
-    public function unpaidInvoicesDataTable($encodedId)
+    // DataTable for customer stored crops (uhifadhi wa wateja)
+    public function customerStorageDataTable($encodedId)
     {
         $id = Hashids::decode($encodedId)[0] ?? null;
 
-        if (!$id) {
+        if (! $id) {
             abort(404);
         }
 
-        $customer = Customer::findOrFail($id);
-        $invoices = $customer->salesInvoices()->where('status', '!=', 'paid');
+        $user = auth()->user();
+        $branchId = session('branch_id') ?: $user->branch_id;
 
-        return datatables()->of($invoices)
-            ->addIndexColumn()
-            ->addColumn('invoice_number', function ($invoice) {
-                return $invoice->invoice_number;
+        $query = CustomerStorageBalance::query()
+            ->with(['item'])
+            ->where('company_id', $user->company_id)
+            ->where('customer_id', $id)
+            ->where('quantity_on_hand', '>', 0)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
+
+        return datatables()->of($query)
+            ->addColumn('item_name', fn ($row) => $row->item->name ?? '—')
+            ->addColumn('item_code', fn ($row) => $row->item->code ?? '—')
+            ->addColumn('quantity_display', fn ($row) => $this->formatStorageQuantity((float) $row->quantity_on_hand, $row->item))
+            ->addColumn('package_display', fn ($row) => $this->formatStoragePackage((float) $row->quantity_on_hand, $row->item))
+            ->addColumn('history_link', function ($row) use ($id) {
+                $url = route('inventory.customer-storage.history', ['customer_id' => $id]);
+
+                return '<a href="' . e($url) . '" class="btn btn-sm btn-outline-info" title="Historia ya uletaji">'
+                    . '<i class="bx bx-history me-1"></i> Historia</a>';
             })
-            ->addColumn('formatted_date', function ($invoice) {
-                return format_date($invoice->invoice_date, 'M d, Y');
+            ->filterColumn('item_name', function ($query, $keyword) {
+                $query->whereHas('item', fn ($q) => $q->where('name', 'like', '%' . $keyword . '%'));
             })
-            ->addColumn('formatted_total', function ($invoice) {
-                return number_format($invoice->total_amount, 2);
-            })
-            ->addColumn('formatted_balance', function ($invoice) {
-                return number_format($invoice->balance_due, 2);
-            })
-            ->addColumn('status_badge', function ($invoice) {
-                $statusClass = $invoice->status == 'paid' ? 'success' : ($invoice->status == 'partial' ? 'warning' : 'danger');
-                return '<span class="badge bg-' . $statusClass . '">' . ucfirst($invoice->status) . '</span>';
-            })
-            ->addColumn('actions', function ($invoice) {
-                $actions = '<a href="' . route('sales.invoices.show', Hashids::encode($invoice->id)) . '" class="btn btn-sm btn-info me-1">View</a>';
-                
-                if ($invoice->balance_due > 0) {
-                    $actions .= '<a href="' . route('sales.invoices.payment-form', Hashids::encode($invoice->id)) . '" class="btn btn-sm btn-success me-1">Record Payment</a>';
-                }
-                
-                return $actions;
-            })
-            ->rawColumns(['status_badge', 'actions'])
+            ->rawColumns(['history_link'])
             ->make(true);
+    }
+
+    private function formatStorageQuantity(float $quantity, ?Item $item): string
+    {
+        $unit = $item?->unit_of_measure;
+        $formattedQty = $this->formatStorageNumber($quantity);
+
+        return $unit ? $formattedQty . ' ' . $unit : $formattedQty;
+    }
+
+    private function formatStoragePackage(float $quantity, ?Item $item): string
+    {
+        if (! $item) {
+            return '—';
+        }
+
+        $packageQuantity = (float) ($item->package_quantity ?? 0);
+        $packageName = trim((string) ($item->package_name ?? ''));
+
+        if ($packageQuantity <= 0 || $packageName === '') {
+            return '—';
+        }
+
+        $count = $quantity / $packageQuantity;
+
+        return $this->formatStorageNumber($count) . ' ' . $packageName;
+    }
+
+    private function formatStorageNumber(float $value): string
+    {
+        if (fmod($value, 1.0) === 0.0) {
+            return number_format($value, 0, '.', ',');
+        }
+
+        return rtrim(rtrim(number_format($value, 2, '.', ','), '0'), '.');
     }
 
     // Show form to edit a customer
