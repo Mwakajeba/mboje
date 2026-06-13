@@ -1071,11 +1071,11 @@ Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'company.sco
     Route::delete('/categories/{encodedId}', [CategoryController::class, 'destroy'])->name('categories.destroy');
 
     // Customer product storage (uhifadhi wa bidhaa za wateja)
+    Route::get('/customer-storage/history', [CustomerStorageController::class, 'history'])->name('customer-storage.history');
     Route::get('/customer-storage', [CustomerStorageController::class, 'index'])->name('customer-storage.index');
     Route::post('/customer-storage', [CustomerStorageController::class, 'store'])->name('customer-storage.store');
     Route::post('/customer-storage/quick-customer', [CustomerStorageController::class, 'quickStoreCustomer'])->name('customer-storage.quick-customer');
     Route::post('/customer-storage/quick-item', [CustomerStorageController::class, 'quickStoreItem'])->name('customer-storage.quick-item');
-    Route::get('/customer-storage/history', [CustomerStorageController::class, 'history'])->name('customer-storage.history');
 
     // Stock Movements
     Route::get('/movements', [MovementController::class, 'index'])->name('movements.index');

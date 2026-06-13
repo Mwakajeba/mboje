@@ -245,6 +245,7 @@ class CustomerStorageController extends Controller
     {
         $user = Auth::user();
         $branchId = $this->currentBranchId();
+        $companyId = $user->company_id;
 
         $validated = $request->validate([
             'customer_id' => 'required|integer',
@@ -252,40 +253,78 @@ class CustomerStorageController extends Controller
             'quantity' => 'required|integer|min:1',
             'received_date' => 'required|date',
             'notes' => 'nullable|string|max:1000',
+        ], [
+            'customer_id.required' => 'Chagua mteja.',
+            'inventory_item_id.required' => 'Chagua zao.',
+            'quantity.required' => 'Weka idadi.',
+            'quantity.min' => 'Idadi iwe angalau 1.',
+            'received_date.required' => 'Weka tarehe aliyoleta zao.',
         ]);
 
-        $customer = Customer::where('company_id', $user->company_id)
+        $customer = Customer::where('company_id', $companyId)
             ->where('branch_id', $branchId)
-            ->findOrFail($validated['customer_id']);
+            ->where('id', $validated['customer_id'])
+            ->first();
+
+        if (! $customer) {
+            return back()
+                ->withInput()
+                ->withErrors(['customer_id' => 'Mteja hajapatikana katika tawi hili. Chagua mteja mwingine au ongeza mteja mpya.']);
+        }
 
         $item = $this->itemsForCurrentBranch()
-            ->findOrFail($validated['inventory_item_id']);
+            ->where('id', $validated['inventory_item_id'])
+            ->first();
 
-        DB::transaction(function () use ($user, $branchId, $customer, $item, $validated) {
-            CustomerStorageReceipt::create([
-                'company_id' => $user->company_id,
+        if (! $item) {
+            return back()
+                ->withInput()
+                ->withErrors(['inventory_item_id' => 'Zao halipatikani katika tawi hili. Chagua zao lingine au ongeza zao jipya.']);
+        }
+
+        if (! Schema::hasTable('customer_storage_receipts') || ! Schema::hasTable('customer_storage_balances')) {
+            return back()
+                ->withInput()
+                ->withErrors(['quantity' => 'Jedwali la uhifadhi wa wateja halijasanidiwa. Wasiliana na msimamizi wa mfumo kuendesha migrations.']);
+        }
+
+        try {
+            DB::transaction(function () use ($user, $branchId, $customer, $item, $validated) {
+                CustomerStorageReceipt::create([
+                    'company_id' => $user->company_id,
+                    'branch_id' => $branchId,
+                    'customer_id' => $customer->id,
+                    'inventory_item_id' => $item->id,
+                    'quantity' => $validated['quantity'],
+                    'received_date' => $validated['received_date'],
+                    'notes' => $validated['notes'] ?? null,
+                    'created_by' => $user->id,
+                ]);
+
+                $balance = CustomerStorageBalance::firstOrNew([
+                    'company_id' => $user->company_id,
+                    'branch_id' => $branchId,
+                    'customer_id' => $customer->id,
+                    'inventory_item_id' => $item->id,
+                ]);
+
+                $balance->quantity_on_hand = (float) ($balance->quantity_on_hand ?? 0) + (float) $validated['quantity'];
+                $balance->save();
+            });
+        } catch (\Throwable $e) {
+            \Log::error('Customer storage store failed: ' . $e->getMessage(), [
+                'customer_id' => $validated['customer_id'],
+                'inventory_item_id' => $validated['inventory_item_id'],
                 'branch_id' => $branchId,
-                'customer_id' => $customer->id,
-                'inventory_item_id' => $item->id,
-                'quantity' => $validated['quantity'],
-                'received_date' => $validated['received_date'],
-                'notes' => $validated['notes'] ?? null,
-                'created_by' => $user->id,
             ]);
 
-            $balance = CustomerStorageBalance::firstOrNew([
-                'company_id' => $user->company_id,
-                'branch_id' => $branchId,
-                'customer_id' => $customer->id,
-                'inventory_item_id' => $item->id,
-            ]);
-
-            $balance->quantity_on_hand = (float) ($balance->quantity_on_hand ?? 0) + (float) $validated['quantity'];
-            $balance->save();
-        });
+            return back()
+                ->withInput()
+                ->withErrors(['quantity' => 'Imeshindikana kuhifadhi zao. Jaribu tena au wasiliana na msimamizi wa mfumo.']);
+        }
 
         return redirect()
-            ->route('inventory.customer-storage.index')
+            ->to(route('inventory.customer-storage.index'))
             ->with('success', 'Zao la mteja ' . $customer->name . ' limepokelewa kikamilifu (idadi: ' . (int) $validated['quantity'] . ').');
     }
 
