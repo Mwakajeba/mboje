@@ -1,5 +1,7 @@
 @extends('layouts.main')
 
+@section('title', 'Hariri Bidhaa')
+
 @section('content')
 <div class="page-wrapper">
     <div class="page-content">
@@ -13,24 +15,32 @@
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header">
-                        <div class="d-flex align-items-center">
-                            <div class="flex-grow-1">
-                                <h5 class="card-title mb-0">Hariri Bidhaa - {{ $item->name }}</h5>
-                            </div>
-                        </div>
-                    </div>
                     <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="mb-0">Hariri Bidhaa — {{ $item->name }}</h4>
+                            <a href="{{ route('inventory.items.index') }}" class="btn btn-secondary">
+                                <i class="bx bx-arrow-back me-1"></i> Rudi kwa Bidhaa
+                            </a>
+                        </div>
+
+                        @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bx bx-error-circle me-2"></i>
+                            {{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        @endif
+
                         <form action="{{ route('inventory.items.update', $item->hash_id) }}" method="POST">
                             @csrf
                             @method('PUT')
-                            
+
                             @include('inventory.items.form')
 
                             <div class="row mt-4">
                                 <div class="col-12">
                                     <button type="submit" class="btn btn-primary">
-                                        <i class="bx bx-save me-1"></i> Hifadhi Mabadiliko
+                                        <i class="bx bx-save me-1"></i> Sasisha Bidhaa
                                     </button>
                                     <a href="{{ route('inventory.items.index') }}" class="btn btn-secondary ms-2">
                                         <i class="bx bx-x me-1"></i> Ghairi

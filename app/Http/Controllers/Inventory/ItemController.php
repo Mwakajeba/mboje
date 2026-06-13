@@ -446,86 +446,24 @@ class ItemController extends Controller
     {
         $decoded = Hashids::decode($encodedId);
         $itemId = !empty($decoded) ? $decoded[0] : null;
-        
+
         if (!$itemId) {
             return redirect()->route('inventory.items.index')
-                ->with('error', 'Invalid item ID');
+                ->with('error', 'Nambari ya bidhaa si sahihi.');
         }
 
         $item = Item::findOrFail($itemId);
         $this->authorize('update', $item);
-        
+
         $categories = Category::where('company_id', Auth::user()->company_id)->get();
-        $locations = InventoryLocation::where('company_id', Auth::user()->company_id)->with('branch')->orderBy('name')->get();
-        
-        // Get accounts for dropdowns based on account classes with company filtering
-        $companyId = Auth::user()->company_id;
-        
-        $inventoryAccounts = ChartAccount::whereHas('accountClassGroup', function ($query) use ($companyId) {
-            $query->where('company_id', $companyId);
-        })->whereHas('accountClassGroup.accountClass', function ($query) {
-            $query->where('name', 'Assets');
-        })->get();
-
-        $salesAccounts = ChartAccount::whereHas('accountClassGroup', function ($query) use ($companyId) {
-            $query->where('company_id', $companyId);
-        })->whereHas('accountClassGroup.accountClass', function ($query) {
-            $query->whereIn('name', ['Revenue', 'Income']);
-        })->get();
-
-        $costAccounts = ChartAccount::whereHas('accountClassGroup', function ($query) use ($companyId) {
-            $query->where('company_id', $companyId);
-        })->whereHas('accountClassGroup.accountClass', function ($query) {
-            $query->where('name', 'Expenses');
-        })->get();
-
-        $vatAccounts = ChartAccount::whereHas('accountClassGroup', function ($query) use ($companyId) {
-            $query->where('company_id', $companyId);
-        })->whereHas('accountClassGroup.accountClass', function ($query) {
-            $query->whereIn('name', ['Liabilities']);
-        })->get();
-
-        $withholdingTaxAccounts = ChartAccount::whereHas('accountClassGroup', function ($query) use ($companyId) {
-            $query->where('company_id', $companyId);
-        })->whereHas('accountClassGroup.accountClass', function ($query) {
-            $query->whereIn('name', ['Liabilities']);
-        })->get();
-
-        $discountAccounts = ChartAccount::whereHas('accountClassGroup', function ($query) use ($companyId) {
-            $query->where('company_id', $companyId);
-        })->whereHas('accountClassGroup.accountClass', function ($query) {
-            $query->whereIn('name', ['Expenses']);
-        })->get();
-
-        $withholdingTaxExpenseAccounts = ChartAccount::whereHas('accountClassGroup', function ($query) use ($companyId) {
-            $query->where('company_id', $companyId);
-        })->whereHas('accountClassGroup.accountClass', function ($query) {
-            $query->whereIn('name', ['Expenses']);
-        })->get();
-
-        $purchasePayableAccounts = ChartAccount::whereHas('accountClassGroup', function ($query) use ($companyId) {
-            $query->where('company_id', $companyId);
-        })->whereHas('accountClassGroup.accountClass', function ($query) {
-            $query->whereIn('name', ['Liabilities']);
-        })->get();
-
-        $discountIncomeAccounts = ChartAccount::whereHas('accountClassGroup', function ($query) use ($companyId) {
-            $query->where('company_id', $companyId);
-        })->whereHas('accountClassGroup.accountClass', function ($query) {
-            $query->whereIn('name', ['Revenue', 'Income']);
-        })->get();
-
-        $branches = Branch::where('company_id', $companyId)->active()->orderBy('name')->get();
-        $assignableBranches = Branch::where('company_id', $companyId)
+        $assignableBranches = Branch::where('company_id', Auth::user()->company_id)
             ->whereIn('id', Auth::user()->permittedBranchIds())
             ->active()
             ->orderBy('name')
             ->get();
         $item->load('visibilityBranches');
-        $branchPricesByBranch = $item->branchPrices()->get()->keyBy('branch_id');
-        $locationPricesByLocation = $item->locationPrices()->get()->keyBy('location_id');
 
-        return view('inventory.items.edit', compact('item', 'categories', 'locations', 'inventoryAccounts', 'salesAccounts', 'costAccounts', 'vatAccounts', 'withholdingTaxAccounts', 'withholdingTaxExpenseAccounts', 'purchasePayableAccounts', 'discountAccounts', 'discountIncomeAccounts', 'branches', 'assignableBranches', 'branchPricesByBranch', 'locationPricesByLocation'));
+        return view('inventory.items.edit', compact('item', 'categories', 'assignableBranches'));
     }
 
     public function update(Request $request, $encodedId)
