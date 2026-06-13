@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\SmsHelper;
 use App\Models\BankAccount;
 use App\Models\CashDepositAccount;
+use App\Models\Customer;
 use App\Models\Inventory\CustomerStorageBalance;
 use App\Models\Inventory\Item;
 use App\Models\Branch;
