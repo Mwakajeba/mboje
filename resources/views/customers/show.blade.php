@@ -14,7 +14,6 @@
             <h6 class="mb-0 text-uppercase">Wasifu wa Mteja</h6>
         </div>
         <div class="row">
-            <!-- Cash Deposit Balance -->
             <div class="col-md-3">
                 <div class="card radius-10">
                     <div class="card-body">
@@ -32,159 +31,12 @@
                                 <i class="bx bxs-wallet"></i>
                             </div>
                         </div>
-                        {{-- Cash deposit management buttons temporarily disabled until CashDepositController is implemented
-                        @if($customer->cash_deposit_balance > 0)
-                        <div class="mt-3 d-flex gap-2">
-                            @can('deposit cash deposit')
-                            <a href="{{ route('cash_deposits.create') }}?customer_id={{ Hashids::encode($customer->id) }}" class="btn btn-sm btn-primary flex-fill">
-                                <i class="bx bx-plus"></i> Deposit
-                            </a>
-                            @endcan
-                            @can('withdraw cash deposit')
-                            <a href="{{ route('cash_deposits.withdraw', Hashids::encode($customer->id)) }}" class="btn btn-sm btn-success flex-fill">
-                                <i class="bx bx-minus"></i> Withdraw
-                            </a>
-                            @endcan
-                        </div>
-                        @endif
-                        --}}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Account Balance -->
-            <div class="col-md-3">
-                <div class="card radius-10">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div>
-                                <p class="mb-0 text-secondary">Salio la Akaunti</p>
-                                <h4 class="my-1">
-                                    {{ number_format($customer->account_balance, 2) }}
-                                </h4>
-                                <p class="mb-0 font-13 {{ $customer->account_balance >= 0 ? 'text-success' : 'text-danger' }}">
-                                    <i class="bx {{ $customer->account_balance >= 0 ? 'bxs-up-arrow' : 'bxs-down-arrow' }} align-middle"></i> 
-                                    {{ $customer->account_balance >= 0 ? 'Mkopo' : 'Deni' }}
-                                </p>
-                            </div>
-                            <div class="widgets-icons {{ $customer->account_balance >= 0 ? 'bg-light-success text-success' : 'bg-light-danger text-danger' }} ms-auto">
-                                <i class="bx bxs-bank"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Credit Limit -->
-            <div class="col-md-3">
-                <div class="card radius-10">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div>
-                                <p class="mb-0 text-secondary">Kiwango cha Mkopo</p>
-                                <h4 class="my-1">
-                                    {{ number_format($customer->credit_limit ?? 0, 2) }}
-                                </h4>
-                                <p class="mb-0 font-13 text-info">
-                                    <i class="bx bxs-credit-card align-middle"></i> Inapatikana
-                                </p>
-                            </div>
-                            <div class="widgets-icons bg-light-info text-info ms-auto">
-                                <i class="bx bxs-credit-card"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Total Due Invoices -->
-            <div class="col-md-3">
-                <div class="card radius-10">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div>
-                                <p class="mb-0 text-secondary">Ankara Zisizolipwa</p>
-                                <h4 class="my-1">
-                                    {{ number_format($customer->total_due_invoices, 2) }}
-                                </h4>
-                                <p class="mb-0 font-13 text-warning">
-                                    <i class="bx bxs-time-five align-middle"></i> Bado
-                                </p>
-                            </div>
-                            <div class="widgets-icons bg-light-warning text-warning ms-auto">
-                                <i class="bx bxs-file-doc"></i>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="row mt-3">
-            <!-- Total Orders -->
-            <div class="col-md-3">
-                <div class="card radius-10">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div>
-                                <p class="mb-0 text-secondary">Jumla ya Maagizo</p>
-                                <h4 class="my-1">{{ $customer->total_orders }}</h4>
-                                <p class="mb-0 font-13 text-primary">
-                                    <i class="bx bxs-shopping-bag align-middle"></i> Maagizo ya Mauzo
-                                </p>
-                            </div>
-                            <div class="widgets-icons bg-light-primary text-primary ms-auto">
-                                <i class="bx bxs-shopping-bag"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Total Proformas -->
-            <div class="col-md-3">
-                <div class="card radius-10">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div>
-                                <p class="mb-0 text-secondary">Jumla ya Proforma</p>
-                                <h4 class="my-1">{{ $customer->total_proformas }}</h4>
-                                <p class="mb-0 font-13 text-secondary">
-                                    <i class="bx bxs-file align-middle"></i> Makadirio
-                                </p>
-                            </div>
-                            <div class="widgets-icons bg-light-secondary text-secondary ms-auto">
-                                <i class="bx bxs-file"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Total Invoices -->
-            <div class="col-md-3">
-                <div class="card radius-10">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <div>
-                                <p class="mb-0 text-secondary">Jumla ya Ankara</p>
-                                <h4 class="my-1">{{ $customer->total_invoices }}</h4>
-                                <p class="mb-0 font-13 text-info">
-                                    <i class="bx bxs-receipt align-middle"></i> Zilizotengenezwa
-                                </p>
-                            </div>
-                            <div class="widgets-icons bg-light-info text-info ms-auto">
-                                <i class="bx bxs-receipt"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-
-        </div>
-
-        <div class="row">
 
             <!-- Profile and Company Information - Left Side -->
             <div class="col-xl-4">
