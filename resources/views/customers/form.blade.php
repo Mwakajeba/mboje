@@ -37,7 +37,7 @@ $selectedIdType = strtolower((string) old('id_type', $customer->id_type ?? ''));
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Namba ya Simu <span class="text-danger">*</span></label>
+                            <label class="form-label">Namba ya Simu</label>
                             <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror"
                                 value="{{ old('phone', $customer->phone ?? '') }}" placeholder="Weka namba ya simu">
                             @error('phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -114,49 +114,6 @@ $selectedIdType = strtolower((string) old('id_type', $customer->id_type ?? ''));
                 </div>
             </div>
         </div>
-
-        @if($isEdit)
-        <div class="col-12">
-            <div class="card radius-10 mb-4">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="bx bx-building me-2"></i>Taarifa za Kampuni</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Jina la Kampuni</label>
-                            <input type="text" name="company_name" class="form-control @error('company_name') is-invalid @enderror"
-                                value="{{ old('company_name', $customer->company_name ?? '') }}" placeholder="Weka jina la kampuni">
-                            @error('company_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Namba ya Usajili wa Kampuni</label>
-                            <input type="text" name="company_registration_number" class="form-control @error('company_registration_number') is-invalid @enderror"
-                                value="{{ old('company_registration_number', $customer->company_registration_number ?? '') }}" placeholder="Weka namba ya usajili">
-                            @error('company_registration_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Namba ya TIN</label>
-                            <input type="text" name="tin_number" class="form-control @error('tin_number') is-invalid @enderror"
-                                value="{{ old('tin_number', $customer->tin_number ?? '') }}" placeholder="Weka namba ya TIN" pattern="[0-9]+">
-                            <div class="form-text">Weka nambari tu (bila alama maalum)</div>
-                            @error('tin_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Namba ya VAT</label>
-                            <input type="text" name="vat_number" class="form-control @error('vat_number') is-invalid @enderror"
-                                value="{{ old('vat_number', $customer->vat_number ?? '') }}" placeholder="Weka namba ya VAT">
-                            <div class="form-text">Weka herufi na nambari tu (bila alama maalum)</div>
-                            @error('vat_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        @endif
     </div>
 
     <hr class="my-4">
@@ -166,27 +123,7 @@ $selectedIdType = strtolower((string) old('id_type', $customer->id_type ?? ''));
             <i class="bx bx-arrow-back me-1"></i> Rudi kwa Wateja
         </a>
         <button type="submit" class="btn btn-primary">
-            <i class="bx bx-save me-1"></i> {{ $isEdit ? 'Hifadhi Mabadiliko' : 'Sajili Mteja' }}
+            <i class="bx bx-save me-1"></i> {{ $isEdit ? 'Sasisha Mteja' : 'Sajili Mteja' }}
         </button>
     </div>
 </form>
-
-@if($isEdit)
-@push('scripts')
-<script nonce="{{ $cspNonce ?? '' }}">
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('input[name="tin_number"]').forEach(function (input) {
-            input.addEventListener('input', function (e) {
-                e.target.value = e.target.value.replace(/\D/g, '');
-            });
-        });
-
-        document.querySelectorAll('input[name="vat_number"]').forEach(function (input) {
-            input.addEventListener('input', function (e) {
-                e.target.value = e.target.value.replace(/[^A-Za-z0-9]/g, '');
-            });
-        });
-    });
-</script>
-@endpush
-@endif

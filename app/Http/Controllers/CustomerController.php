@@ -266,6 +266,8 @@ class CustomerController extends Controller
         // Normalize phone to 255XXXXXXXXX if helper available
         if ($request->filled('phone') && function_exists('normalize_phone_number')) {
             $request->merge(['phone' => normalize_phone_number($request->input('phone'))]);
+        } else {
+            $request->merge(['phone' => $request->input('phone') ?: null]);
         }
         
         // Resolve company and branch for validation
@@ -279,10 +281,9 @@ class CustomerController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'phone' => [
-                'required',
+                'nullable',
                 'string',
-                'size:12',
-                'regex:/^[0-9]+$/',
+                Rule::when($request->filled('phone'), ['size:12', 'regex:/^[0-9]+$/']),
             ],
             'email' => [
                 'nullable',
@@ -658,39 +659,32 @@ class CustomerController extends Controller
         
         $companyId = auth()->user()->company_id;
 
+        if ($request->filled('phone') && function_exists('normalize_phone_number')) {
+            $request->merge(['phone' => normalize_phone_number($request->input('phone'))]);
+        } else {
+            $request->merge(['phone' => $request->input('phone') ?: null]);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'phone' => [
-                'required',
-                'string',
-                'max:20',
-                \Illuminate\Validation\Rule::unique('customers', 'phone')->where(function ($query) use ($companyId) {
-                    return $query->where('company_id', $companyId);
-                })->ignore($id)
-            ],
-            'email' => [
                 'nullable',
-                'email',
-                'max:255',
-                \Illuminate\Validation\Rule::unique('customers', 'email')->where(function ($query) use ($companyId) {
-                    return $query->where('company_id', $companyId);
-                })->ignore($id)
+                'string',
+                Rule::when($request->filled('phone'), [
+                    'size:12',
+                    'regex:/^[0-9]+$/',
+                    Rule::unique('customers', 'phone')->where(function ($query) use ($companyId) {
+                        return $query->where('company_id', $companyId);
+                    })->ignore($id),
+                ]),
             ],
             'status' => 'required|in:active,inactive,suspended',
-            'has_cash_deposit' => 'nullable|boolean',
-            'deposit_account_id' => 'nullable|exists:cash_deposit_accounts,id',
             'id_type' => ['nullable', Rule::in(array_keys(Customer::idTypeOptions()))],
             'id_number' => 'nullable|string|max:100',
             'bank_name' => 'nullable|string|max:255',
             'bank_account_number' => 'nullable|string|max:50',
             'account_name' => 'nullable|string|max:255',
-            'credit_limit' => 'nullable|numeric|min:0',
-            'company_name' => 'nullable|string|max:255',
-            'company_registration_number' => 'nullable|string|max:100',
-            'tin_number' => 'nullable|string|max:50',
-            'vat_number' => 'nullable|string|max:50',
-
         ]);
 
         $data = $request->only([
@@ -699,24 +693,15 @@ class CustomerController extends Controller
             'phone',
             'id_type',
             'id_number',
-            'email',
             'status',
-            'has_cash_deposit',
-            'credit_limit',
             'bank_name',
             'bank_account_number',
             'account_name',
-            'company_name',
-            'company_registration_number',
-            'tin_number',
-            'vat_number',
         ]);
 
         // Set these from logged-in user
         $data['branch_id'] = session('branch_id') ?? auth()->user()->branch_id;
         $data['company_id'] = auth()->user()->company_id;
-        $data['registrar'] = auth()->id();
-        $data['has_cash_deposit'] = $request->has('has_cash_deposit') ? true : false; // Set boolean value
         if (! empty($data['id_type'])) {
             $data['id_type'] = strtolower((string) $data['id_type']);
         }
@@ -725,32 +710,8 @@ class CustomerController extends Controller
         try {
             $customer->update($data);
 
-            // Handle cash collateral
-            if ($request->has('has_cash_deposit') && $request->has('deposit_account_id') && $request->deposit_account_id) {
-                // Check if collateral already exists
-                $existingDeposit = \App\Models\CashDeposit::where('customer_id', $customer->id)->first();
-
-                if ($existingDeposit) {
-                    $existingDeposit->update([
-                        'type_id' => $request->input('deposit_account_id'),
-                    ]);
-                } else {
-                    \App\Models\CashDeposit::create([
-                        'customer_id' => $customer->id,
-                        'type_id' => $request->input('deposit_account_id'),
-                        'amount' => 0,
-                        'branch_id' => session('branch_id') ?? auth()->user()->branch_id,
-                        'company_id' => auth()->user()->company_id,
-                    ]);
-                }
-            } else {
-                // If not checked, remove existing collateral
-                \App\Models\CashDeposit::where('customer_id', $customer->id)->delete();
-            }
-
-
             DB::commit();
-            return redirect()->route('customers.show', $encodedId)->with('success', 'Customer updated successfully.');
+            return redirect()->route('customers.index')->with('success', 'Mteja amesasishwa kikamilifu.');
         } catch (\Illuminate\Database\QueryException $e) {
             DB::rollBack();
             
