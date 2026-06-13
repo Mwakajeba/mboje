@@ -59,7 +59,6 @@
                         </div>
                         <div class="col-md-4">
                             <label for="inventory_item_id" class="form-label">Zao <span class="text-danger">*</span></label>
-                            <small class="text-muted d-block mb-1">Bidhaa za tawi lako pekee</small>
                             <div class="input-group">
                                 <select name="inventory_item_id" id="inventory_item_id" class="form-select select2-single @error('inventory_item_id') is-invalid @enderror" required>
                                     <option value="">— Chagua Zao —</option>
