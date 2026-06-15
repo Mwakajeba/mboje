@@ -16,7 +16,11 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                     <div>
-                        <h5 class="mb-1">Historia ya Uletaji wa Zao</h5>
+                        <h5 class="mb-1">Historia ya Zao</h5>
+                        <p class="text-muted mb-0 small">
+                            <span class="badge bg-success me-1">Uletaji</span>
+                            <span class="badge bg-danger">Utoaji</span>
+                        </p>
                         @if($customer)
                         <p class="text-muted mb-0 small">Mteja: <strong>{{ $customer->name }}</strong></p>
                         @endif
@@ -46,10 +50,12 @@
                     <table id="historyTable" class="table table-striped table-bordered w-100">
                         <thead>
                             <tr>
-                                <th>Tarehe Aliyoleta</th>
+                                <th>Tarehe</th>
+                                <th>Aina</th>
                                 <th>Mteja</th>
                                 <th>Zao</th>
                                 <th>Idadi</th>
+                                <th>Sababu</th>
                                 <th>Kifurushi</th>
                                 <th>Aliyeingiza</th>
                                 <th>Imerekodiwa</th>
@@ -91,19 +97,21 @@ $(function () {
             }
         },
         columns: [
-            { data: 'received_date', name: 'received_date' },
+            { data: 'transaction_date', name: 'transaction_date' },
+            { data: 'type_badge', name: 'movement_type', orderable: false, searchable: false },
             { data: 'customer_name', name: 'customer_name' },
             { data: 'item_name', name: 'item_name' },
-            { data: 'quantity_display', name: 'quantity' },
+            { data: 'quantity_display', name: 'quantity', orderable: false, searchable: false },
+            { data: 'reason_display', name: 'reason', orderable: false, searchable: false },
             { data: 'package_display', name: 'package_display', orderable: false, searchable: false },
             { data: 'recorded_by', name: 'recorded_by', orderable: false, searchable: false },
             { data: 'created_at', name: 'created_at' }
         ],
-        order: [[0, 'desc']],
+        order: [[0, 'desc'], [8, 'desc']],
         pageLength: 25,
         language: {
             processing: 'Inapakia...',
-            emptyTable: 'Hakuna historia ya uletaji wa zao.',
+            emptyTable: 'Hakuna historia ya zao.',
             zeroRecords: 'Hakuna rekodi zilizopatikana.'
         }
     });

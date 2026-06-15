@@ -172,7 +172,7 @@ class CashCollateralController extends Controller
             if (auth()->user()->can('deposit cash collateral')) {
                 $actions .= '<a href="' . route('cash_collaterals.deposit', $encodedId) . '"
                                 class="btn btn-sm btn-outline-success"
-                                title="Toa Mkopo wa Mtaji">
+                                title="Toa Mkopo">
                                 <i class="bx bx-plus-circle"></i>
                              </a>';
             }
@@ -324,7 +324,7 @@ class CashCollateralController extends Controller
                 return [
                     'id' => $receipt->id,
                     'date' => $receipt->date,
-                    'narration' => $receipt->description ?? 'Mkopo wa Mtaji',
+                    'narration' => $receipt->description ?? 'Mkopo',
                     'created_by' => $receipt->user->name ?? 'Mfumo',
                     'type' => 'deposit',
                     'credit' => $receipt->amount, // Credit for deposits
@@ -461,7 +461,7 @@ class CashCollateralController extends Controller
                     return [
                         'id' => $receipt->id,
                         'date' => $receipt->date,
-                        'narration' => $receipt->description ?? 'Mkopo wa Mtaji',
+                        'narration' => $receipt->description ?? 'Mkopo',
                         'created_by' => $receipt->user->name ?? 'Mfumo',
                         'type' => 'deposit',
                         'credit' => $receipt->amount,
@@ -745,11 +745,15 @@ class CashCollateralController extends Controller
     public function depositStore(Request $request)
     {
         $request->validate([
-            'collateral_id' => 'required|string', // Still encoded, decode later
+            'collateral_id' => 'required|string',
             'bank_account_id' => 'required|exists:bank_accounts,id',
             'deposit_date' => 'required|date',
+            'loan_type' => ['required', Rule::in(array_keys(CashCollateral::loanTypeOptions()))],
             'amount' => 'required|numeric|min:0.01',
             'notes' => 'required|string|max:500',
+        ], [
+            'loan_type.required' => 'Chagua aina ya mkopo.',
+            'loan_type.in' => 'Aina ya mkopo si sahihi.',
         ]);
 
         try {
@@ -765,6 +769,7 @@ class CashCollateralController extends Controller
                 $collateral = CashCollateral::with(['customer', 'type'])->findOrFail($collateralId);
                 $bankAccount = BankAccount::findOrFail($request->bank_account_id);
                 $notes = $request->notes;
+                $loanTypeLabel = CashCollateral::loanTypeOptions()[$request->loan_type] ?? $request->loan_type;
 
                 // Check if required relationships exist
                 if (!$collateral->type || !$collateral->type->chart_account_id) {
@@ -794,6 +799,7 @@ class CashCollateralController extends Controller
                     'amount' => $request->amount,
                     'date' => $request->deposit_date,
                     'description' => $notes,
+                    'loan_type' => $request->loan_type,
                     'user_id' => $user->id,
                     'bank_account_id' => $bankAccount->id,
                     'payee_type' => 'Customer',
@@ -810,7 +816,7 @@ class CashCollateralController extends Controller
                     'receipt_id' => $receipt->id,
                     'chart_account_id' => $collateral->type->chart_account_id,
                     'amount' => $request->amount,
-                    'description' => $notes,
+                    'description' => $loanTypeLabel . ' - ' . $notes,
                 ]);
 
                 // GL Transactions
@@ -824,7 +830,7 @@ class CashCollateralController extends Controller
                     'transaction_id' => $receipt->id,
                     'transaction_type' => 'receipt',
                     'date' => $request->deposit_date,
-                    'description' => $notes,
+                    'description' => $loanTypeLabel . ' - ' . $notes,
                     'branch_id' => $branchId,
                     'user_id' => $user->id,
                 ]);
@@ -838,7 +844,7 @@ class CashCollateralController extends Controller
                     'transaction_id' => $receipt->id,
                     'transaction_type' => 'receipt',
                     'date' => $request->deposit_date,
-                    'description' => $notes,
+                    'description' => $loanTypeLabel . ' - ' . $notes,
                     'branch_id' => $branchId,
                     'user_id' => $user->id,
                 ]);
@@ -859,6 +865,7 @@ class CashCollateralController extends Controller
                     'date' => $receipt->date,
                     'customer_name' => $collateral->customer->name,
                     'deposit_type' => $collateral->type->name,
+                    'loan_type' => $loanTypeLabel,
                     'amount' => $request->amount,
                     'notes' => $notes,
                     'bank_account' => $bankAccount->name . ' - ' . $bankAccount->account_number,
@@ -868,13 +875,13 @@ class CashCollateralController extends Controller
                 ];
 
                 return redirect()->route('cash_collaterals.index')
-                    ->with('success', 'Mkopo wa mtaji umechakatwa kikamilifu. Kiasi: TSH ' . number_format($request->amount, 2))
+                    ->with('success', 'Mkopo umechakatwa kikamilifu. Kiasi: TSH ' . number_format($request->amount, 2))
                     ->with('print_receipt', true)
                     ->with('receipt_data', $receiptData);
             });
         } catch (\Throwable $th) {
             return redirect()->back()
-                ->withErrors(['error' => 'Imeshindwa kuchakata mkopo wa mtaji: ' . $th->getMessage()])
+                ->withErrors(['error' => 'Imeshindwa kuchakata mkopo: ' . $th->getMessage()])
                 ->withInput();
         }
     }
@@ -1111,14 +1118,14 @@ class CashCollateralController extends Controller
                 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Muamala wa mkopo wa mtaji umefutwa kikamilifu.',
+                    'message' => 'Muamala wa mkopo umefutwa kikamilifu.',
                     'amount' => $receipt->amount
                 ]);
             });
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Imeshindwa kufuta mkopo wa mtaji: ' . $e->getMessage()
+                'message' => 'Imeshindwa kufuta mkopo: ' . $e->getMessage()
             ], 500);
         }
     }

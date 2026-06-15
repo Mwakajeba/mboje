@@ -62,17 +62,22 @@
                             <div class="input-group">
                                 <select name="inventory_item_id" id="inventory_item_id" class="form-select select2-single @error('inventory_item_id') is-invalid @enderror" required>
                                     <option value="">— Chagua Zao —</option>
-                                    @foreach($items as $item)
+                                    @forelse($items as $item)
                                     <option value="{{ $item->id }}" {{ (string) old('inventory_item_id') === (string) $item->id ? 'selected' : '' }}>
                                         {{ $item->name }} ({{ $item->code }})
                                     </option>
-                                    @endforeach
+                                    @empty
+                                    <option value="" disabled>Hakuna zao katika tawi hili — ongeza kwenye Hesabu kwanza</option>
+                                    @endforelse
                                 </select>
                                 <button type="button" class="btn btn-outline-success" id="btn-add-item" title="Ongeza zao jipya">
                                     <i class="bx bx-plus"></i>
                                 </button>
                             </div>
                             @error('inventory_item_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            @if($items->isEmpty())
+                            <small class="text-muted">Hakuna bidhaa zinazoonekana kwa tawi la sasa. Angalia <a href="{{ route('inventory.items.index') }}">Orodha ya Bidhaa</a> au ongeza zao jipya.</small>
+                            @endif
                         </div>
                         <div class="col-md-2">
                             <label for="quantity" class="form-label">Idadi <span class="text-danger">*</span></label>
@@ -122,7 +127,7 @@
                                 <th>Zao</th>
                                 <th>Idadi</th>
                                 <th>Kifurushi</th>
-                                <th>Historia</th>
+                                <th>Vitendo</th>
                             </tr>
                         </thead>
                     </table>
@@ -284,6 +289,61 @@
         </div>
     </div>
 </div>
+
+{{-- Toa Zao --}}
+<div class="modal fade" id="withdrawStorageModal" tabindex="-1" aria-labelledby="withdrawStorageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="withdrawStorageModalLabel">Toa Zao kutoka Stoo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Funga"></button>
+            </div>
+            <div class="modal-body">
+                <div id="withdraw-storage-errors" class="alert alert-danger d-none"></div>
+
+                <p class="mb-2">
+                    <strong>Mteja:</strong> <span id="withdraw_customer_name">—</span><br>
+                    <strong>Zao:</strong> <span id="withdraw_item_name">—</span><br>
+                    <strong>Salio:</strong> <span id="withdraw_balance_display">—</span>
+                </p>
+
+                <input type="hidden" id="withdraw_balance_id">
+
+                <div class="mb-3">
+                    <label for="withdraw_quantity" class="form-label">Idadi ya Kutoa <span class="text-danger">*</span></label>
+                    <input type="number" step="0.01" min="0.01" class="form-control" id="withdraw_quantity" placeholder="Weka idadi">
+                    <small class="text-muted">Haiwezi kuzidi salio lililopo</small>
+                </div>
+                <div class="mb-3">
+                    <label for="withdraw_reason" class="form-label">Sababu <span class="text-danger">*</span></label>
+                    <select id="withdraw_reason" class="form-select">
+                        <option value="">— Chagua Sababu —</option>
+                        @foreach(\App\Models\Inventory\CustomerStorageWithdrawal::reasonOptions() as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-3 d-none" id="withdraw_price_wrapper">
+                    <label for="withdraw_price" class="form-label">Bei kwa Kila Kilo <span class="text-danger">*</span></label>
+                    <input type="number" step="0.01" min="0.01" class="form-control" id="withdraw_price" placeholder="Weka bei kwa kilo">
+                    <div class="form-text mt-2">
+                        <strong>Jumla:</strong> <span id="withdraw_total_preview">0.00</span>
+                    </div>
+                </div>
+                <div class="mb-0">
+                    <label for="withdraw_notes" class="form-label">Maelezo</label>
+                    <textarea class="form-control" id="withdraw_notes" rows="3" placeholder="Maelezo ya ziada (hiari)"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Ghairi</button>
+                <button type="button" class="btn btn-warning" id="save-withdraw-storage">
+                    <i class="bx bx-export me-1"></i> Toa Zao
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('styles')
@@ -301,12 +361,19 @@
 $(function () {
     const currentBranchId = {{ (int) ($branchId ?? 0) }};
 
-    $('.select2-single').select2({
-        theme: 'bootstrap-5',
-        width: '100%',
-        placeholder: 'Chagua...',
-        allowClear: true
-    });
+    function initSelect2InCard($el, placeholder) {
+        $el.select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: placeholder || 'Chagua...',
+            allowClear: true,
+            minimumResultsForSearch: 0,
+            dropdownParent: $el.closest('.card-body').length ? $el.closest('.card-body') : $(document.body)
+        });
+    }
+
+    initSelect2InCard($('#customer_id'), 'Chagua mteja...');
+    initSelect2InCard($('#inventory_item_id'), 'Chagua zao...');
 
     function showValidationErrors(containerId, xhr) {
         const $box = $(containerId);
@@ -479,7 +546,7 @@ $(function () {
             { data: 'item_name', name: 'item_name', orderable: false },
             { data: 'quantity_display', name: 'quantity_on_hand' },
             { data: 'package_display', name: 'package_display', orderable: false, searchable: false },
-            { data: 'history_link', name: 'history_link', orderable: false, searchable: false }
+            { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-center' }
         ],
         order: [[3, 'desc']],
         pageLength: 25,
@@ -488,6 +555,83 @@ $(function () {
             emptyTable: 'Hakuna zao la wateja lililohifadhiwa.',
             zeroRecords: 'Hakuna rekodi zilizopatikana.'
         }
+    });
+
+    function resetWithdrawForm() {
+        $('#withdraw-storage-errors').addClass('d-none').empty();
+        $('#withdraw_balance_id').val('');
+        $('#withdraw_quantity, #withdraw_price').val('');
+        $('#withdraw_reason').val('');
+        $('#withdraw_notes').val('');
+        $('#withdraw_customer_name, #withdraw_item_name, #withdraw_balance_display').text('—');
+        $('#withdraw_price_wrapper').addClass('d-none');
+        $('#withdraw_total_preview').text('0.00');
+    }
+
+    function updateWithdrawTotalPreview() {
+        const qty = parseFloat($('#withdraw_quantity').val()) || 0;
+        const price = parseFloat($('#withdraw_price').val()) || 0;
+        $('#withdraw_total_preview').text((qty * price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    }
+
+    function toggleWithdrawPriceField() {
+        const isSale = $('#withdraw_reason').val() === 'kuuza';
+        $('#withdraw_price_wrapper').toggleClass('d-none', !isSale);
+        if (!isSale) {
+            $('#withdraw_price').val('');
+        }
+        updateWithdrawTotalPreview();
+    }
+
+    $('#withdraw_reason').on('change', toggleWithdrawPriceField);
+    $('#withdraw_quantity, #withdraw_price').on('input', updateWithdrawTotalPreview);
+
+    $(document).on('click', '.btn-withdraw-storage', function () {
+        const $btn = $(this);
+        resetWithdrawForm();
+
+        const onHand = parseFloat($btn.data('quantity-on-hand')) || 0;
+        const unit = $btn.data('unit') || '';
+
+        $('#withdraw_balance_id').val($btn.data('balance-id'));
+        $('#withdraw_customer_name').text($btn.data('customer-name'));
+        $('#withdraw_item_name').text($btn.data('item-name'));
+        $('#withdraw_balance_display').text(onHand.toLocaleString('en-US', { maximumFractionDigits: 2 }) + (unit ? ' ' + unit : ''));
+        $('#withdraw_quantity').attr('max', onHand);
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('withdrawStorageModal')).show();
+    });
+
+    $('#save-withdraw-storage').on('click', function () {
+        const $btn = $(this);
+        $('#withdraw-storage-errors').addClass('d-none').empty();
+
+        const payload = {
+            balance_id: $('#withdraw_balance_id').val(),
+            quantity: $('#withdraw_quantity').val(),
+            reason: $('#withdraw_reason').val(),
+            price: $('#withdraw_reason').val() === 'kuuza' ? $('#withdraw_price').val() : null,
+            notes: $('#withdraw_notes').val().trim()
+        };
+
+        $btn.prop('disabled', true);
+        $.ajax({
+            url: "{{ route('inventory.customer-storage.withdraw') }}",
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                'Accept': 'application/json'
+            },
+            data: payload
+        }).done(function (res) {
+            bootstrap.Modal.getInstance(document.getElementById('withdrawStorageModal')).hide();
+            Swal.fire({ icon: 'success', title: 'Imefanikiwa', text: res.message || 'Zao limetolewa.', timer: 2000, showConfirmButton: false });
+            $('#balancesTable').DataTable().ajax.reload(null, false);
+        }).fail(function (xhr) {
+            showValidationErrors('#withdraw-storage-errors', xhr);
+        }).always(function () {
+            $btn.prop('disabled', false);
+        });
     });
 });
 </script>

@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Toa Mkopo wa Mtaji')
+@section('title', 'Toa Mkopo')
 
 @section('content')
 <div class="page-wrapper">
@@ -9,7 +9,7 @@
             ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Mikopo ya Wateja', 'url' => route('cash_collaterals.index'), 'icon' => 'bx bx-credit-card'],
             ['label' => 'Mteja', 'url' => route('customers.show', Hashids::encode($customer->id)), 'icon' => 'bx bx-user'],
-            ['label' => 'Toa Mkopo wa Mtaji', 'url' => '#', 'icon' => 'bx bx-money']
+            ['label' => 'Toa Mkopo', 'url' => '#', 'icon' => 'bx bx-money']
         ]" />
         
         <div class="row mb-4">
@@ -17,9 +17,9 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
                         <h4 class="mb-1 fw-bold text-primary">
-                            <i class="bx bx-money me-2"></i>Toa Mkopo wa Mtaji
+                            <i class="bx bx-money me-2"></i>Toa Mkopo
                         </h4>
-                        <p class="text-muted mb-0">Toa mkopo wa mtaji kwa mteja na kuongeza salio la akaunti ya mikopo</p>
+                        <p class="text-muted mb-0">Toa mkopo kwa mteja na kuongeza salio la akaunti ya mikopo</p>
                     </div>
                     <a href="{{ route('customers.show', Hashids::encode($customer->id)) }}" class="btn btn-outline-secondary">
                         <i class="bx bx-arrow-back me-1"></i> Rudi kwa Mteja
@@ -70,7 +70,7 @@
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-white border-bottom py-3">
                         <h6 class="mb-0 fw-semibold text-primary">
-                            <i class="bx bx-credit-card me-2"></i>Taarifa za Mkopo wa Mtaji
+                            <i class="bx bx-credit-card me-2"></i>Taarifa za Mkopo
                         </h6>
                     </div>
                     <div class="card-body p-4">
@@ -120,10 +120,31 @@
                                     @enderror
                                 </div>
 
+                                <!-- Loan Type -->
+                                <div class="col-md-6">
+                                    <label for="loan_type" class="form-label fw-semibold mb-2">
+                                        <i class="bx bx-list-check me-2 text-primary"></i>Aina ya Mkopo
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <select name="loan_type" id="loan_type" class="form-select form-select-lg" required>
+                                        <option value="">Chagua aina ya mkopo</option>
+                                        @foreach(\App\Models\CashCollateral::loanTypeOptions() as $value => $label)
+                                        <option value="{{ $value }}" {{ old('loan_type') === $value ? 'selected' : '' }}>
+                                            {{ $label }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                    @error('loan_type')
+                                    <div class="text-danger small mt-1">
+                                        <i class="bx bx-error-circle me-1"></i>{{ $message }}
+                                    </div>
+                                    @enderror
+                                </div>
+
                                 <!-- Amount -->
                                 <div class="col-md-6">
                                     <label for="amount" class="form-label fw-semibold mb-2">
-                                        <i class="bx bx-money me-2 text-primary"></i>Kiasi cha Mkopo wa Mtaji
+                                        <i class="bx bx-money me-2 text-primary"></i>Kiasi cha Mkopo
                                         <span class="text-danger">*</span>
                                     </label>
                                     <div class="input-group input-group-lg">
@@ -157,10 +178,10 @@
                                         id="notes"
                                         name="notes"
                                         rows="4"
-                                        placeholder="Weka maelezo kuhusu mkopo wa mtaji..."
+                                        placeholder="Weka maelezo kuhusu mkopo..."
                                         required>{{ old('notes') }}</textarea>
                                     <small class="text-muted">
-                                        <i class="bx bx-info-circle me-1"></i>Eleza muamala wa kutoa mkopo wa mtaji
+                                        <i class="bx bx-info-circle me-1"></i>Eleza muamala wa kutoa mkopo
                                     </small>
                                     @error('notes')
                                     <div class="text-danger small mt-1">
@@ -179,7 +200,7 @@
                                         </a>
                                         <button type="submit" class="btn btn-lg btn-primary" id="submitBtn">
                                             <span class="btn-text">
-                                                <i class="bx bx-check me-1"></i> Toa Mkopo wa Mtaji
+                                                <i class="bx bx-check me-1"></i> Toa Mkopo
                                             </span>
                                             <span class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
                                         </button>
@@ -226,7 +247,7 @@
                             <div class="d-flex align-items-start">
                                 <i class="bx bx-info-circle fs-5 me-2 mt-1"></i>
                                 <div class="small">
-                                    <strong>Kumbuka:</strong> Mkopo wa mtaji utachakatwa mara moja na kuongezwa kwenye salio la akaunti ya mteja.
+                                    <strong>Kumbuka:</strong> Mkopo utachakatwa mara moja na kuongezwa kwenye salio la akaunti ya mteja.
                                 </div>
                             </div>
                         </div>
@@ -283,11 +304,11 @@
 
             if (depositAmount <= 0) {
                 e.preventDefault();
-                alert('Tafadhali weka kiasi halali cha mkopo wa mtaji zaidi ya 0.');
+                alert('Tafadhali weka kiasi halali cha mkopo zaidi ya 0.');
                 return false;
             }
 
-            if (!confirm('Una uhakika unataka kutoa mkopo wa mtaji kiasi cha ' + formatAmount(depositAmount) + '?')) {
+            if (!confirm('Una uhakika unataka kutoa mkopo kiasi cha ' + formatAmount(depositAmount) + '?')) {
                 e.preventDefault();
                 return false;
             }
@@ -301,7 +322,7 @@
         setTimeout(function() {
             if (submitBtn.prop('disabled')) {
                 submitBtn.prop('disabled', false);
-                btnText.html('<i class="bx bx-check me-1"></i> Toa Mkopo wa Mtaji');
+                btnText.html('<i class="bx bx-check me-1"></i> Toa Mkopo');
                 spinner.addClass('d-none');
                 submitBtn.removeClass('loading');
             }

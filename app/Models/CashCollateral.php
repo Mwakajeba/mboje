@@ -43,6 +43,22 @@ class CashCollateral extends Model
     {
         return $this->belongsTo(CashCollateralType::class, 'type_id');
     }
+
+    /** @return array<string, string> */
+    public static function loanTypeOptions(): array
+    {
+        return [
+            'ushuru' => 'Ushuru',
+            'usafiri' => 'Usafiri',
+            'kuanika' => 'Kuanika',
+            'kamba' => 'Kamba',
+            'mifuko' => 'Mifuko',
+            'gharama_za_mashine' => 'Gharama za mashine',
+            'gharama_za_makuli' => 'Gharama za makuli',
+            'matumizi_binafsi' => 'Matumizi Binafsi',
+            'mkopo_wa_mtaji' => 'Mkopo wa mtaji',
+        ];
+    }
     
     public static function getCashCollateralBalance(int $customerId): float
     {

@@ -1074,6 +1074,7 @@ Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'company.sco
     Route::get('/customer-storage/history', [CustomerStorageController::class, 'history'])->name('customer-storage.history');
     Route::get('/customer-storage', [CustomerStorageController::class, 'index'])->name('customer-storage.index');
     Route::post('/customer-storage', [CustomerStorageController::class, 'store'])->name('customer-storage.store');
+    Route::post('/customer-storage/withdraw', [CustomerStorageController::class, 'withdraw'])->name('customer-storage.withdraw');
     Route::post('/customer-storage/quick-customer', [CustomerStorageController::class, 'quickStoreCustomer'])->name('customer-storage.quick-customer');
     Route::post('/customer-storage/quick-item', [CustomerStorageController::class, 'quickStoreItem'])->name('customer-storage.quick-item');
 
@@ -1584,7 +1585,7 @@ Route::middleware(['auth', 'require.branch'])->group(function () {
 
     // Parameterized routes (must come after specific routes)
     Route::get('customers/{encodedId}', [CustomerController::class, 'show'])->name('customers.show');
-    Route::post('customers/{encodedId}/send-sms', [\App\Http\Controllers\DashboardController::class, 'sendBulkSmsToSingleCustomer'])->name('customers.send-sms');
+    Route::post('customers/{encodedId}/send-sms', [CustomerController::class, 'sendSms'])->name('customers.send-sms');
     Route::get('customers/{encodedId}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
     Route::put('customers/{encodedId}', [CustomerController::class, 'update'])->name('customers.update');
     Route::delete('customers/{encodedId}', [CustomerController::class, 'destroy'])->name('customers.destroy');

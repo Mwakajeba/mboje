@@ -38,7 +38,7 @@
                                     @can('deposit cash collateral')
                                     <a href="{{ route('cash_collaterals.deposit', Hashids::encode($cashCollateral->id)) }}"
                                         class="btn btn-success btn-sm">
-                                        <i class="bx bx-plus me-1"></i> Toa Mkopo wa Mtaji
+                                        <i class="bx bx-plus me-1"></i> Toa Mkopo
                                     </a>
                                     @endcan
 
@@ -208,11 +208,11 @@
                                 <i class="bx bx-history" style="font-size: 4rem; color: #6c757d;"></i>
                             </div>
                             <h5 class="text-muted">Hakuna Historia ya Miamala</h5>
-                            <p class="text-muted">Bado hakuna mkopo wa mtaji au malipo kwenye akaunti hii.</p>
+                            <p class="text-muted">Bado hakuna mkopo au malipo kwenye akaunti hii.</p>
                             @can('deposit cash collateral')
                             <a href="{{ route('cash_collaterals.deposit', Hashids::encode($cashCollateral->id)) }}"
                                 class="btn btn-success">
-                                <i class="bx bx-plus me-1"></i> Toa Mkopo wa Mtaji wa Kwanza
+                                <i class="bx bx-plus me-1"></i> Toa Mkopo wa Kwanza
                             </a>
                             @endcan
                         </div>
@@ -238,7 +238,7 @@ $(document).ready(function() {
             title: 'Futa Muamala?',
             html: `
                 <div class="text-start">
-                    <p><strong>Aina:</strong> ${transactionType === 'receipt' ? 'Mkopo wa Mtaji' : 'Malipo kwa Taslim'}</p>
+                    <p><strong>Aina:</strong> ${transactionType === 'receipt' ? 'Mkopo' : 'Malipo kwa Taslim'}</p>
                     <p><strong>Kiasi:</strong> TSH ${parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</p>
                     <p><strong>Maelezo:</strong> ${narration}</p>
                     <p class="text-warning mt-3"><i class="bx bx-warning"></i> Hatua hii haiwezi kutenduliwa!</p>

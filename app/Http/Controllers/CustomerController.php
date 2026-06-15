@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Helpers\SmsHelper;
 use App\Models\BankAccount;
+use App\Models\CashCollateral;
 use App\Models\CashDepositAccount;
 use App\Models\Customer;
 use App\Models\Inventory\CustomerStorageBalance;
+use App\Models\Inventory\CustomerStorageSale;
 use App\Models\Inventory\Item;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\Receipt;
 
 
 use App\Models\User;
@@ -467,34 +470,7 @@ class CustomerController extends Controller
         ])->findOrFail($id);
 
         // Calculate correct cash deposit balance using Receipt-based system (same as DataTable)
-        $correctCashDepositBalance = 0;
-        
-        // Find cash collaterals (not cash deposits) that have transactions
-        $cashCollaterals = \App\Models\CashCollateral::where('customer_id', $customer->id)->get();
-        
-        foreach ($cashCollaterals as $collateral) {
-            // Get deposit transactions (receipts)
-            $deposits = \App\Models\Receipt::where('reference', $collateral->id)
-                ->where('reference_type', 'Deposit')
-                ->sum('amount');
-            
-            // Get withdrawal transactions (payments)
-            $withdrawals = \App\Models\Payment::where('reference', $collateral->id)
-                ->where('reference_type', 'Withdrawal')
-                ->sum('amount');
-            
-            // Get journal-based cash deposit payments (new system) - includes both invoice and cash sale payments
-            $journalWithdrawals = \App\Models\Journal::where('customer_id', $customer->id)
-                ->whereIn('reference_type', ['sales_invoice_payment', 'cash_sale_payment'])
-                ->join('journal_items', 'journals.id', '=', 'journal_items.journal_id')
-                ->where('journal_items.chart_account_id', 28) // Cash Deposits account
-                ->where('journal_items.nature', 'debit')
-                ->sum('journal_items.amount');
-            
-            // Calculate balance for this collateral and add to total
-            $collateralBalance = $deposits - ($withdrawals + $journalWithdrawals);
-            $correctCashDepositBalance += $collateralBalance;
-        }
+        $correctCashDepositBalance = $this->calculateMikopoTotal($customer);
 
         // If it's an AJAX request, return JSON
         if (request()->ajax()) {
@@ -504,10 +480,228 @@ class CustomerController extends Controller
             ]);
         }
 
-        return view('customers.show', compact('customer', 'correctCashDepositBalance'));
+        $cropSalesDashboard = $this->buildCropSalesDashboard($customer);
+        $totalCropSales = $this->calculateTotalCropSales($customer);
+        $mikopoTotal = (float) $correctCashDepositBalance;
+        $customerNetBalance = $totalCropSales - $mikopoTotal;
+        $customerCashCollateral = $customer->cashCollaterals()->first();
+
+        return view('customers.show', compact(
+            'customer',
+            'correctCashDepositBalance',
+            'cropSalesDashboard',
+            'totalCropSales',
+            'mikopoTotal',
+            'customerNetBalance',
+            'customerCashCollateral'
+        ));
     }
 
-    // DataTable for customer cash deposits
+    private function calculateTotalCropSales(Customer $customer): float
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('customer_storage_sales')) {
+            return 0.0;
+        }
+
+        $companyId = auth()->user()->company_id;
+        $branchId = session('branch_id') ?: auth()->user()->branch_id;
+
+        return (float) CustomerStorageSale::query()
+            ->where('company_id', $companyId)
+            ->where('customer_id', $customer->id)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->sum('total');
+    }
+
+    private function calculateMikopoTotal(Customer $customer): float
+    {
+        $total = 0.0;
+        $cashCollaterals = \App\Models\CashCollateral::where('customer_id', $customer->id)->get();
+
+        foreach ($cashCollaterals as $collateral) {
+            $deposits = \App\Models\Receipt::where('reference', $collateral->id)
+                ->where('reference_type', 'Deposit')
+                ->sum('amount');
+
+            $withdrawals = \App\Models\Payment::where('reference', $collateral->id)
+                ->where('reference_type', 'Withdrawal')
+                ->sum('amount');
+
+            $journalWithdrawals = \App\Models\Journal::where('customer_id', $customer->id)
+                ->whereIn('reference_type', ['sales_invoice_payment', 'cash_sale_payment'])
+                ->join('journal_items', 'journals.id', '=', 'journal_items.journal_id')
+                ->where('journal_items.chart_account_id', 28)
+                ->where('journal_items.nature', 'debit')
+                ->sum('journal_items.amount');
+
+            $total += (float) $deposits - ((float) $withdrawals + (float) $journalWithdrawals);
+        }
+
+        return $total;
+    }
+
+    public function sendSms(Request $request, $encodedId)
+    {
+        $id = Hashids::decode($encodedId)[0] ?? null;
+
+        if (! $id) {
+            return response()->json(['success' => false, 'message' => 'Mteja hajapatikana.'], 422);
+        }
+
+        $rules = [
+            'message_title' => 'required|string|max:100',
+            'bulk_message_content' => 'nullable|string|max:500',
+        ];
+
+        if ($request->input('message_title') === 'Custom') {
+            $rules['bulk_message_content'] = 'required|string|max:500';
+        }
+
+        $validator = \Validator::make($request->all(), $rules, [
+            'message_title.required' => 'Chagua kichwa cha ujumbe.',
+            'bulk_message_content.required' => 'Andika maudhui ya ujumbe.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tafadhali rekebisha makosa.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $customer = Customer::findOrFail($id);
+        $title = $request->message_title;
+
+        $rawPhone = $customer->phone;
+        $phone = function_exists('normalize_phone_number')
+            ? normalize_phone_number($rawPhone)
+            : preg_replace('/[^0-9+]/', '', (string) $rawPhone);
+
+        if (empty($phone) || strlen($phone) < 9) {
+            return response()->json(['success' => false, 'message' => 'Namba ya simu ya mteja si sahihi.'], 422);
+        }
+
+        if ($title === 'Customer Account Info') {
+            $mauzo = $this->calculateTotalCropSales($customer);
+            $mikopo = $this->calculateMikopoTotal($customer);
+            $salio = $mauzo - $mikopo;
+
+            $fullMessage = 'Mpendwa ' . $customer->name
+                . ', Taarifa za akaunti yako: Jumla ya mauzo TZS ' . number_format($mauzo, 2)
+                . '. Mikopo TZS ' . number_format($mikopo, 2)
+                . '. Salio lililobaki TZS ' . number_format($salio, 2)
+                . '. Asante.';
+        } elseif ($title === 'Payment Reminder') {
+            $totalDue = (float) \App\Models\Sales\SalesInvoice::where('customer_id', $customer->id)
+                ->where('balance_due', '>', 0)
+                ->whereNotIn('status', ['cancelled'])
+                ->sum('balance_due');
+
+            if ($totalDue <= 0) {
+                return response()->json(['success' => false, 'message' => 'Mteja hana deni lililobaki.'], 422);
+            }
+
+            $fullMessage = 'Mpendwa ' . $customer->name
+                . ', tunakukumbusha kulipa deni lako la TZS ' . number_format($totalDue, 2)
+                . '. Tafadhali fanya malipo mapema iwezekanavyo. Asante.';
+        } else {
+            $fullMessage = (string) $request->bulk_message_content;
+        }
+
+        if (! SmsHelper::isConfigured()) {
+            return response()->json(['success' => false, 'message' => 'SMS haijasanidiwa.'], 422);
+        }
+
+        try {
+            $response = SmsHelper::send($phone, $fullMessage);
+
+            if (! ($response['success'] ?? false)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $response['error'] ?? 'Imeshindwa kutuma SMS.',
+                ], 500);
+            }
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('sms_logs')) {
+                DB::table('sms_logs')->insert([
+                    'customer_id' => $customer->id,
+                    'phone_number' => $phone,
+                    'message' => $fullMessage,
+                    'response' => json_encode($response),
+                    'sent_by' => auth()->id(),
+                    'sent_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            return response()->json(['success' => true, 'message' => 'SMS imetumwa kikamilifu.']);
+        } catch (\Throwable $e) {
+            \Log::error('Failed to send customer SMS: ' . $e->getMessage());
+
+            return response()->json(['success' => false, 'message' => 'Imeshindwa kutuma SMS.'], 500);
+        }
+    }
+
+    private function buildCropSalesDashboard(Customer $customer): array
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('customer_storage_sales')) {
+            return [];
+        }
+
+        $companyId = auth()->user()->company_id;
+        $branchId = session('branch_id') ?: auth()->user()->branch_id;
+
+        $storedItemIds = CustomerStorageBalance::query()
+            ->where('company_id', $companyId)
+            ->where('customer_id', $customer->id)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->pluck('inventory_item_id');
+
+        $soldItemIds = CustomerStorageSale::query()
+            ->where('company_id', $companyId)
+            ->where('customer_id', $customer->id)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->pluck('inventory_item_id');
+
+        $itemIds = $storedItemIds->merge($soldItemIds)->unique()->values();
+
+        if ($itemIds->isEmpty()) {
+            return [];
+        }
+
+        $salesTotals = CustomerStorageSale::query()
+            ->where('company_id', $companyId)
+            ->where('customer_id', $customer->id)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereIn('inventory_item_id', $itemIds)
+            ->selectRaw('inventory_item_id, SUM(quantity) as total_quantity, SUM(total) as total_sales')
+            ->groupBy('inventory_item_id')
+            ->get()
+            ->keyBy('inventory_item_id');
+
+        return Item::query()
+            ->whereIn('id', $itemIds)
+            ->orderBy('name')
+            ->get()
+            ->map(function ($item) use ($salesTotals) {
+                $row = $salesTotals->get($item->id);
+
+                return [
+                    'item_id' => $item->id,
+                    'item_name' => $item->name,
+                    'item_code' => $item->code,
+                    'unit' => $item->unit_of_measure,
+                    'total_quantity_sold' => (float) ($row->total_quantity ?? 0),
+                    'total_sales' => (float) ($row->total_sales ?? 0),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    // DataTable for customer loans (individual mkopo transactions)
     public function cashDepositsDataTable($encodedId)
     {
         $id = Hashids::decode($encodedId)[0] ?? null;
@@ -517,72 +711,31 @@ class CustomerController extends Controller
         }
 
         $customer = Customer::findOrFail($id);
-        $deposits = $customer->cashCollaterals()->with('type');
+        $collateralIds = $customer->cashCollaterals()->pluck('id');
+        $loanTypeOptions = CashCollateral::loanTypeOptions();
 
-        return datatables()->of($deposits)
-            ->addColumn('type_name', function ($deposit) {
-                return $deposit->type->name ?? '—';
-            })
-            ->addColumn('formatted_amount', function ($deposit) {
-                // Calculate actual current balance instead of using static amount field
-                $transactions = collect();
-                
-                // Get deposit transactions (receipts)
-                $deposits = \App\Models\Receipt::where('reference', $deposit->id)
-                    ->where('reference_type', 'Deposit')
-                    ->sum('amount');
-                
-                // Get withdrawal transactions (payments)
-                $withdrawals = \App\Models\Payment::where('reference', $deposit->id)
-                    ->where('reference_type', 'Withdrawal')
-                    ->sum('amount');
-                
-                // Get journal-based cash deposit payments (new system)
-                $journalWithdrawals = \App\Models\Journal::where('customer_id', $deposit->customer_id)
-                    ->whereIn('reference_type', ['sales_invoice_payment', 'cash_sale_payment'])
-                    ->join('journal_items', 'journals.id', '=', 'journal_items.journal_id')
-                    ->where('journal_items.chart_account_id', 28) // Cash Deposits account
-                    ->where('journal_items.nature', 'debit')
-                    ->sum('journal_items.amount');
-                
-                // Calculate current balance
-                $currentBalance = $deposits - ($withdrawals + $journalWithdrawals);
-                
-                return number_format($currentBalance, 2);
-            })
-            ->addColumn('formatted_date', function ($deposit) {
-                return format_date($deposit->created_at, 'M d, Y');
-            })
-            ->addColumn('actions', function ($deposit) {
-                $actions = '<div class="btn-group" role="group">';
-                
-                // View button
-                if (auth()->user()->can('view cash deposits')) {
-                    $actions .= '<a href="' . route('cash_collaterals.show', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-info" title="Angalia">
-                        <i class="bx bx-show"></i>
-                    </a>';
+        $loans = Receipt::query()
+            ->with('user')
+            ->whereIn('reference', $collateralIds)
+            ->where('reference_type', 'Deposit');
+
+        return datatables()->of($loans)
+            ->addColumn('loan_type_label', function ($receipt) use ($loanTypeOptions) {
+                if ($receipt->loan_type && isset($loanTypeOptions[$receipt->loan_type])) {
+                    return $loanTypeOptions[$receipt->loan_type];
                 }
-                
-                if (auth()->user()->can('deposit cash collateral')) {
-                    $actions .= '<a href="' . route('cash_collaterals.deposit', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-success" title="Toa Mkopo wa Mtaji">
-                        <i class="bx bx-plus-circle"></i>
-                    </a>';
-                }
-                
-                if (auth()->user()->can('withdraw cash collateral')) {
-                    $actions .= '<a href="' . route('cash_collaterals.withdraw', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-warning" title="Lipa Mkopo kwa Taslim">
-                        <i class="bx bx-minus-circle"></i>
-                    </a>';
-                }
-                
-                $actions .= '<a href="' . route('cash_collaterals.statement-pdf', Hashids::encode($deposit->id)) . '" class="btn btn-sm btn-outline-primary" title="Chapisha Taarifa" target="_blank">
-                    <i class="bx bx-printer"></i>
-                </a>';
-                
-                $actions .= '</div>';
-                return $actions;
+
+                return $receipt->loan_type ?: '—';
             })
-            ->rawColumns(['actions'])
+            ->addColumn('formatted_amount', function ($receipt) {
+                return number_format($receipt->amount, 2);
+            })
+            ->addColumn('formatted_date', function ($receipt) {
+                return format_date($receipt->date, 'M d, Y');
+            })
+            ->addColumn('entered_by_name', function ($receipt) {
+                return $receipt->user->name ?? '—';
+            })
             ->make(true);
     }
 

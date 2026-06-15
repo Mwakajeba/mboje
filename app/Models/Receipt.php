@@ -33,6 +33,7 @@ class Receipt extends Model
         'base_amount',
         'date',
         'description',
+        'loan_type',
         'user_id',
         'attachment',
         'bank_account_id',

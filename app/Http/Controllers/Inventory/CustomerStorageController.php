@@ -9,7 +9,10 @@ use App\Models\Customer;
 use App\Models\Inventory\Category;
 use App\Models\Inventory\CustomerStorageBalance;
 use App\Models\Inventory\CustomerStorageReceipt;
+use App\Models\Inventory\CustomerStorageSale;
+use App\Models\Inventory\CustomerStorageWithdrawal;
 use App\Models\Inventory\Item;
+use App\Models\InventoryLocation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,11 +22,48 @@ use Yajra\DataTables\Facades\DataTables;
 
 class CustomerStorageController extends Controller
 {
-    private function currentBranchId(): int
+    /**
+     * Align branch/location session with inventory items (ItemController).
+     */
+    private function ensureInventorySession(): void
     {
+        if (! session('location_id')) {
+            $user = Auth::user();
+            $defaultLocation = $user->defaultLocation()->first();
+
+            if ($defaultLocation) {
+                session([
+                    'location_id' => $defaultLocation->id,
+                    'branch_id' => $defaultLocation->branch_id,
+                ]);
+            } else {
+                $firstLocation = $user->locations()->first();
+                if ($firstLocation) {
+                    session([
+                        'location_id' => $firstLocation->id,
+                        'branch_id' => $firstLocation->branch_id,
+                    ]);
+                }
+            }
+        } elseif (! session('branch_id') && session('location_id')) {
+            $branchId = InventoryLocation::where('id', session('location_id'))->value('branch_id');
+            if ($branchId) {
+                session(['branch_id' => $branchId]);
+            }
+        }
+    }
+
+    private function currentBranchId(): ?int
+    {
+        $this->ensureInventorySession();
+
+        if (session('branch_id')) {
+            return (int) session('branch_id');
+        }
+
         $user = Auth::user();
 
-        return (int) (session('branch_id') ?: $user->branch_id);
+        return $user->branch_id ? (int) $user->branch_id : null;
     }
 
     private function customersForCurrentBranch()
@@ -31,20 +71,33 @@ class CustomerStorageController extends Controller
         $user = Auth::user();
         $branchId = $this->currentBranchId();
 
-        return Customer::where('company_id', $user->company_id)
-            ->where('branch_id', $branchId)
-            ->orderBy('name');
+        $query = Customer::where('company_id', $user->company_id);
+
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        return $query->orderBy('name');
     }
 
+    /**
+     * Same visibility rules as inventory/items list (ItemController@index).
+     */
     private function itemsForCurrentBranch()
     {
-        return Item::forBranch($this->currentBranchId())
-            ->active()
+        $user = Auth::user();
+        $sessionBranchId = session('branch_id') ? (int) session('branch_id') : null;
+
+        return Item::query()
+            ->where('company_id', $user->company_id)
+            ->visibleInSessionBranch($sessionBranchId)
             ->orderBy('name');
     }
 
     public function index(Request $request)
     {
+        $this->ensureInventorySession();
+
         $user = Auth::user();
         $branchId = $this->currentBranchId();
 
@@ -89,7 +142,7 @@ class CustomerStorageController extends Controller
         if (! $branchId) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tawi halijachaguliwa. Chagua tawi kisha jaribu tena.',
+                'message' => 'Tawi halijachaguliwa. Chagua tawi au eneo la hesabu kisha jaribu tena.',
             ], 422);
         }
 
@@ -216,14 +269,12 @@ class CustomerStorageController extends Controller
             if (Schema::hasTable('inventory_items_branches')) {
                 $branchIds = collect($request->input('branch_ids', []))
                     ->map(fn ($id) => (int) $id)
+                    ->filter()
                     ->unique()
                     ->values()
                     ->all();
 
-                if ($branchIds === []) {
-                    $branchIds = [$this->currentBranchId()];
-                }
-
+                // Empty = visible in all branches (same as inventory items form).
                 $item->visibilityBranches()->sync($branchIds);
             }
 
@@ -246,6 +297,12 @@ class CustomerStorageController extends Controller
         $user = Auth::user();
         $branchId = $this->currentBranchId();
         $companyId = $user->company_id;
+
+        if (! $branchId) {
+            return back()
+                ->withInput()
+                ->withErrors(['customer_id' => 'Tawi halijachaguliwa. Chagua tawi au eneo la hesabu kisha jaribu tena.']);
+        }
 
         $validated = $request->validate([
             'customer_id' => 'required|integer',
@@ -328,6 +385,156 @@ class CustomerStorageController extends Controller
             ->with('success', 'Zao la mteja ' . $customer->name . ' limepokelewa kikamilifu (idadi: ' . (int) $validated['quantity'] . ').');
     }
 
+    public function withdraw(Request $request)
+    {
+        $user = Auth::user();
+        $branchId = $this->currentBranchId();
+        $companyId = $user->company_id;
+
+        $validated = $request->validate([
+            'balance_id' => 'required|integer',
+            'quantity' => 'required|numeric|min:0.01',
+            'reason' => ['required', Rule::in(array_keys(CustomerStorageWithdrawal::reasonOptions()))],
+            'price' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:1000',
+        ], [
+            'balance_id.required' => 'Salio halijapatikana.',
+            'quantity.required' => 'Weka idadi ya kutoa.',
+            'quantity.min' => 'Idadi iwe angalau 1.',
+            'reason.required' => 'Chagua sababu ya kutoa zao.',
+            'price.min' => 'Bei haiwezi kuwa hasi.',
+        ]);
+
+        if ($validated['reason'] === 'kuuza') {
+            $request->validate([
+                'price' => 'required|numeric|min:0.01',
+            ], [
+                'price.required' => 'Weka bei kwa kila kilo.',
+                'price.min' => 'Bei iwe zaidi ya 0.',
+            ]);
+            $validated['price'] = (float) $request->input('price');
+        }
+
+        if (! Schema::hasTable('customer_storage_withdrawals')) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jedwali la utoaji wa zao halijasanidiwa. Endesha migrations.',
+                ], 422);
+            }
+
+            return back()->withErrors(['quantity' => 'Jedwali la utoaji wa zao halijasanidiwa. Endesha migrations.']);
+        }
+
+        $balance = CustomerStorageBalance::query()
+            ->with(['customer', 'item'])
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('id', $validated['balance_id'])
+            ->first();
+
+        if (! $balance) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Salio halipatikani katika tawi hili.',
+                ], 422);
+            }
+
+            return back()->withErrors(['quantity' => 'Salio halipatikani katika tawi hili.']);
+        }
+
+        if ($validated['reason'] === 'kuuza' && ! Schema::hasTable('customer_storage_sales')) {
+            $migrationMessage = 'Jedwali la mauzo ya zao halijasanidiwa. Endesha migrations.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $migrationMessage], 422);
+            }
+
+            return back()->withErrors(['price' => $migrationMessage]);
+        }
+
+        $withdrawQty = (float) $validated['quantity'];
+        $onHand = (float) $balance->quantity_on_hand;
+
+        if ($withdrawQty > $onHand) {
+            $message = 'Idadi ya kutoa haiwezi kuzidi salio lililopo (' . $this->formatStorageNumber($onHand) . ').';
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 422);
+            }
+
+            return back()->withErrors(['quantity' => $message]);
+        }
+
+        try {
+            DB::transaction(function () use ($user, $branchId, $balance, $validated, $withdrawQty, $onHand) {
+                $withdrawal = CustomerStorageWithdrawal::create([
+                    'company_id' => $user->company_id,
+                    'branch_id' => $branchId,
+                    'customer_id' => $balance->customer_id,
+                    'inventory_item_id' => $balance->inventory_item_id,
+                    'quantity' => $withdrawQty,
+                    'reason' => $validated['reason'],
+                    'notes' => $validated['notes'] ?? null,
+                    'withdrawn_date' => now()->toDateString(),
+                    'created_by' => $user->id,
+                ]);
+
+                if ($validated['reason'] === 'kuuza' && Schema::hasTable('customer_storage_sales')) {
+                    $price = (float) $validated['price'];
+                    $total = round($withdrawQty * $price, 2);
+
+                    CustomerStorageSale::create([
+                        'company_id' => $user->company_id,
+                        'branch_id' => $branchId,
+                        'customer_id' => $balance->customer_id,
+                        'inventory_item_id' => $balance->inventory_item_id,
+                        'quantity' => $withdrawQty,
+                        'price' => $price,
+                        'total' => $total,
+                        'withdrawal_id' => $withdrawal->id,
+                        'created_by' => $user->id,
+                    ]);
+                }
+
+                $balance->quantity_on_hand = $onHand - $withdrawQty;
+                $balance->save();
+            });
+        } catch (\Throwable $e) {
+            \Log::error('Customer storage withdraw failed: ' . $e->getMessage(), [
+                'balance_id' => $validated['balance_id'],
+                'branch_id' => $branchId,
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Imeshindikana kutoa zao. Jaribu tena.',
+                ], 500);
+            }
+
+            return back()->withErrors(['quantity' => 'Imeshindikana kutoa zao. Jaribu tena.']);
+        }
+
+        $customerName = $balance->customer->name ?? 'mteja';
+        $message = 'Zao la ' . $customerName . ' limetolewa kikamilifu (idadi: ' . $this->formatStorageNumber($withdrawQty) . ').';
+
+        if ($validated['reason'] === 'kuuza') {
+            $total = round($withdrawQty * (float) $validated['price'], 2);
+            $message = 'Mauzo ya zao la ' . $customerName . ' yamerekodiwa (idadi: '
+                . $this->formatStorageNumber($withdrawQty) . ', jumla: ' . number_format($total, 2) . ').';
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => $message]);
+        }
+
+        return redirect()
+            ->to(route('inventory.customer-storage.index'))
+            ->with('success', $message);
+    }
+
     public function history(Request $request)
     {
         $user = Auth::user();
@@ -375,13 +582,29 @@ class CustomerStorageController extends Controller
             ->filterColumn('item_name', function ($query, $keyword) {
                 $query->whereHas('item', fn ($q) => $q->where('name', 'like', '%' . $keyword . '%'));
             })
-            ->addColumn('history_link', function ($row) {
-                $url = route('inventory.customer-storage.history', ['customer_id' => $row->customer_id]);
+            ->addColumn('actions', function ($row) {
+                $historyUrl = route('inventory.customer-storage.history', ['customer_id' => $row->customer_id]);
+                $customerName = e($row->customer->name ?? '—');
+                $itemName = e($row->item->name ?? '—');
+                $onHand = (float) $row->quantity_on_hand;
+                $unit = e($row->item->unit_of_measure ?? '');
 
-                return '<a href="' . e($url) . '" class="btn btn-sm btn-outline-info" title="Historia ya uletaji">'
-                    . '<i class="bx bx-history me-1"></i> Historia</a>';
+                $html = '<div class="d-flex flex-wrap gap-1 justify-content-center">';
+                $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-withdraw-storage"'
+                    . ' data-balance-id="' . (int) $row->id . '"'
+                    . ' data-customer-name="' . $customerName . '"'
+                    . ' data-item-name="' . $itemName . '"'
+                    . ' data-quantity-on-hand="' . $onHand . '"'
+                    . ' data-unit="' . $unit . '"'
+                    . ' title="Toa Zao">'
+                    . '<i class="bx bx-export me-1"></i> Toa</button>';
+                $html .= '<a href="' . e($historyUrl) . '" class="btn btn-sm btn-outline-info" title="Historia">'
+                    . '<i class="bx bx-history"></i></a>';
+                $html .= '</div>';
+
+                return $html;
             })
-            ->rawColumns(['history_link'])
+            ->rawColumns(['actions'])
             ->make(true);
     }
 
@@ -389,31 +612,108 @@ class CustomerStorageController extends Controller
     {
         $user = Auth::user();
         $branchId = $this->currentBranchId();
+        $companyId = $user->company_id;
+        $customerId = $request->input('customer_id');
 
-        $query = CustomerStorageReceipt::query()
-            ->with(['customer', 'item', 'createdByUser'])
-            ->where('company_id', $user->company_id)
-            ->where('branch_id', $branchId);
+        $receipts = DB::table('customer_storage_receipts as r')
+            ->join('customers as c', 'c.id', '=', 'r.customer_id')
+            ->join('inventory_items as i', 'i.id', '=', 'r.inventory_item_id')
+            ->leftJoin('users as u', 'u.id', '=', 'r.created_by')
+            ->where('r.company_id', $companyId)
+            ->where('r.branch_id', $branchId)
+            ->when($customerId, fn ($q) => $q->where('r.customer_id', $customerId))
+            ->select([
+                DB::raw("'in' as movement_type"),
+                'r.received_date as transaction_date',
+                'c.name as customer_name',
+                'i.name as item_name',
+                'i.unit_of_measure',
+                'i.package_name',
+                'i.package_quantity',
+                'r.quantity',
+                DB::raw('NULL as reason'),
+                'r.notes',
+                'u.name as recorded_by',
+                'r.created_at',
+            ]);
 
-        if ($request->filled('customer_id')) {
-            $query->where('customer_id', $request->customer_id);
+        $union = $receipts;
+
+        if (Schema::hasTable('customer_storage_withdrawals')) {
+            $withdrawals = DB::table('customer_storage_withdrawals as w')
+                ->join('customers as c', 'c.id', '=', 'w.customer_id')
+                ->join('inventory_items as i', 'i.id', '=', 'w.inventory_item_id')
+                ->leftJoin('users as u', 'u.id', '=', 'w.created_by')
+                ->where('w.company_id', $companyId)
+                ->where('w.branch_id', $branchId)
+                ->when($customerId, fn ($q) => $q->where('w.customer_id', $customerId))
+                ->select([
+                    DB::raw("'out' as movement_type"),
+                    'w.withdrawn_date as transaction_date',
+                    'c.name as customer_name',
+                    'i.name as item_name',
+                    'i.unit_of_measure',
+                    'i.package_name',
+                    'i.package_quantity',
+                    'w.quantity',
+                    'w.reason',
+                    'w.notes',
+                    'u.name as recorded_by',
+                    'w.created_at',
+                ]);
+
+            $union = $receipts->unionAll($withdrawals);
         }
 
+        $query = DB::query()->fromSub($union, 'storage_history');
+
         return DataTables::of($query)
-            ->addColumn('customer_name', fn ($row) => $row->customer->name ?? '—')
-            ->addColumn('item_name', fn ($row) => $row->item->name ?? '—')
-            ->addColumn('item_code', fn ($row) => $row->item->code ?? '—')
-            ->addColumn('quantity_display', fn ($row) => $this->formatQuantityWithUnit((float) $row->quantity, $row->item))
-            ->addColumn('package_display', fn ($row) => $this->formatPackageCount((float) $row->quantity, $row->item))
-            ->editColumn('received_date', fn ($row) => optional($row->received_date)->format('d/m/Y'))
-            ->addColumn('recorded_by', fn ($row) => $row->createdByUser->name ?? '—')
-            ->editColumn('created_at', fn ($row) => $row->created_at->format('d/m/Y H:i'))
-            ->filterColumn('customer_name', function ($query, $keyword) {
-                $query->whereHas('customer', fn ($q) => $q->where('name', 'like', '%' . $keyword . '%'));
+            ->addColumn('type_badge', function ($row) {
+                if ($row->movement_type === 'out') {
+                    return '<span class="badge bg-danger">Utoaji</span>';
+                }
+
+                return '<span class="badge bg-success">Uletaji</span>';
             })
-            ->filterColumn('item_name', function ($query, $keyword) {
-                $query->whereHas('item', fn ($q) => $q->where('name', 'like', '%' . $keyword . '%'));
+            ->editColumn('transaction_date', fn ($row) => $row->transaction_date
+                ? \Carbon\Carbon::parse($row->transaction_date)->format('d/m/Y')
+                : '—')
+            ->addColumn('quantity_display', function ($row) {
+                $item = new Item([
+                    'unit_of_measure' => $row->unit_of_measure,
+                    'package_name' => $row->package_name,
+                    'package_quantity' => $row->package_quantity,
+                ]);
+                $display = $this->formatQuantityWithUnit((float) $row->quantity, $item);
+
+                if ($row->movement_type === 'out') {
+                    return '<span class="text-danger fw-semibold">-' . e($display) . '</span>';
+                }
+
+                return '<span class="text-success">+' . e($display) . '</span>';
             })
+            ->addColumn('package_display', function ($row) {
+                $item = new Item([
+                    'package_name' => $row->package_name,
+                    'package_quantity' => $row->package_quantity,
+                ]);
+
+                return $this->formatPackageCount((float) $row->quantity, $item);
+            })
+            ->addColumn('reason_display', function ($row) {
+                if ($row->movement_type !== 'out' || ! $row->reason) {
+                    return '—';
+                }
+
+                return e(CustomerStorageWithdrawal::reasonOptions()[$row->reason] ?? $row->reason);
+            })
+            ->editColumn('created_at', fn ($row) => $row->created_at
+                ? \Carbon\Carbon::parse($row->created_at)->format('d/m/Y H:i')
+                : '—')
+            ->setRowClass(function ($row) {
+                return $row->movement_type === 'out' ? 'table-danger' : '';
+            })
+            ->rawColumns(['type_badge', 'quantity_display'])
             ->make(true);
     }
 

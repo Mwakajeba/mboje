@@ -14,27 +14,92 @@
             <h6 class="mb-0 text-uppercase">Wasifu wa Mteja</h6>
         </div>
         <div class="row">
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="card radius-10">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div>
-                                <p class="mb-0 text-secondary">Salio la Mkopo</p>
-                                <h4 class="my-1">
-                                    {{ number_format($correctCashDepositBalance ?? $customer->cash_deposit_balance, 2) }}
-                                </h4>
-                                <p class="mb-0 font-13 text-success">
-                                    <i class="bx bxs-wallet align-middle"></i> Inapatikana
+                                <p class="mb-0 text-secondary">Mauzo Yote</p>
+                                <h4 class="my-1">{{ number_format($totalCropSales ?? 0, 2) }}</h4>
+                                <p class="mb-0 font-13 text-primary">
+                                    <i class="bx bx-cart align-middle"></i> Jumla ya mauzo ya zao
                                 </p>
                             </div>
-                            <div class="widgets-icons bg-light-success text-success ms-auto">
+                            <div class="widgets-icons bg-light-primary text-primary ms-auto">
+                                <i class="bx bx-line-chart"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card radius-10">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div>
+                                <p class="mb-0 text-secondary">Salio la Mikopo</p>
+                                <h4 class="my-1">{{ number_format($mikopoTotal ?? 0, 2) }}</h4>
+                                <p class="mb-0 font-13 text-warning">
+                                    <i class="bx bxs-wallet align-middle"></i> Jumla ya mikopo ya mteja
+                                </p>
+                            </div>
+                            <div class="widgets-icons bg-light-warning text-warning ms-auto">
                                 <i class="bx bxs-wallet"></i>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            <div class="col-md-4">
+                <div class="card radius-10">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div>
+                                <p class="mb-0 text-secondary">Salio la Mteja</p>
+                                <h4 class="my-1 {{ ($customerNetBalance ?? 0) >= 0 ? 'text-success' : 'text-danger' }}">
+                                    {{ number_format($customerNetBalance ?? 0, 2) }}
+                                </h4>
+                                <p class="mb-0 font-13 text-muted">
+                                    <i class="bx bx-calculator align-middle"></i> Mauzo − Mikopo
+                                </p>
+                            </div>
+                            <div class="widgets-icons {{ ($customerNetBalance ?? 0) >= 0 ? 'bg-light-success text-success' : 'bg-light-danger text-danger' }} ms-auto">
+                                <i class="bx bx-wallet"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        @if(!empty($cropSalesDashboard))
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6 class="mb-2 text-uppercase text-muted">Mauzo ya Zao</h6>
+            </div>
+            @foreach($cropSalesDashboard as $cropSale)
+            <div class="col-md-3">
+                <div class="card radius-10">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div>
+                                <p class="mb-0 text-secondary">{{ $cropSale['item_name'] }}</p>
+                                <h4 class="my-1">{{ number_format($cropSale['total_sales'], 2) }}</h4>
+                                <p class="mb-0 font-13 text-primary">
+                                    <i class="bx bx-cart align-middle"></i>
+                                    Mauzo: {{ number_format($cropSale['total_quantity_sold'], 2) }}{{ $cropSale['unit'] ? ' ' . $cropSale['unit'] : '' }}
+                                </p>
+                            </div>
+                            <div class="widgets-icons bg-light-primary text-primary ms-auto">
+                                <i class="bx bx-line-chart"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
 
         <div class="row mt-3">
 
@@ -181,11 +246,26 @@
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h5 class="card-title mb-0">Mikopo ya Mteja</h5>
                             <div class="btn-group">
-                                @can('create cash deposit')
-                                <a href="{{ route('cash_collaterals.create') }}?customer_id={{ Hashids::encode($customer->id) }}" class="btn btn-sm btn-primary">
-                                    <i class="bx bx-plus"></i> Weka Akaunti Mpya
-                                </a>
-                                @endcan
+                                @if($customerCashCollateral)
+                                    @can('deposit cash collateral')
+                                    <a href="{{ route('cash_collaterals.deposit', Hashids::encode($customerCashCollateral->id)) }}" class="btn btn-sm btn-success">
+                                        <i class="bx bx-plus"></i> Toa Mkopo
+                                    </a>
+                                    @endcan
+                                    @can('withdraw cash collateral')
+                                    @if(($mikopoTotal ?? 0) > 0)
+                                    <a href="{{ route('cash_collaterals.withdraw', Hashids::encode($customerCashCollateral->id)) }}" class="btn btn-sm btn-warning">
+                                        <i class="bx bx-minus"></i> Lipa Mkopo kwa Taslim
+                                    </a>
+                                    @endif
+                                    @endcan
+                                @else
+                                    @can('create cash deposit')
+                                    <a href="{{ route('cash_collaterals.create') }}?customer_id={{ Hashids::encode($customer->id) }}" class="btn btn-sm btn-primary">
+                                        <i class="bx bx-plus"></i> Fungua Akaunti ya Mkopo
+                                    </a>
+                                    @endcan
+                                @endif
                             </div>
                         </div>
                         <hr class="my-4">
@@ -194,10 +274,10 @@
                             <table class="table table-bordered dt-responsive nowrap table-striped" id="cashDepositsTable">
                                 <thead>
                                     <tr>
-                                        <th>Aina ya Akaunti</th>
-                                        <th>Salio la Sasa</th>
-                                        <th>Tarehe ya Kusajiliwa</th>
-                                        <th class="text-center">Vitendo</th>
+                                        <th>Aina ya Mkopo</th>
+                                        <th>Kiasi</th>
+                                        <th>Tarehe</th>
+                                        <th>Aliyeingiza</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -257,9 +337,18 @@
                                 <label for="customer_message_title" class="form-label">Kichwa cha Ujumbe</label>
                                 <select class="form-select" id="customer_message_title" name="message_title" required>
                                     <option value="">Chagua kichwa...</option>
+                                    <option value="Customer Account Info">Taarifa za Mteja</option>
                                     <option value="Payment Reminder">Ukumbusho wa Malipo</option>
                                     <option value="Custom">Kichwa Maalum</option>
                                 </select>
+                            </div>
+                            <div class="mb-3 d-none" id="customer_account_info_preview">
+                                <div class="alert alert-info mb-0 small">
+                                    <strong>Utatuma:</strong><br>
+                                    Mauzo: <strong>{{ number_format($totalCropSales ?? 0, 2) }}</strong><br>
+                                    Mikopo: <strong>{{ number_format($mikopoTotal ?? 0, 2) }}</strong><br>
+                                    Salio lililobaki: <strong>{{ number_format($customerNetBalance ?? 0, 2) }}</strong>
+                                </div>
                             </div>
                             <div class="mb-3" id="customer_message_content_wrapper">
                                 <label for="customer_message_content" class="form-label">Maudhui ya Ujumbe</label>
@@ -303,23 +392,23 @@
                         type: 'GET'
                     },
                     columns: [
-                        {data: 'type_name', name: 'type_name'},
+                        {data: 'loan_type_label', name: 'loan_type'},
                         {data: 'formatted_amount', name: 'amount'},
-                        {data: 'formatted_date', name: 'created_at'},
-                        {data: 'actions', name: 'actions', orderable: false, searchable: false}
+                        {data: 'formatted_date', name: 'date'},
+                        {data: 'entered_by_name', name: 'entered_by_name', orderable: false, searchable: false}
                     ],
                     responsive: true,
                     pageLength: 10,
                     lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "Zote"]],
                     order: [[2, 'desc']],
                     language: {
-                        search: "Tafuta akaunti:",
-                        lengthMenu: "Onyesha _MENU_ akaunti kwa ukurasa",
-                        info: "Inaonyesha _START_ hadi _END_ kati ya _TOTAL_ akaunti",
-                        infoEmpty: "Hakuna akaunti",
+                        search: "Tafuta mkopo:",
+                        lengthMenu: "Onyesha _MENU_ mikopo kwa ukurasa",
+                        info: "Inaonyesha _START_ hadi _END_ kati ya _TOTAL_ mikopo",
+                        infoEmpty: "Hakuna mikopo",
                         infoFiltered: "(kuchujwa kutoka _MAX_ jumla)",
-                        zeroRecords: "Hakuna akaunti za mikopo",
-                        processing: "Inapakia akaunti..."
+                        zeroRecords: "Mteja hana mikopo bado",
+                        processing: "Inapakia mikopo..."
                     }
                 });
 
@@ -417,21 +506,35 @@
             const titleEl = document.getElementById('customer_message_title');
             const contentEl = document.getElementById('customer_message_content');
             const wrapperEl = document.getElementById('customer_message_content_wrapper');
+            const accountPreviewEl = document.getElementById('customer_account_info_preview');
             const countEl = document.getElementById('customer_character_count');
 
             function updateCount(){
                 countEl.textContent = (contentEl.value || '').length;
             }
             function toggleContent(){
-                if (titleEl.value === 'Payment Reminder') {
+                const title = titleEl.value;
+
+                if (title === 'Customer Account Info') {
+                    accountPreviewEl.classList.remove('d-none');
+                    wrapperEl.style.display = 'none';
+                    contentEl.value = '';
+                    contentEl.removeAttribute('data-autofilled');
+                } else {
+                    accountPreviewEl.classList.add('d-none');
+                }
+
+                if (title === 'Payment Reminder') {
                     if (!contentEl.value || contentEl.getAttribute('data-autofilled') !== 'yes') {
                         contentEl.value = 'Mpendwa Mteja, tunakukumbusha kulipa deni lako lililobaki. Tafadhali fanya malipo mapema iwezekanavyo. Asante.';
                         contentEl.setAttribute('data-autofilled','yes');
                     }
                     wrapperEl.style.display = 'none';
-                } else {
+                } else if (title !== 'Customer Account Info') {
                     wrapperEl.style.display = '';
+                    contentEl.removeAttribute('data-autofilled');
                 }
+
                 updateCount();
             }
             titleEl.addEventListener('change', toggleContent);
