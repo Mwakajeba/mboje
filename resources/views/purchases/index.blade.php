@@ -264,6 +264,34 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Safari na Madereva -->
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card border-primary position-relative h-100">
+                                    <div class="card-body text-center d-flex flex-column">
+                                        @php
+                                            $driverTripsBranch = session('branch_id') ?? auth()->user()->branch_id;
+                                            $driverTripsCount = \Illuminate\Support\Facades\Schema::hasTable('driver_trips')
+                                                ? \App\Models\Purchase\DriverTrip::where('company_id', auth()->user()->company_id)
+                                                    ->when($driverTripsBranch, fn ($q) => $q->where('branch_id', $driverTripsBranch))
+                                                    ->count()
+                                                : 0;
+                                        @endphp
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
+                                            {{ $driverTripsCount }}
+                                            <span class="visually-hidden">safari count</span>
+                                        </span>
+                                        <div class="mb-3">
+                                            <i class="bx bx-car fs-1 text-primary"></i>
+                                        </div>
+                                        <h5 class="card-title">Safari na Madereva</h5>
+                                        <p class="card-text flex-grow-1">Sajili safari za madereva, rekodi mapato na matumizi, na angalia ripoti ya faida kwa kila safari.</p>
+                                        <a href="{{ route('purchases.driver-trips.index') }}" class="btn btn-primary mt-auto">
+                                            <i class="bx bx-list-ul me-1"></i> Fungua safari na madereva
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
                             @endif
 
                             {{-- 2. Purchase Requisitions (hidden — uncomment when needed)

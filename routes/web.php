@@ -1461,6 +1461,15 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
         Route::delete('/report/all', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'destroyReportAll'])->name('report.all.destroy');
     });
 
+    // Safari na Madereva (driver trips)
+    Route::prefix('driver-trips')->name('driver-trips.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Purchase\DriverTripController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\Purchase\DriverTripController::class, 'store'])->name('store');
+        Route::post('/mapato', [\App\Http\Controllers\Purchase\DriverTripController::class, 'storeMapato'])->name('mapato.store');
+        Route::post('/matumizi', [\App\Http\Controllers\Purchase\DriverTripController::class, 'storeMatumizi'])->name('matumizi.store');
+        Route::get('/{trip}/report', [\App\Http\Controllers\Purchase\DriverTripController::class, 'report'])->name('report');
+    });
+
     // Supplier advances (prepayments to suppliers)
     Route::prefix('supplier-advances')->name('supplier-advances.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'index'])->name('index');
