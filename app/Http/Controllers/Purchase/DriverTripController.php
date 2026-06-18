@@ -8,6 +8,7 @@ use App\Models\Purchase\DriverTripMapatoLine;
 use App\Models\Purchase\DriverTripMapatoRecord;
 use App\Models\Purchase\DriverTripMatumiziLine;
 use App\Models\Purchase\DriverTripMatumiziRecord;
+use App\Services\Purchase\DriverTripNotificationService;
 use App\Services\Purchase\DriverTripReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,8 @@ use Yajra\DataTables\Facades\DataTables;
 class DriverTripController extends Controller
 {
     public function __construct(
-        private readonly DriverTripReportService $reportService
+        private readonly DriverTripReportService $reportService,
+        private readonly DriverTripNotificationService $notificationService
     ) {}
 
     public function index(Request $request)
@@ -46,7 +48,7 @@ class DriverTripController extends Controller
 
         $validated = $request->validate($this->tripValidationRules(), $this->tripValidationMessages());
 
-        DriverTrip::create([
+        $trip = DriverTrip::create([
             'company_id' => $companyId,
             'branch_id' => $branchId ? (int) $branchId : null,
             'trip_name' => $validated['trip_name'],
@@ -57,6 +59,8 @@ class DriverTripController extends Controller
             'status' => $validated['status'] ?? DriverTrip::STATUS_ACTIVE,
             'user_id' => $user->id,
         ]);
+
+        $this->notificationService->sendTripCreated($trip, $user->name);
 
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Safari imesajiliwa kikamilifu.']);
@@ -79,6 +83,15 @@ class DriverTripController extends Controller
 
         $validated = $request->validate($this->tripValidationRules(), $this->tripValidationMessages());
 
+        $before = $driverTrip->only([
+            'trip_name',
+            'driver_name',
+            'vehicle_info',
+            'trip_price',
+            'trip_date',
+            'status',
+        ]);
+
         $driverTrip->update([
             'trip_name' => $validated['trip_name'],
             'driver_name' => $validated['driver_name'],
@@ -87,6 +100,8 @@ class DriverTripController extends Controller
             'trip_date' => $validated['trip_date'],
             'status' => $validated['status'] ?? DriverTrip::STATUS_ACTIVE,
         ]);
+
+        $this->notificationService->sendTripUpdated($driverTrip->fresh(), $before, $user->name);
 
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Safari imesasishwa kikamilifu.']);
@@ -106,6 +121,8 @@ class DriverTripController extends Controller
         $branchId = session('branch_id') ?? $user->branch_id;
 
         $driverTrip = $this->findTripForScope($trip, $companyId, $branchId ? (int) $branchId : null);
+
+        $this->notificationService->sendTripDeleted($driverTrip, $user->name);
 
         DB::transaction(function () use ($driverTrip) {
             $driverTrip->delete();
@@ -313,6 +330,29 @@ class DriverTripController extends Controller
         });
 
         $total = (float) $record->lines->sum('kiasi');
+
+        $linePayload = collect($lines)->map(fn ($line) => [
+            'maelezo' => $line['maelezo'],
+            'kiasi' => $line['kiasi'],
+        ])->all();
+
+        if ($entryTypeKey === 'mapato') {
+            $this->notificationService->sendMapatoEntered(
+                $trip,
+                $linePayload,
+                $total,
+                $validated['entry_date'],
+                $user->name
+            );
+        } else {
+            $this->notificationService->sendMatumiziEntered(
+                $trip,
+                $linePayload,
+                $total,
+                $validated['entry_date'],
+                $user->name
+            );
+        }
 
         return response()->json([
             'message' => $successPrefix . ' kwa safari ' . $trip->trip_name . ' (jumla ' . number_format($total, 2) . ').',
