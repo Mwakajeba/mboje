@@ -45,6 +45,16 @@
                                 <span>Bei ya Safari</span>
                                 <span class="fw-semibold">{{ format_currency($trip->trip_price) }}</span>
                             </div>
+                            <div class="col-md-6 d-flex justify-content-between">
+                                <span>Hali</span>
+                                <span class="fw-semibold">
+                                    @if(($trip->status ?? 'hai') === 'imekwisha')
+                                        <span class="badge bg-success">Imekwisha</span>
+                                    @else
+                                        <span class="badge bg-primary">Hai</span>
+                                    @endif
+                                </span>
+                            </div>
                             <div class="col-12">
                                 <span class="d-block text-muted mb-1">Taarifa za Gari</span>
                                 <span class="fw-semibold">{{ $trip->vehicle_info ?: '—' }}</span>
@@ -119,22 +129,22 @@
                     </div>
                 @endif
 
-                <div class="card border-0 mt-4 {{ $faida >= 0 ? 'bg-success bg-opacity-10' : 'bg-danger bg-opacity-10' }}">
+                <div class="card border-0 mt-4 driver-trip-report-summary">
                     <div class="card-body py-3">
-                        <div class="row g-2 small mb-2">
+                        <div class="row g-2 mb-2">
                             <div class="col-sm-6 d-flex justify-content-between">
-                                <span>Jumla ya Mapato</span>
-                                <span class="fw-semibold">{{ format_currency($mapato_total) }}</span>
+                                <span class="fw-bold text-dark">Jumla ya Mapato</span>
+                                <span class="fw-bold text-dark">{{ format_currency($mapato_total) }}</span>
                             </div>
                             <div class="col-sm-6 d-flex justify-content-between">
-                                <span>Jumla ya Matumizi</span>
-                                <span class="fw-semibold">{{ format_currency($matumizi_total) }}</span>
+                                <span class="fw-bold text-dark">Jumla ya Matumizi</span>
+                                <span class="fw-bold text-dark">{{ format_currency($matumizi_total) }}</span>
                             </div>
                         </div>
-                        <hr class="my-2">
+                        <hr class="my-2 border-dark opacity-25">
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="fw-bold text-uppercase">Faida (Mapato − Matumizi)</span>
-                            <span class="fs-5 fw-bold {{ $faida >= 0 ? 'text-success' : 'text-danger' }}">{{ format_currency($faida) }}</span>
+                            <span class="fw-bold text-dark text-uppercase">Faida (Mapato − Matumizi)</span>
+                            <span class="fs-5 fw-bold text-dark">{{ format_currency($faida) }}</span>
                         </div>
                     </div>
                 </div>
@@ -143,3 +153,15 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    .driver-trip-report-summary {
+        background-color: #f5f5f5 !important;
+    }
+    .driver-trip-report-summary,
+    .driver-trip-report-summary .card-body {
+        color: #000;
+    }
+</style>
+@endpush

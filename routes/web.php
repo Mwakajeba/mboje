@@ -1467,6 +1467,8 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
         Route::post('/', [\App\Http\Controllers\Purchase\DriverTripController::class, 'store'])->name('store');
         Route::post('/mapato', [\App\Http\Controllers\Purchase\DriverTripController::class, 'storeMapato'])->name('mapato.store');
         Route::post('/matumizi', [\App\Http\Controllers\Purchase\DriverTripController::class, 'storeMatumizi'])->name('matumizi.store');
+        Route::put('/{trip}', [\App\Http\Controllers\Purchase\DriverTripController::class, 'update'])->name('update');
+        Route::delete('/{trip}', [\App\Http\Controllers\Purchase\DriverTripController::class, 'destroy'])->name('destroy');
         Route::get('/{trip}/report', [\App\Http\Controllers\Purchase\DriverTripController::class, 'report'])->name('report');
     });
 

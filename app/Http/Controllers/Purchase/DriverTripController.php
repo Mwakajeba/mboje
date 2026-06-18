@@ -44,18 +44,7 @@ class DriverTripController extends Controller
         $companyId = (int) $user->company_id;
         $branchId = session('branch_id') ?? $user->branch_id;
 
-        $validated = $request->validate([
-            'trip_name' => ['required', 'string', 'max:255'],
-            'driver_name' => ['required', 'string', 'max:255'],
-            'vehicle_info' => ['nullable', 'string', 'max:2000'],
-            'trip_price' => ['required', 'numeric', 'min:0'],
-            'trip_date' => ['required', 'date'],
-        ], [
-            'trip_name.required' => 'Jina la safari linahitajika.',
-            'driver_name.required' => 'Jina la dereva linahitajika.',
-            'trip_price.required' => 'Bei ya safari inahitajika.',
-            'trip_date.required' => 'Tarehe ya safari inahitajika.',
-        ]);
+        $validated = $request->validate($this->tripValidationRules(), $this->tripValidationMessages());
 
         DriverTrip::create([
             'company_id' => $companyId,
@@ -65,6 +54,7 @@ class DriverTripController extends Controller
             'vehicle_info' => $validated['vehicle_info'] ?? null,
             'trip_price' => $validated['trip_price'],
             'trip_date' => $validated['trip_date'],
+            'status' => $validated['status'] ?? DriverTrip::STATUS_ACTIVE,
             'user_id' => $user->id,
         ]);
 
@@ -75,6 +65,53 @@ class DriverTripController extends Controller
         return redirect()
             ->route('purchases.driver-trips.index')
             ->with('success', 'Safari imesajiliwa kikamilifu.');
+    }
+
+    public function update(Request $request, int $trip)
+    {
+        abort_unless(user_can_enter_daily_accounts(), 403);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+
+        $driverTrip = $this->findTripForScope($trip, $companyId, $branchId ? (int) $branchId : null);
+
+        $validated = $request->validate($this->tripValidationRules(), $this->tripValidationMessages());
+
+        $driverTrip->update([
+            'trip_name' => $validated['trip_name'],
+            'driver_name' => $validated['driver_name'],
+            'vehicle_info' => $validated['vehicle_info'] ?? null,
+            'trip_price' => $validated['trip_price'],
+            'trip_date' => $validated['trip_date'],
+            'status' => $validated['status'] ?? DriverTrip::STATUS_ACTIVE,
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Safari imesasishwa kikamilifu.']);
+        }
+
+        return redirect()
+            ->route('purchases.driver-trips.index')
+            ->with('success', 'Safari imesasishwa kikamilifu.');
+    }
+
+    public function destroy(int $trip)
+    {
+        abort_unless(user_can_enter_daily_accounts(), 403);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+
+        $driverTrip = $this->findTripForScope($trip, $companyId, $branchId ? (int) $branchId : null);
+
+        DB::transaction(function () use ($driverTrip) {
+            $driverTrip->delete();
+        });
+
+        return response()->json(['message' => 'Safari imefutwa kikamilifu.']);
     }
 
     public function storeMapato(Request $request)
@@ -123,8 +160,23 @@ class DriverTripController extends Controller
             ->orderByDesc('id');
 
         return DataTables::of($query)
+            ->setRowClass(function ($row) {
+                return ($row->status ?? DriverTrip::STATUS_ACTIVE) === DriverTrip::STATUS_COMPLETED
+                    ? 'trip-completed'
+                    : '';
+            })
             ->addColumn('trip_date_display', fn ($row) => $row->trip_date?->format('d/m/Y') ?? '—')
             ->addColumn('trip_price_display', fn ($row) => number_format((float) $row->trip_price, 2))
+            ->addColumn('status_display', function ($row) {
+                $status = $row->status ?? DriverTrip::STATUS_ACTIVE;
+                $label = DriverTrip::statusOptions()[$status] ?? $status;
+
+                if ($status === DriverTrip::STATUS_COMPLETED) {
+                    return '<span class="badge bg-success">Imekwisha</span>';
+                }
+
+                return '<span class="badge bg-primary">Hai</span>';
+            })
             ->addColumn('vehicle_info_short', function ($row) {
                 $info = trim((string) $row->vehicle_info);
 
@@ -157,11 +209,31 @@ class DriverTripController extends Controller
                     . ' class="btn btn-sm btn-outline-primary" title="Ripoti">'
                     . '<i class="bx bx-file me-1"></i> Ripoti</a>';
 
+                if ($canEnter) {
+                    $vehicleInfo = e($row->vehicle_info ?? '');
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-secondary btn-trip-edit"'
+                        . ' data-trip-id="' . (int) $row->id . '"'
+                        . ' data-trip-name="' . $tripName . '"'
+                        . ' data-driver-name="' . e($row->driver_name) . '"'
+                        . ' data-vehicle-info="' . $vehicleInfo . '"'
+                        . ' data-trip-price="' . e((string) $row->trip_price) . '"'
+                        . ' data-trip-date="' . e($tripDate) . '"'
+                        . ' data-trip-status="' . e($row->status ?? DriverTrip::STATUS_ACTIVE) . '"'
+                        . ' title="Badili safari">'
+                        . '<i class="bx bx-edit"></i></button>';
+
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-trip-delete"'
+                        . ' data-trip-id="' . (int) $row->id . '"'
+                        . ' data-trip-name="' . $tripName . '"'
+                        . ' title="Futa safari">'
+                        . '<i class="bx bx-trash"></i></button>';
+                }
+
                 $html .= '</div>';
 
                 return $html;
             })
-            ->rawColumns(['actions'])
+            ->rawColumns(['actions', 'status_display'])
             ->make(true);
     }
 
@@ -260,5 +332,29 @@ class DriverTripController extends Controller
         }
 
         return $query->firstOrFail();
+    }
+
+    /** @return array<string, mixed> */
+    private function tripValidationRules(): array
+    {
+        return [
+            'trip_name' => ['required', 'string', 'max:255'],
+            'driver_name' => ['required', 'string', 'max:255'],
+            'vehicle_info' => ['nullable', 'string', 'max:2000'],
+            'trip_price' => ['required', 'numeric', 'min:0'],
+            'trip_date' => ['required', 'date'],
+            'status' => ['nullable', 'in:' . DriverTrip::STATUS_ACTIVE . ',' . DriverTrip::STATUS_COMPLETED],
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function tripValidationMessages(): array
+    {
+        return [
+            'trip_name.required' => 'Jina la safari linahitajika.',
+            'driver_name.required' => 'Jina la dereva linahitajika.',
+            'trip_price.required' => 'Bei ya safari inahitajika.',
+            'trip_date.required' => 'Tarehe ya safari inahitajika.',
+        ];
     }
 }

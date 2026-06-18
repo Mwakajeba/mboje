@@ -11,6 +11,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DriverTrip extends Model
 {
+    public const STATUS_ACTIVE = 'hai';
+
+    public const STATUS_COMPLETED = 'imekwisha';
+
     protected $fillable = [
         'company_id',
         'branch_id',
@@ -19,6 +23,7 @@ class DriverTrip extends Model
         'vehicle_info',
         'trip_price',
         'trip_date',
+        'status',
         'user_id',
     ];
 
@@ -26,6 +31,20 @@ class DriverTrip extends Model
         'trip_date' => 'date',
         'trip_price' => 'decimal:2',
     ];
+
+    /** @return array<string, string> */
+    public static function statusOptions(): array
+    {
+        return [
+            self::STATUS_ACTIVE => 'Hai',
+            self::STATUS_COMPLETED => 'Imekwisha',
+        ];
+    }
+
+    public function isCompleted(): bool
+    {
+        return $this->status === self::STATUS_COMPLETED;
+    }
 
     public function company(): BelongsTo
     {
