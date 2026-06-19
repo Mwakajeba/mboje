@@ -1461,6 +1461,12 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
         Route::delete('/report/all', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'destroyReportAll'])->name('report.all.destroy');
     });
 
+    // Hesabu za Wateja/Wakulima
+    Route::prefix('customer-accounts')->name('customer-accounts.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Purchase\CustomerAccountsController::class, 'index'])->name('index');
+        Route::get('/{encodedCustomerId}', [\App\Http\Controllers\Purchase\CustomerAccountsController::class, 'show'])->name('show');
+    });
+
     // Safari na Madereva (driver trips)
     Route::prefix('driver-trips')->name('driver-trips.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Purchase\DriverTripController::class, 'index'])->name('index');

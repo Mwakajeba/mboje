@@ -265,6 +265,32 @@
                                 </div>
                             </div>
 
+                            <!-- Hesabu za Wateja/Wakulima -->
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card border-success position-relative h-100">
+                                    <div class="card-body text-center d-flex flex-column">
+                                        @php
+                                            $customerAccountsBranch = session('branch_id') ?? auth()->user()->branch_id;
+                                            $customerAccountsCount = \App\Models\Customer::where('company_id', auth()->user()->company_id)
+                                                ->when($customerAccountsBranch, fn ($q) => $q->where('branch_id', $customerAccountsBranch))
+                                                ->count();
+                                        @endphp
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success">
+                                            {{ $customerAccountsCount }}
+                                            <span class="visually-hidden">wateja count</span>
+                                        </span>
+                                        <div class="mb-3">
+                                            <i class="bx bx-user-circle fs-1 text-success"></i>
+                                        </div>
+                                        <h5 class="card-title">Hesabu za Wateja/Wakulima</h5>
+                                        <p class="card-text flex-grow-1">Chagua mteja na tarehe: mauzo, mikopo, salio, na zao lililobaki stoo mpaka siku hiyo.</p>
+                                        <a href="{{ route('purchases.customer-accounts.index') }}" class="btn btn-success mt-auto">
+                                            <i class="bx bx-search-alt me-1"></i> Fungua hesabu za wateja
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Safari na Madereva -->
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-primary position-relative h-100">
