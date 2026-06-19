@@ -15,6 +15,7 @@ use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Models\GlTransaction;
 use App\Helpers\SmsHelper;
+use App\Services\CustomerLoanNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,10 @@ use Vinkla\Hashids\Facades\Hashids;
 
 class CashCollateralController extends Controller
 {
+    public function __construct(
+        private readonly CustomerLoanNotificationService $loanNotificationService
+    ) {}
+
     /**
      * Display a listing of cash collaterals
      */
@@ -858,6 +863,15 @@ class CashCollateralController extends Controller
                     $this->sendSms($collateral->customer->phone, $smsMessage);
                 }
 
+                $this->loanNotificationService->sendLoanGranted(
+                    $collateral,
+                    (float) $request->amount,
+                    $loanTypeLabel,
+                    $notes,
+                    $request->deposit_date,
+                    $user->name
+                );
+
                 // Generate thermal receipt data
                 $receiptData = [
                     'receipt_id' => $receipt->id,
@@ -1034,6 +1048,17 @@ class CashCollateralController extends Controller
                     $this->sendSms($collateral->customer->phone, $smsMessage);
                 }
 
+                $remainingBalance = (float) $collateral->fresh()->amount;
+
+                $this->loanNotificationService->sendLoanRepayment(
+                    $collateral,
+                    (float) $request->amount,
+                    $notes,
+                    $request->withdrawal_date,
+                    $remainingBalance,
+                    $user->name
+                );
+
                 // Generate thermal receipt data
                 $receiptData = [
                     'payment_id' => $payment->id,
@@ -1103,7 +1128,20 @@ class CashCollateralController extends Controller
                 }
                 
                 // Get the associated cash collateral
-                $cashCollateral = CashCollateral::findOrFail($receipt->reference);
+                $cashCollateral = CashCollateral::with('customer')->findOrFail($receipt->reference);
+
+                $loanTypeLabel = $receipt->loan_type
+                    ? (CashCollateral::loanTypeOptions()[$receipt->loan_type] ?? $receipt->loan_type)
+                    : null;
+
+                $this->loanNotificationService->sendLoanDeleted(
+                    (int) $cashCollateral->company_id,
+                    $cashCollateral->customer->name ?? $receipt->payee_name ?? 'mteja',
+                    (float) $receipt->amount,
+                    $loanTypeLabel,
+                    (string) $receipt->date,
+                    Auth::user()?->name
+                );
                 
                 // Delete associated GL transactions
                 GlTransaction::where('transaction_type', 'receipt')
@@ -1145,7 +1183,15 @@ class CashCollateralController extends Controller
                 }
                 
                 // Get the associated cash collateral
-                $cashCollateral = CashCollateral::findOrFail($payment->reference);
+                $cashCollateral = CashCollateral::with('customer')->findOrFail($payment->reference);
+
+                $this->loanNotificationService->sendRepaymentDeleted(
+                    (int) $cashCollateral->company_id,
+                    $cashCollateral->customer->name ?? $payment->payee_name ?? 'mteja',
+                    (float) $payment->amount,
+                    (string) $payment->date,
+                    Auth::user()?->name
+                );
                 
                 // Delete associated GL transactions
                 GlTransaction::where('transaction_type', 'payment')
