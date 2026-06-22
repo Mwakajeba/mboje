@@ -13,12 +13,15 @@ use App\Models\Inventory\Item;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Receipt;
+use App\Services\CustomerBalanceReportService;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 
 use App\Models\User;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\DB;
@@ -495,6 +498,28 @@ class CustomerController extends Controller
             'customerNetBalance',
             'customerCashCollateral'
         ));
+    }
+
+    public function balancePdf(string $encodedId, CustomerBalanceReportService $balanceReportService)
+    {
+        $id = Hashids::decode($encodedId)[0] ?? null;
+
+        if (! $id) {
+            abort(404);
+        }
+
+        $customer = Customer::with(['branch', 'company'])->findOrFail($id);
+        $company = current_company();
+        $report = $balanceReportService->build($customer);
+
+        $pdf = Pdf::loadView('customers.balance-pdf', array_merge($report, [
+            'customer' => $customer,
+            'company' => $company,
+        ]))->setPaper('a4', 'portrait');
+
+        $filename = 'salio-' . Str::slug($customer->name) . '-' . now()->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     private function calculateTotalCropSales(Customer $customer): float

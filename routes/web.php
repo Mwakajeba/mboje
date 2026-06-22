@@ -1601,6 +1601,7 @@ Route::middleware(['auth', 'require.branch'])->group(function () {
     Route::get('customers/download-sample', [CustomerController::class, 'downloadSample'])->name('customers.download-sample');
 
     // Parameterized routes (must come after specific routes)
+    Route::get('customers/{encodedId}/balance-pdf', [CustomerController::class, 'balancePdf'])->name('customers.balance-pdf');
     Route::get('customers/{encodedId}', [CustomerController::class, 'show'])->name('customers.show');
     Route::post('customers/{encodedId}/send-sms', [CustomerController::class, 'sendSms'])->name('customers.send-sms');
     Route::get('customers/{encodedId}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
