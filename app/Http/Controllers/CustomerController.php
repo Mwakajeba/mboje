@@ -369,16 +369,6 @@ class CustomerController extends Controller
 
             $customer->ensureLoanAccount();
 
-            // Send welcome SMS if requested
-            if ($request->has('send_welcome_sms') && $request->send_welcome_sms) {
-                try {
-                    $this->sendWelcomeSMS($customer);
-                } catch (\Exception $e) {
-                    // Log the SMS error but don't fail the customer creation
-                    \Log::error('Failed to send welcome SMS: ' . $e->getMessage());
-                }
-            }
-
             DB::commit();
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -1349,29 +1339,5 @@ class CustomerController extends Controller
         }
         
         return $phone;
-    }
-
-    /**
-     * Send welcome SMS to customer using Beem API
-     */
-    private function sendWelcomeSMS($customer)
-    {
-        if (! SmsHelper::isConfigured()) {
-            throw new \Exception('SMS haijasanidiwa.');
-        }
-
-        $formattedPhone = function_exists('normalize_phone_number')
-            ? normalize_phone_number($customer->phone)
-            : $this->formatPhoneNumber($customer->phone);
-
-        $message = "Karibu {$customer->name} katika Gala letu ya MBOJI MILLIS";
-
-        $result = SmsHelper::send($formattedPhone, $message);
-
-        if (! ($result['success'] ?? false)) {
-            throw new \Exception($result['error'] ?? 'Imeshindikana kutuma SMS ya kukaribisha.');
-        }
-
-        \Log::info('Welcome SMS sent successfully to customer: '.$customer->name.' ('.$formattedPhone.')');
     }
 }

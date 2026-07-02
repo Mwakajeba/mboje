@@ -14,8 +14,6 @@ use App\Models\ReceiptItem;
 use App\Models\Payment;
 use App\Models\PaymentItem;
 use App\Models\GlTransaction;
-use App\Helpers\SmsHelper;
-use App\Services\CustomerLoanNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -25,10 +23,6 @@ use Vinkla\Hashids\Facades\Hashids;
 
 class CashCollateralController extends Controller
 {
-    public function __construct(
-        private readonly CustomerLoanNotificationService $loanNotificationService
-    ) {}
-
     /**
      * Display a listing of cash collaterals
      */
@@ -739,11 +733,6 @@ class CashCollateralController extends Controller
         return view('cash_collaterals.deposit', compact('bankAccounts', 'customer', 'collateral'));
     }
 
-    protected function sendSms($phone, $message)
-    {
-        SmsHelper::send($phone, $message);
-    }
-
     /**
      * PROCESS CASH COLLATERAL FOR DEPOSIT OF CUSTOMER
      */
@@ -856,21 +845,6 @@ class CashCollateralController extends Controller
 
                 // Update collateral amount
                 $collateral->increment('amount', $request->amount);
-
-                // Send SMS to customer after successful deposit
-                if ($collateral->customer && $collateral->customer->phone) {
-                    $smsMessage = "Cash deposit processed successfully. Amount: TSHS" . number_format($request->amount, 2);
-                    $this->sendSms($collateral->customer->phone, $smsMessage);
-                }
-
-                $this->loanNotificationService->sendLoanGranted(
-                    $collateral,
-                    (float) $request->amount,
-                    $loanTypeLabel,
-                    $notes,
-                    $request->deposit_date,
-                    $user->name
-                );
 
                 // Generate thermal receipt data
                 $receiptData = [
@@ -1042,23 +1016,6 @@ class CashCollateralController extends Controller
                 // Update collateral amount
                 $collateral->decrement('amount', $request->amount);
 
-                // Send SMS to customer after successful withdrawal
-                if ($collateral->customer && $collateral->customer->phone) {
-                    $smsMessage = "Cash withdrawal processed successfully. Amount: TSHS" . number_format($request->amount, 2) . ". Remaining balance: TSHS" . number_format($collateral->fresh()->amount, 2);
-                    $this->sendSms($collateral->customer->phone, $smsMessage);
-                }
-
-                $remainingBalance = (float) $collateral->fresh()->amount;
-
-                $this->loanNotificationService->sendLoanRepayment(
-                    $collateral,
-                    (float) $request->amount,
-                    $notes,
-                    $request->withdrawal_date,
-                    $remainingBalance,
-                    $user->name
-                );
-
                 // Generate thermal receipt data
                 $receiptData = [
                     'payment_id' => $payment->id,
@@ -1121,43 +1078,24 @@ class CashCollateralController extends Controller
         try {
             return DB::transaction(function () use ($receiptId) {
                 $receipt = Receipt::findOrFail($receiptId);
-                
-                // Verify this is a deposit transaction
+
                 if ($receipt->reference_type !== 'Deposit') {
                     throw new \Exception('This is not a deposit transaction.');
                 }
-                
-                // Get the associated cash collateral
-                $cashCollateral = CashCollateral::with('customer')->findOrFail($receipt->reference);
 
-                $loanTypeLabel = $receipt->loan_type
-                    ? (CashCollateral::loanTypeOptions()[$receipt->loan_type] ?? $receipt->loan_type)
-                    : null;
+                $amount = (float) $receipt->amount;
 
-                $this->loanNotificationService->sendLoanDeleted(
-                    (int) $cashCollateral->company_id,
-                    $cashCollateral->customer->name ?? $receipt->payee_name ?? 'mteja',
-                    (float) $receipt->amount,
-                    $loanTypeLabel,
-                    (string) $receipt->date,
-                    Auth::user()?->name
-                );
-                
-                // Delete associated GL transactions
                 GlTransaction::where('transaction_type', 'receipt')
                     ->where('transaction_id', $receipt->id)
                     ->delete();
-                
-                // Delete receipt items
+
                 $receipt->receiptItems()->delete();
-                
-                // Delete the receipt
                 $receipt->delete();
-                
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Muamala wa mkopo umefutwa kikamilifu.',
-                    'amount' => $receipt->amount
+                    'amount' => $amount,
                 ]);
             });
         } catch (\Exception $e) {
@@ -1176,38 +1114,24 @@ class CashCollateralController extends Controller
         try {
             return DB::transaction(function () use ($paymentId) {
                 $payment = Payment::findOrFail($paymentId);
-                
-                // Verify this is a withdrawal transaction
+
                 if ($payment->reference_type !== 'Withdrawal') {
                     throw new \Exception('This is not a withdrawal transaction.');
                 }
-                
-                // Get the associated cash collateral
-                $cashCollateral = CashCollateral::with('customer')->findOrFail($payment->reference);
 
-                $this->loanNotificationService->sendRepaymentDeleted(
-                    (int) $cashCollateral->company_id,
-                    $cashCollateral->customer->name ?? $payment->payee_name ?? 'mteja',
-                    (float) $payment->amount,
-                    (string) $payment->date,
-                    Auth::user()?->name
-                );
-                
-                // Delete associated GL transactions
+                $amount = (float) $payment->amount;
+
                 GlTransaction::where('transaction_type', 'payment')
                     ->where('transaction_id', $payment->id)
                     ->delete();
-                
-                // Delete payment items
+
                 $payment->paymentItems()->delete();
-                
-                // Delete the payment
                 $payment->delete();
-                
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Muamala wa malipo umefutwa kikamilifu.',
-                    'amount' => $payment->amount
+                    'amount' => $amount,
                 ]);
             });
         } catch (\Exception $e) {

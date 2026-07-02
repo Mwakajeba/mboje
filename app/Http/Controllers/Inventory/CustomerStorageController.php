@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Inventory;
 
-use App\Helpers\SmsHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
@@ -13,7 +12,6 @@ use App\Models\Inventory\CustomerStorageSale;
 use App\Models\Inventory\CustomerStorageWithdrawal;
 use App\Models\Inventory\Item;
 use App\Models\InventoryLocation;
-use App\Services\Inventory\CustomerStorageNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,10 +21,6 @@ use Yajra\DataTables\Facades\DataTables;
 
 class CustomerStorageController extends Controller
 {
-    public function __construct(
-        private readonly CustomerStorageNotificationService $notificationService
-    ) {}
-
     /**
      * Align branch/location session with inventory items (ItemController).
      */
@@ -201,14 +195,6 @@ class CustomerStorageController extends Controller
 
             return $customer;
         });
-
-        if ($request->boolean('send_welcome_sms')) {
-            try {
-                $this->sendCustomerWelcomeSms($customer);
-            } catch (\Exception $e) {
-                \Log::error('Failed to send welcome SMS (customer storage quick add): ' . $e->getMessage());
-            }
-        }
 
         return response()->json([
             'success' => true,
@@ -385,24 +371,6 @@ class CustomerStorageController extends Controller
                 ->withErrors(['quantity' => 'Imeshindikana kuhifadhi zao. Jaribu tena au wasiliana na msimamizi wa mfumo.']);
         }
 
-        $newBalance = (float) CustomerStorageBalance::query()
-            ->where('company_id', $user->company_id)
-            ->where('branch_id', $branchId)
-            ->where('customer_id', $customer->id)
-            ->where('inventory_item_id', $item->id)
-            ->value('quantity_on_hand');
-
-        $this->notificationService->sendReceiptStored(
-            (int) $user->company_id,
-            $customer->name,
-            $item->name,
-            (float) $validated['quantity'],
-            $validated['received_date'],
-            $newBalance,
-            $validated['notes'] ?? null,
-            $user->name
-        );
-
         return redirect()
             ->to(route('inventory.customer-storage.index'))
             ->with('success', 'Zao la mteja ' . $customer->name . ' limepokelewa kikamilifu (idadi: ' . (int) $validated['quantity'] . ').');
@@ -539,21 +507,6 @@ class CustomerStorageController extends Controller
 
             return back()->withErrors(['quantity' => 'Imeshindikana kutoa zao. Jaribu tena.']);
         }
-
-        $newBalance = $onHand - $withdrawQty;
-        $withdrawPrice = $validated['reason'] === 'kuuza' ? (float) $validated['price'] : null;
-
-        $this->notificationService->sendWithdrawal(
-            (int) $user->company_id,
-            $balance->customer->name ?? 'mteja',
-            $balance->item->name ?? 'zao',
-            $withdrawQty,
-            $validated['reason'],
-            $withdrawPrice,
-            $newBalance,
-            $validated['notes'] ?? null,
-            $user->name
-        );
 
         $customerName = $balance->customer->name ?? 'mteja';
         $message = 'Zao la ' . $customerName . ' limetolewa kikamilifu (idadi: ' . $this->formatStorageNumber($withdrawQty) . ').';
@@ -789,24 +742,4 @@ class CustomerStorageController extends Controller
 
         return rtrim(rtrim(number_format($value, 2, '.', ','), '0'), '.');
     }
-
-    protected function sendCustomerWelcomeSms(Customer $customer): void
-    {
-        if (! SmsHelper::isConfigured()) {
-            throw new \Exception('SMS haijasanidiwa.');
-        }
-
-        $formattedPhone = function_exists('normalize_phone_number')
-            ? normalize_phone_number($customer->phone)
-            : $customer->phone;
-
-        $message = "Karibu {$customer->name} katika Gala letu ya MBOJI MILLIS";
-
-        $result = SmsHelper::send($formattedPhone, $message);
-
-        if (! ($result['success'] ?? false)) {
-            throw new \Exception($result['error'] ?? 'Imeshindikana kutuma SMS ya kukaribisha.');
-        }
-    }
-
 }

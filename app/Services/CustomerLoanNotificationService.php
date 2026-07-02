@@ -33,7 +33,7 @@ class CustomerLoanNotificationService
             $by
         );
 
-        $this->sendToCompany((int) $collateral->company_id, $message, 'loan_granted');
+        $this->sendToCompany($this->resolveCompanyId($collateral), $message, 'loan_granted');
     }
 
     public function sendLoanRepayment(
@@ -59,7 +59,7 @@ class CustomerLoanNotificationService
             $by
         );
 
-        $this->sendToCompany((int) $collateral->company_id, $message, 'loan_repayment');
+        $this->sendToCompany($this->resolveCompanyId($collateral), $message, 'loan_repayment');
     }
 
     public function sendLoanDeleted(
@@ -68,18 +68,21 @@ class CustomerLoanNotificationService
         float $amount,
         ?string $loanTypeLabel,
         string $transactionDate,
-        ?string $actorName = null
+        ?string $actorName = null,
+        ?string $notes = null
     ): void {
         $date = Carbon::parse($transactionDate)->format('d/m/Y');
         $typePart = $loanTypeLabel ? ' ('.$loanTypeLabel.')' : '';
+        $notesPart = $this->notesPart($notes);
         $by = $this->actorSuffix($actorName);
 
         $message = sprintf(
-            'Mkopo: Muamala wa mkopo wa %s Tsh %s%s tarehe %s umefutwa.%s',
+            'Mkopo: Muamala wa mkopo wa %s Tsh %s%s tarehe %s umefutwa.%s%s',
             $customerName,
             $this->fmtMoney($amount),
             $typePart,
             $date,
+            $notesPart,
             $by
         );
 
@@ -91,20 +94,60 @@ class CustomerLoanNotificationService
         string $customerName,
         float $amount,
         string $transactionDate,
-        ?string $actorName = null
+        ?string $actorName = null,
+        ?string $notes = null
     ): void {
         $date = Carbon::parse($transactionDate)->format('d/m/Y');
+        $notesPart = $this->notesPart($notes);
         $by = $this->actorSuffix($actorName);
 
         $message = sprintf(
-            'Mkopo: Malipo ya %s Tsh %s tarehe %s yamefutwa.%s',
+            'Mkopo: Malipo ya %s Tsh %s tarehe %s yamefutwa.%s%s',
             $customerName,
             $this->fmtMoney($amount),
             $date,
+            $notesPart,
             $by
         );
 
         $this->sendToCompany($companyId, $message, 'repayment_deleted');
+    }
+
+    public function sendCollateralAccountDeleted(
+        CashCollateral $collateral,
+        ?string $actorName = null
+    ): void {
+        $customerName = $collateral->customer?->name ?? 'mteja';
+        $typeName = $collateral->type?->name ?? 'Mkopo';
+        $by = $this->actorSuffix($actorName);
+
+        $message = sprintf(
+            'Mkopo: Akaunti ya mkopo ya %s (%s) imefutwa.%s',
+            $customerName,
+            $typeName,
+            $by
+        );
+
+        $this->sendToCompany($this->resolveCompanyId($collateral), $message, 'collateral_deleted');
+    }
+
+    public function resolveCompanyId(CashCollateral $collateral): int
+    {
+        if (! empty($collateral->company_id)) {
+            return (int) $collateral->company_id;
+        }
+
+        if ($collateral->relationLoaded('customer') && $collateral->customer?->company_id) {
+            return (int) $collateral->customer->company_id;
+        }
+
+        $customerCompanyId = $collateral->customer()->value('company_id');
+
+        if ($customerCompanyId) {
+            return (int) $customerCompanyId;
+        }
+
+        return (int) (auth()->user()?->company_id ?? 0);
     }
 
     private function sendToCompany(int $companyId, string $message, string $logType): void
@@ -164,6 +207,21 @@ class CustomerLoanNotificationService
         $name = trim((string) $actorName);
 
         return $name !== '' ? ' Na '.$name.'.' : '.';
+    }
+
+    private function notesPart(?string $notes): string
+    {
+        $text = trim((string) $notes);
+
+        if ($text === '') {
+            return '';
+        }
+
+        if (mb_strlen($text) > 50) {
+            $text = mb_substr($text, 0, 47).'...';
+        }
+
+        return ' Sababu: '.$text.'.';
     }
 
     private function truncate(string $text, int $max = 60): string
