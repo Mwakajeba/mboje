@@ -1452,6 +1452,7 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
         Route::post('/manunuzi', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'storeManunuzi'])->name('manunuzi.store');
         Route::post('/stoo', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'storeStoo'])->name('stoo.store');
         Route::post('/employees', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'storeEmployee'])->name('employees.store');
+        Route::delete('/employees/{worker}', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'destroyEmployee'])->name('employees.destroy');
         Route::get('/matumizi-manunuzi', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'matumiziManunuzi'])->name('matumizi-manunuzi');
         Route::get('/report', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'report'])->name('report');
         Route::get('/report/show', [\App\Http\Controllers\Purchase\DailyAccountsController::class, 'reportShow'])->name('report.show');

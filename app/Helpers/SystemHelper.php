@@ -192,3 +192,18 @@ if (!function_exists('user_can_enter_daily_accounts')) {
         return user_can_record_wamachinga_purchases($user);
     }
 }
+
+if (!function_exists('user_can_manage_daily_workers')) {
+    function user_can_manage_daily_workers($user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->can('create user')
+            || $user->hasRole('md')
+            || $user->hasRole('Md');
+    }
+}

@@ -201,4 +201,78 @@ class DailyAccountsEmployeeService
 
         return $branchId;
     }
+
+    public function deactivate(int $workerId, int $companyId, ?int $branchId, User $actor): string
+    {
+        if (Schema::hasTable('hr_employees')) {
+            $employee = Employee::query()
+                ->with('user.roles')
+                ->active()
+                ->where('company_id', $companyId)
+                ->when($branchId && Schema::hasColumn('hr_employees', 'branch_id'), fn ($q) => $q->where('branch_id', $branchId))
+                ->whereKey($workerId)
+                ->first();
+
+            if (! $employee) {
+                throw new \InvalidArgumentException('Mfanyakazi hajapatikana.');
+            }
+
+            $user = $employee->user;
+            $label = $employee->full_name;
+        } else {
+            $user = User::query()
+                ->with('roles')
+                ->where('company_id', $companyId)
+                ->where('status', 'active')
+                ->whereKey($workerId)
+                ->when($branchId && Schema::hasTable('branch_user'), function ($q) use ($branchId) {
+                    $q->where(function ($inner) use ($branchId) {
+                        $inner->whereHas('branches', fn ($bq) => $bq->where('branches.id', $branchId));
+                        if (Schema::hasColumn('users', 'branch_id')) {
+                            $inner->orWhere('branch_id', $branchId);
+                        }
+                    });
+                })
+                ->first();
+
+            if (! $user) {
+                throw new \InvalidArgumentException('Mfanyakazi hajapatikana.');
+            }
+
+            $employee = null;
+            $label = $user->name;
+        }
+
+        if ($user && (int) $user->id === (int) $actor->id) {
+            throw new \InvalidArgumentException('Huwezi kufuta akaunti yako mwenyewe.');
+        }
+
+        if ($user && $this->userHasProtectedRole($user)) {
+            throw new \InvalidArgumentException('Huwezi kufuta mfanyakazi mwenye jukumu hili.');
+        }
+
+        DB::transaction(function () use ($employee, $user) {
+            if ($employee) {
+                $employee->update(['status' => 'inactive']);
+            }
+
+            if ($user) {
+                $user->update([
+                    'status' => 'inactive',
+                    'is_active' => 'no',
+                ]);
+            }
+        });
+
+        return $label;
+    }
+
+    private function userHasProtectedRole(User $user): bool
+    {
+        return $user->hasRole('super-admin')
+            || $user->hasRole('Super Admin')
+            || $user->hasRole('md')
+            || $user->hasRole('Md')
+            || $user->hasRole('admin');
+    }
 }

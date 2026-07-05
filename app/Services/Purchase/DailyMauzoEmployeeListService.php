@@ -12,6 +12,52 @@ class DailyMauzoEmployeeListService
     public const SALES_PERSON_ROLE = 'sales person';
 
     /**
+     * @return Collection<int, object{id: int, display_name: string, employee_number: ?string, phone: string, role_name: string, user_id: ?int}>
+     */
+    public function listWorkersForManagement(int $companyId, ?int $branchId): Collection
+    {
+        if (Schema::hasTable('hr_employees')) {
+            return Employee::query()
+                ->with(['user.roles'])
+                ->active()
+                ->forCompanyBranch($companyId, $branchId)
+                ->orderBy('first_name')
+                ->orderBy('last_name')
+                ->get()
+                ->map(function (Employee $employee) {
+                    $user = $employee->user;
+
+                    return (object) [
+                        'id' => $employee->id,
+                        'display_name' => $employee->full_name,
+                        'employee_number' => $employee->employee_number,
+                        'phone' => $user->phone ?? '—',
+                        'role_name' => $user?->roles->first()?->name ?? '—',
+                        'user_id' => $user?->id,
+                    ];
+                });
+        }
+
+        return $this->usersFallbackQuery($companyId, $branchId)
+            ->with('roles')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $user) => (object) [
+                'id' => $user->id,
+                'display_name' => $user->name,
+                'employee_number' => null,
+                'phone' => $user->phone ?? '—',
+                'role_name' => $user->roles->first()?->name ?? '—',
+                'user_id' => $user->id,
+            ]);
+    }
+
+    public function workerExistsForCompanyBranch(int $workerId, int $companyId, ?int $branchId): bool
+    {
+        return $this->employeeExistsForCompanyBranch($workerId, $companyId, $branchId);
+    }
+
+    /**
      * @return Collection<int, object{id: int, display_name: string, employee_number: ?string}>
      */
     public function listForCompanyBranch(int $companyId, ?int $branchId): Collection

@@ -55,15 +55,27 @@ class DailyAccountsController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $canAddWorkers = $user->can('create user');
+        $canManageWorkers = user_can_manage_daily_workers($user);
 
-        return view('purchases.daily-accounts.index', compact('employees', 'workerRoles', 'canAddWorkers'));
+        $workersList = $canManageWorkers
+            ? $this->mauzoEmployeeList->listWorkersForManagement(
+                (int) $user->company_id,
+                $branchId ? (int) $branchId : null
+            )
+            : collect();
+
+        return view('purchases.daily-accounts.index', compact(
+            'employees',
+            'workerRoles',
+            'canManageWorkers',
+            'workersList'
+        ));
     }
 
     public function storeEmployee(Request $request)
     {
         abort_unless(user_can_view_wamachinga_purchases(), 403);
-        abort_unless(Auth::user()?->can('create user'), 403);
+        abort_unless(user_can_manage_daily_workers(), 403);
 
         $companyId = (int) Auth::user()->company_id;
 
@@ -102,6 +114,33 @@ class DailyAccountsController extends Controller
         return redirect()
             ->route('purchases.daily-accounts.index')
             ->with('success', 'Mfanyakazi '.$label.' ameongezwa. Neno la siri: '.DailyAccountsEmployeeService::DEFAULT_PASSWORD);
+    }
+
+    public function destroyEmployee(int $worker)
+    {
+        abort_unless(user_can_view_wamachinga_purchases(), 403);
+        abort_unless(user_can_manage_daily_workers(), 403);
+
+        $user = Auth::user();
+        $branchId = session('branch_id') ?? $user->branch_id;
+        $companyId = (int) $user->company_id;
+
+        try {
+            $label = $this->dailyAccountsEmployee->deactivate(
+                $worker,
+                $companyId,
+                $branchId ? (int) $branchId : null,
+                $user
+            );
+        } catch (\InvalidArgumentException $e) {
+            return redirect()
+                ->route('purchases.daily-accounts.index')
+                ->withErrors(['employee' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('purchases.daily-accounts.index')
+            ->with('success', 'Mfanyakazi '.$label.' ameondolewa.');
     }
 
     public function storeMauzo(Request $request)
