@@ -26,6 +26,13 @@
             @endif
         </p>
 
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Funga"></button>
+            </div>
+        @endif
+
         <div class="row">
             @unless($isMdDailyAccountsRole)
             @can('record purchase payment')
@@ -75,6 +82,23 @@
             </div>
             @endcan
             @endunless
+
+            @if(!empty($canAddWorkers))
+            <div class="col-md-6 col-lg-3 mb-4">
+                <div class="card border-secondary h-100">
+                    <div class="card-body text-center d-flex flex-column">
+                        <div class="mb-3">
+                            <i class="bx bx-user-plus fs-1 text-secondary"></i>
+                        </div>
+                        <h5 class="card-title">Ongeza Wafanyakazi</h5>
+                        <p class="card-text flex-grow-1 small">Sajili mfanyakazi mpya kwa hesabu za kila siku (jina, simu, jukumu).</p>
+                        <button type="button" class="btn btn-secondary mt-auto" id="btnOpenAddWorker">
+                            <i class="bx bx-plus me-1"></i> Ongeza Mfanyakazi
+                        </button>
+                    </div>
+                </div>
+            </div>
+            @endif
 
             @if(user_can_view_wamachinga_purchases())
             <div class="col-md-6 col-lg-3 mb-4">
@@ -150,7 +174,34 @@
 ])
 @endcan
 @endunless
+
+@if(!empty($canAddWorkers))
+@include('purchases.daily-accounts.partials.employee-add-modal', ['workerRoles' => $workerRoles])
+@endif
 @endsection
+
+@if(!empty($canAddWorkers))
+@push('scripts')
+<script nonce="{{ $cspNonce ?? '' }}">
+$(document).ready(function () {
+    var workerModal = document.getElementById('addWorkerModal');
+    if (!workerModal) {
+        return;
+    }
+
+    var modal = new bootstrap.Modal(workerModal);
+
+    $('#btnOpenAddWorker').on('click', function () {
+        modal.show();
+    });
+
+    @if(session('open_worker_modal') || $errors->hasAny(['name', 'phone', 'role_id', 'employee']))
+    modal.show();
+    @endif
+});
+</script>
+@endpush
+@endif
 
 @unless(auth()->user()->hasRole('Md'))
 @can('record purchase payment')

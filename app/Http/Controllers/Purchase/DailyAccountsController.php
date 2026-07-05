@@ -12,7 +12,9 @@ use App\Models\Purchase\DailyMauzoLine;
 use App\Models\Purchase\DailyMauzoRecord;
 use App\Models\Purchase\DailyStooLine;
 use App\Models\Purchase\DailyStooRecord;
+use App\Models\Role;
 use App\Models\User;
+use App\Services\Purchase\DailyAccountsEmployeeService;
 use App\Services\Purchase\DailyAccountsReportDeletionService;
 use App\Services\Purchase\DailyAccountsReportLineService;
 use App\Services\Purchase\DailyAccountsReportNotificationService;
@@ -31,7 +33,8 @@ class DailyAccountsController extends Controller
         private readonly DailyAccountsReportService $dailyAccountsReport,
         private readonly DailyAccountsReportNotificationService $reportNotification,
         private readonly DailyAccountsReportDeletionService $reportDeletion,
-        private readonly DailyAccountsReportLineService $reportLineService
+        private readonly DailyAccountsReportLineService $reportLineService,
+        private readonly DailyAccountsEmployeeService $dailyAccountsEmployee
     ) {}
 
     public function index()
@@ -46,7 +49,59 @@ class DailyAccountsController extends Controller
             $branchId ? (int) $branchId : null
         );
 
-        return view('purchases.daily-accounts.index', compact('employees'));
+        $workerRoles = Role::query()
+            ->where('guard_name', 'web')
+            ->whereNotIn('name', ['super-admin', 'Super Admin'])
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $canAddWorkers = $user->can('create user');
+
+        return view('purchases.daily-accounts.index', compact('employees', 'workerRoles', 'canAddWorkers'));
+    }
+
+    public function storeEmployee(Request $request)
+    {
+        abort_unless(user_can_view_wamachinga_purchases(), 403);
+        abort_unless(Auth::user()?->can('create user'), 403);
+
+        $companyId = (int) Auth::user()->company_id;
+
+        if ($request->filled('phone') && function_exists('normalize_phone_number')) {
+            $request->merge(['phone' => normalize_phone_number($request->input('phone'))]);
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:20', 'unique:users,phone,NULL,id,company_id,'.$companyId],
+            'role_id' => ['required', 'exists:roles,id'],
+        ], [
+            'name.required' => 'Jina linahitajika.',
+            'phone.required' => 'Simu inahitajika.',
+            'phone.unique' => 'Namba hii ya simu tayari imetumika.',
+            'role_id.required' => 'Chagua jukumu.',
+        ]);
+
+        try {
+            $result = $this->dailyAccountsEmployee->create(
+                Auth::user(),
+                $validated['name'],
+                $validated['phone'],
+                (int) $validated['role_id']
+            );
+        } catch (\InvalidArgumentException $e) {
+            return redirect()
+                ->route('purchases.daily-accounts.index')
+                ->withErrors(['employee' => $e->getMessage()])
+                ->withInput()
+                ->with('open_worker_modal', true);
+        }
+
+        $label = $result['employee']?->full_name ?? $result['user']->name;
+
+        return redirect()
+            ->route('purchases.daily-accounts.index')
+            ->with('success', 'Mfanyakazi '.$label.' ameongezwa. Neno la siri: '.DailyAccountsEmployeeService::DEFAULT_PASSWORD);
     }
 
     public function storeMauzo(Request $request)
