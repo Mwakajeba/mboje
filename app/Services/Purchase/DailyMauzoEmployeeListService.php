@@ -14,11 +14,11 @@ class DailyMauzoEmployeeListService
     /**
      * @return Collection<int, object{id: int, display_name: string, employee_number: ?string, phone: string, role_name: string, user_id: ?int}>
      */
-    public function listWorkersForManagement(int $companyId, ?int $branchId): Collection
+    public function listWorkersForManagement(int $companyId, ?int $branchId = null): Collection
     {
         if (Schema::hasTable('hr_employees')) {
             return Employee::query()
-                ->with(['user.roles'])
+                ->with(['user.roles', 'branch'])
                 ->active()
                 ->forCompanyBranch($companyId, $branchId)
                 ->orderBy('first_name')
@@ -33,13 +33,14 @@ class DailyMauzoEmployeeListService
                         'employee_number' => $employee->employee_number,
                         'phone' => $user->phone ?? '—',
                         'role_name' => $user?->roles->first()?->name ?? '—',
+                        'branch_name' => $employee->branch->name ?? '—',
                         'user_id' => $user?->id,
                     ];
                 });
         }
 
         return $this->usersFallbackQuery($companyId, $branchId)
-            ->with('roles')
+            ->with(['roles', 'branches'])
             ->orderBy('name')
             ->get()
             ->map(fn (User $user) => (object) [
@@ -48,6 +49,7 @@ class DailyMauzoEmployeeListService
                 'employee_number' => null,
                 'phone' => $user->phone ?? '—',
                 'role_name' => $user->roles->first()?->name ?? '—',
+                'branch_name' => $user->branches->pluck('name')->filter()->join(', ') ?: '—',
                 'user_id' => $user->id,
             ]);
     }

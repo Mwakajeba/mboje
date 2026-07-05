@@ -92,14 +92,9 @@
                         </div>
                         <h5 class="card-title">Wafanyakazi</h5>
                         <p class="card-text flex-grow-1 small">Ongeza, angalia na futa wafanyakazi wa hesabu za kila siku.</p>
-                        <div class="d-grid gap-2 mt-auto">
-                            <button type="button" class="btn btn-secondary" id="btnOpenAddWorker">
-                                <i class="bx bx-plus me-1"></i> Ongeza Mfanyakazi
-                            </button>
-                            <a href="#orodha-wafanyakazi" class="btn btn-outline-secondary btn-sm">
-                                <i class="bx bx-list-ul me-1"></i> Angalia Orodha
-                            </a>
-                        </div>
+                        <a href="{{ route('purchases.daily-accounts.employees.index') }}" class="btn btn-secondary mt-auto">
+                            <i class="bx bx-group me-1"></i> Simamia Wafanyakazi
+                        </a>
                     </div>
                 </div>
             </div>
@@ -128,8 +123,6 @@
                 <i class="bx bx-arrow-back me-1"></i> Rudi kwa Manunuzi
             </a>
         </div>
-
-        @include('purchases.daily-accounts.partials.employee-workers-list')
     </div>
 </div>
 
@@ -181,43 +174,7 @@
 ])
 @endcan
 @endunless
-
-@if(!empty($canManageWorkers))
-@include('purchases.daily-accounts.partials.employee-add-modal', ['workerRoles' => $workerRoles])
-@endif
 @endsection
-
-@if(!empty($canManageWorkers))
-@push('scripts')
-<script nonce="{{ $cspNonce ?? '' }}">
-$(document).ready(function () {
-    var workerModalEl = document.getElementById('addWorkerModal');
-    if (!workerModalEl) {
-        return;
-    }
-
-    var workerModal = new bootstrap.Modal(workerModalEl);
-
-    function openWorkerModal() {
-        workerModal.show();
-    }
-
-    $('#btnOpenAddWorker, #btnOpenAddWorkerFromList').on('click', openWorkerModal);
-
-    @if(session('open_worker_modal') || $errors->hasAny(['name', 'phone', 'role_id', 'employee']))
-    openWorkerModal();
-    @endif
-
-    $(document).on('submit', '.js-delete-worker-form', function (e) {
-        var name = $(this).find('[data-worker-name]').data('worker-name') || 'mfanyakazi huyu';
-        if (! confirm('Una uhakika unataka kumfuta ' + name + '?')) {
-            e.preventDefault();
-        }
-    });
-});
-</script>
-@endpush
-@endif
 
 @unless(auth()->user()->hasRole('Md'))
 @can('record purchase payment')

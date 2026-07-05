@@ -49,27 +49,31 @@ class DailyAccountsController extends Controller
             $branchId ? (int) $branchId : null
         );
 
+        $canManageWorkers = user_can_manage_daily_workers($user);
+
+        return view('purchases.daily-accounts.index', compact(
+            'employees',
+            'canManageWorkers'
+        ));
+    }
+
+    public function employeesIndex()
+    {
+        abort_unless(user_can_view_wamachinga_purchases(), 403);
+        abort_unless(user_can_manage_daily_workers(), 403);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+
         $workerRoles = Role::query()
             ->where('guard_name', 'web')
             ->whereNotIn('name', ['super-admin', 'Super Admin'])
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $canManageWorkers = user_can_manage_daily_workers($user);
+        $workersList = $this->mauzoEmployeeList->listWorkersForManagement($companyId);
 
-        $workersList = $canManageWorkers
-            ? $this->mauzoEmployeeList->listWorkersForManagement(
-                (int) $user->company_id,
-                $branchId ? (int) $branchId : null
-            )
-            : collect();
-
-        return view('purchases.daily-accounts.index', compact(
-            'employees',
-            'workerRoles',
-            'canManageWorkers',
-            'workersList'
-        ));
+        return view('purchases.daily-accounts.employees', compact('workerRoles', 'workersList'));
     }
 
     public function storeEmployee(Request $request)
@@ -103,7 +107,7 @@ class DailyAccountsController extends Controller
             );
         } catch (\InvalidArgumentException $e) {
             return redirect()
-                ->route('purchases.daily-accounts.index')
+                ->route('purchases.daily-accounts.employees.index')
                 ->withErrors(['employee' => $e->getMessage()])
                 ->withInput()
                 ->with('open_worker_modal', true);
@@ -112,7 +116,7 @@ class DailyAccountsController extends Controller
         $label = $result['employee']?->full_name ?? $result['user']->name;
 
         return redirect()
-            ->route('purchases.daily-accounts.index')
+            ->route('purchases.daily-accounts.employees.index')
             ->with('success', 'Mfanyakazi '.$label.' ameongezwa. Neno la siri: '.DailyAccountsEmployeeService::DEFAULT_PASSWORD);
     }
 
@@ -122,24 +126,22 @@ class DailyAccountsController extends Controller
         abort_unless(user_can_manage_daily_workers(), 403);
 
         $user = Auth::user();
-        $branchId = session('branch_id') ?? $user->branch_id;
         $companyId = (int) $user->company_id;
 
         try {
             $label = $this->dailyAccountsEmployee->deactivate(
                 $worker,
                 $companyId,
-                $branchId ? (int) $branchId : null,
                 $user
             );
         } catch (\InvalidArgumentException $e) {
             return redirect()
-                ->route('purchases.daily-accounts.index')
+                ->route('purchases.daily-accounts.employees.index')
                 ->withErrors(['employee' => $e->getMessage()]);
         }
 
         return redirect()
-            ->route('purchases.daily-accounts.index')
+            ->route('purchases.daily-accounts.employees.index')
             ->with('success', 'Mfanyakazi '.$label.' ameondolewa.');
     }
 

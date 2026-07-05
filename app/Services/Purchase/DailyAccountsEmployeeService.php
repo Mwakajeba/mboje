@@ -202,14 +202,13 @@ class DailyAccountsEmployeeService
         return $branchId;
     }
 
-    public function deactivate(int $workerId, int $companyId, ?int $branchId, User $actor): string
+    public function deactivate(int $workerId, int $companyId, User $actor): string
     {
         if (Schema::hasTable('hr_employees')) {
             $employee = Employee::query()
                 ->with('user.roles')
                 ->active()
                 ->where('company_id', $companyId)
-                ->when($branchId && Schema::hasColumn('hr_employees', 'branch_id'), fn ($q) => $q->where('branch_id', $branchId))
                 ->whereKey($workerId)
                 ->first();
 
@@ -225,14 +224,6 @@ class DailyAccountsEmployeeService
                 ->where('company_id', $companyId)
                 ->where('status', 'active')
                 ->whereKey($workerId)
-                ->when($branchId && Schema::hasTable('branch_user'), function ($q) use ($branchId) {
-                    $q->where(function ($inner) use ($branchId) {
-                        $inner->whereHas('branches', fn ($bq) => $bq->where('branches.id', $branchId));
-                        if (Schema::hasColumn('users', 'branch_id')) {
-                            $inner->orWhere('branch_id', $branchId);
-                        }
-                    });
-                })
                 ->first();
 
             if (! $user) {
