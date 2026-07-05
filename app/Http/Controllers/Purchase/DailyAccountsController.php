@@ -164,6 +164,7 @@ class DailyAccountsController extends Controller
         );
 
         $canManage = $this->userIsAdmin();
+        $canDelete = $this->userCanDeleteDailyReport();
         $employees = $canManage
             ? $this->mauzoEmployeeList->listSalesPersonsForCompanyBranch($companyId, $branchId ? (int) $branchId : null)
             : collect();
@@ -172,7 +173,7 @@ class DailyAccountsController extends Controller
             'employee_name' => $employeeName,
             'employee_id' => (int) $validated['employee_id'],
             'can_manage' => $canManage,
-            'can_delete' => $canManage,
+            'can_delete' => $canDelete,
             'employees' => $employees,
         ]));
     }
@@ -277,7 +278,7 @@ class DailyAccountsController extends Controller
 
     public function destroyReportLine(string $type, int $line)
     {
-        abort_unless($this->userIsAdmin(), 403);
+        abort_unless($this->userCanDeleteDailyReport(), 403);
 
         $user = Auth::user();
         $companyId = (int) $user->company_id;
@@ -304,7 +305,7 @@ class DailyAccountsController extends Controller
 
     public function destroyReportSection(Request $request, string $type)
     {
-        abort_unless($this->userIsAdmin(), 403);
+        abort_unless($this->userCanDeleteDailyReport(), 403);
 
         $user = Auth::user();
         $companyId = (int) $user->company_id;
@@ -337,7 +338,7 @@ class DailyAccountsController extends Controller
 
     public function destroyReportAll(Request $request)
     {
-        abort_unless($this->userIsAdmin(), 403);
+        abort_unless($this->userCanDeleteDailyReport(), 403);
 
         $user = Auth::user();
         $companyId = (int) $user->company_id;
@@ -574,6 +575,20 @@ class DailyAccountsController extends Controller
         }
 
         return $user->hasRole('admin')
+            || $user->hasRole('super-admin')
+            || $user->hasRole('Super Admin');
+    }
+
+    private function userCanDeleteDailyReport(): bool
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole('md')
+            || $user->hasRole('Md')
             || $user->hasRole('super-admin')
             || $user->hasRole('Super Admin');
     }
