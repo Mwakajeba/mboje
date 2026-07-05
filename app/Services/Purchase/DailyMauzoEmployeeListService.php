@@ -11,6 +11,9 @@ class DailyMauzoEmployeeListService
 {
     public const SALES_PERSON_ROLE = 'sales person';
 
+    /** @var list<string> */
+    private const HIDDEN_WORKER_ROLES = ['super-admin', 'Super Admin'];
+
     /**
      * @return Collection<int, object{id: int, display_name: string, employee_number: ?string, phone: string, role_name: string, user_id: ?int}>
      */
@@ -21,11 +24,19 @@ class DailyMauzoEmployeeListService
                 ->with(['user.roles', 'branch'])
                 ->active()
                 ->forCompanyBranch($companyId, $branchId)
+                ->where(function ($q) {
+                    $q->whereNull('user_id')
+                        ->orWhereHas('user', fn ($uq) => $this->applyHiddenWorkerRoleExclusion($uq));
+                })
                 ->orderBy('first_name')
                 ->orderBy('last_name')
                 ->get()
                 ->map(function (Employee $employee) {
                     $user = $employee->user;
+
+                    if ($user && $this->userHasHiddenWorkerRole($user)) {
+                        return null;
+                    }
 
                     return (object) [
                         'id' => $employee->id,
@@ -36,11 +47,14 @@ class DailyMauzoEmployeeListService
                         'branch_name' => $employee->branch->name ?? '—',
                         'user_id' => $user?->id,
                     ];
-                });
+                })
+                ->filter()
+                ->values();
         }
 
         return $this->usersFallbackQuery($companyId, $branchId)
             ->with(['roles', 'branches'])
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', self::HIDDEN_WORKER_ROLES))
             ->orderBy('name')
             ->get()
             ->map(fn (User $user) => (object) [
@@ -52,6 +66,16 @@ class DailyMauzoEmployeeListService
                 'branch_name' => $user->branches->pluck('name')->filter()->join(', ') ?: '—',
                 'user_id' => $user->id,
             ]);
+    }
+
+    private function applyHiddenWorkerRoleExclusion($query): void
+    {
+        $query->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', self::HIDDEN_WORKER_ROLES));
+    }
+
+    private function userHasHiddenWorkerRole(User $user): bool
+    {
+        return $user->hasRole('super-admin') || $user->hasRole('Super Admin');
     }
 
     public function workerExistsForCompanyBranch(int $workerId, int $companyId, ?int $branchId): bool
