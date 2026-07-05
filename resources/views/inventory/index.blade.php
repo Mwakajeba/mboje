@@ -136,9 +136,14 @@
                                         </div>
                                         <h5 class="card-title">Uhifadhi wa Wateja</h5>
                                         <p class="card-text">Pokea na fuatilia zao wateja wanalohifadhi (idadi).</p>
-                                        <a href="{{ route('inventory.customer-storage.index') }}" class="btn btn-info">
-                                            <i class="bx bx-archive-in me-1"></i> Simamia Uhifadhi
-                                        </a>
+                                        <div class="d-grid gap-2">
+                                            <a href="{{ route('inventory.customer-storage.index') }}" class="btn btn-info">
+                                                <i class="bx bx-archive-in me-1"></i> Simamia Uhifadhi
+                                            </a>
+                                            <a href="#ripoti-stoo" class="btn btn-outline-info btn-sm">
+                                                <i class="bx bx-bar-chart-alt-2 me-1"></i> Angalia Ripoti ya Stoo
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -333,6 +338,8 @@
                             --}}
                         </div>
 
+                        @include('inventory.partials.storage-report')
+
                         {{-- Recent Stock Movements (hidden)
                         @if($recentMovements->count() > 0)
                         <div class="row mt-4">
@@ -497,6 +504,21 @@
         background-color: #5a32a3; 
         border-color: #5a32a3; 
         color: white; 
+    }
+
+    .widgets-icons {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 1.35rem;
+        flex-shrink: 0;
+    }
+
+    .radius-10 {
+        border-radius: 10px;
     }
 </style>
 @endpush

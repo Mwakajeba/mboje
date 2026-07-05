@@ -8,6 +8,7 @@ use App\Models\Inventory\Item;
 use App\Models\Inventory\Movement;
 use App\Models\Inventory\CustomerStorageBalance;
 use App\Models\InventoryLocation;
+use App\Services\Inventory\CustomerStorageReportService;
 use App\Services\InventoryValueService;
 
 class InventoryController extends Controller
@@ -105,6 +106,11 @@ class InventoryController extends Controller
             ->where('quantity_on_hand', '>', 0)
             ->count();
 
+        $storageReport = app(CustomerStorageReportService::class)->build(
+            (int) auth()->user()->company_id,
+            $currentBranchId ? (int) $currentBranchId : null
+        );
+
         $inventoryValueAtLocation = null;
         $inventoryValueCurrency = null;
         if ($loginLocationId) {
@@ -127,6 +133,7 @@ class InventoryController extends Controller
             'recentMovements',
             'countSessionsCount',
             'customerStorageCount',
+            'storageReport',
             'inventoryValueAtLocation',
             'inventoryValueCurrency'
         ));
