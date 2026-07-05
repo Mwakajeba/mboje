@@ -9,7 +9,9 @@ use App\Models\Inventory\Movement;
 use App\Models\Inventory\CustomerStorageBalance;
 use App\Models\InventoryLocation;
 use App\Services\Inventory\CustomerStorageReportService;
+use App\Services\CustomerAccountSummaryService;
 use App\Services\InventoryValueService;
+use Yajra\DataTables\Facades\DataTables;
 
 class InventoryController extends Controller
 {
@@ -137,5 +139,62 @@ class InventoryController extends Controller
             'inventoryValueAtLocation',
             'inventoryValueCurrency'
         ));
+    }
+
+    public function storageReportDatatable(Request $request)
+    {
+        abort_unless(auth()->user()->can('manage inventory items'), 403);
+
+        $user = auth()->user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?: $user->branch_id;
+        $branchId = $branchId ? (int) $branchId : null;
+
+        $reportService = app(CustomerStorageReportService::class);
+        $summaryService = app(CustomerAccountSummaryService::class);
+        $mikopoCache = [];
+
+        return DataTables::of($reportService->balancesQuery($companyId, $branchId))
+            ->addIndexColumn()
+            ->addColumn('customer_name', fn ($row) => '<strong>'.e($row->customer->name ?? '—').'</strong>')
+            ->addColumn('customer_phone', fn ($row) => e($row->customer->phone ?? '—'))
+            ->addColumn('item_display', function ($row) {
+                $name = e($row->item->name ?? '—');
+                $code = trim((string) ($row->item->code ?? ''));
+
+                if ($code !== '') {
+                    return $name.'<br><small class="text-muted">'.e($code).'</small>';
+                }
+
+                return $name;
+            })
+            ->addColumn('quantity_display', fn ($row) => '<span class="fw-semibold">'
+                .e($reportService->formatQuantity((float) $row->quantity_on_hand, $row->item))
+                .'</span>')
+            ->addColumn('mikopo_total', function ($row) use (&$mikopoCache, $summaryService) {
+                $customerId = (int) $row->customer_id;
+
+                if (! array_key_exists($customerId, $mikopoCache)) {
+                    $mikopoCache[$customerId] = $row->customer
+                        ? $summaryService->calculateMikopoTotal($row->customer)
+                        : 0.0;
+                }
+
+                return '<span class="text-warning fw-semibold">'
+                    .number_format($mikopoCache[$customerId], 2)
+                    .'</span>';
+            })
+            ->filterColumn('customer_name', function ($query, $keyword) {
+                $query->whereHas('customer', fn ($q) => $q->where('name', 'like', '%'.$keyword.'%'));
+            })
+            ->filterColumn('item_display', function ($query, $keyword) {
+                $query->whereHas('item', function ($q) use ($keyword) {
+                    $q->where('name', 'like', '%'.$keyword.'%')
+                        ->orWhere('code', 'like', '%'.$keyword.'%');
+                });
+            })
+            ->orderColumn('quantity_display', fn ($query, $order) => $query->orderBy('quantity_on_hand', $order))
+            ->rawColumns(['customer_name', 'item_display', 'quantity_display', 'mikopo_total'])
+            ->make(true);
     }
 }

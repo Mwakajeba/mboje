@@ -1038,6 +1038,7 @@ Route::prefix('accounting')->name('accounting.')->middleware(['auth', 'require.b
 Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'company.scope', 'check.inventory.cost.method', 'require.branch'])->group(function () {
     // Inventory Management Dashboard
     Route::get('/', [InventoryController::class, 'index'])->name('index');
+    Route::get('/storage-report/datatable', [InventoryController::class, 'storageReportDatatable'])->name('storage-report.datatable');
 
     Route::get('/value', [App\Http\Controllers\Inventory\InventoryValueController::class, 'index'])->name('value.index');
     Route::get('/value/location/{locationId}', [App\Http\Controllers\Inventory\InventoryValueController::class, 'show'])->name('value.show');

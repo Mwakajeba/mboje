@@ -1,7 +1,6 @@
 @php
     $itemDashboard = $storageReport['itemDashboard'] ?? [];
-    $customerLines = $storageReport['customerLines'] ?? [];
-    $hasStorageData = ! empty($itemDashboard) || ! empty($customerLines);
+    $hasStorageData = ! empty($storageReport['hasData']);
 @endphp
 
 @can('manage inventory items')
@@ -23,6 +22,7 @@
                         Hakuna zao lililobaki stoo kwa sasa.
                     </p>
                 @else
+                    @if(! empty($itemDashboard))
                     <h6 class="text-uppercase text-muted mb-3">Muhtasari wa Zao Stoo</h6>
                     <div class="row mb-4">
                         @foreach($itemDashboard as $itemRow)
@@ -57,10 +57,11 @@
                         </div>
                         @endforeach
                     </div>
+                    @endif
 
                     <h6 class="text-uppercase text-muted mb-3">Orodha ya Wateja na Zao Zilizobaki</h6>
                     <div class="table-responsive">
-                        <table class="table table-striped table-hover align-middle mb-0">
+                        <table class="table table-striped table-hover align-middle mb-0 w-100" id="storageReportCustomersTable">
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
@@ -71,40 +72,7 @@
                                     <th class="text-end">Gharama/Mkopo (Jumla)</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                @foreach($customerLines as $index => $line)
-                                <tr>
-                                    <td>{{ $index + 1 }}</td>
-                                    <td>
-                                        <strong>{{ $line['customer_name'] }}</strong>
-                                    </td>
-                                    <td>{{ $line['customer_phone'] ?: '—' }}</td>
-                                    <td>
-                                        {{ $line['item_name'] }}
-                                        @if($line['item_code'])
-                                            <br><small class="text-muted">{{ $line['item_code'] }}</small>
-                                        @endif
-                                    </td>
-                                    <td class="text-end fw-semibold">{{ $line['quantity_display'] }}</td>
-                                    <td class="text-end text-warning fw-semibold">
-                                        {{ number_format($line['mikopo_total'], 2) }}
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                            @if(count($customerLines) > 0)
-                            <tfoot class="table-light">
-                                <tr>
-                                    <th colspan="4" class="text-end">Jumla</th>
-                                    <th class="text-end">
-                                        {{ number_format($storageReport['grandTotalQuantity'] ?? 0, 0) }}
-                                    </th>
-                                    <th class="text-end text-warning">
-                                        {{ number_format($storageReport['grandTotalMikopo'] ?? 0, 2) }}
-                                    </th>
-                                </tr>
-                            </tfoot>
-                            @endif
+                            <tbody></tbody>
                         </table>
                     </div>
 
@@ -112,10 +80,61 @@
                         <i class="bx bx-info-circle me-1"></i>
                         Gharama/Mkopo ni jumla ya mikopo iliyokopeshwa mteja (si kwa kila zao pekee).
                         Wateja walio na stoo: <strong>{{ $storageReport['customerCount'] ?? 0 }}</strong>.
+                        Jumla idadi: <strong>{{ number_format($storageReport['grandTotalQuantity'] ?? 0, 0) }}</strong>.
+                        Jumla mkopo: <strong class="text-warning">{{ number_format($storageReport['grandTotalMikopo'] ?? 0, 2) }}</strong>.
                     </p>
                 @endif
             </div>
         </div>
     </div>
 </div>
+
+@if($hasStorageData)
+@push('scripts')
+<script nonce="{{ $cspNonce ?? '' }}">
+$(document).ready(function () {
+    $('#storageReportCustomersTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: @json(route('inventory.storage-report.datatable')),
+            type: 'GET',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            error: function (xhr) {
+                console.error('Ripoti ya stoo — hitilafu ya DataTables:', xhr.status, xhr.responseText);
+            }
+        },
+        columns: [
+            { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
+            { data: 'customer_name', name: 'customer_name' },
+            { data: 'customer_phone', name: 'customer_phone', orderable: false, searchable: false },
+            { data: 'item_display', name: 'item_display' },
+            { data: 'quantity_display', name: 'quantity_on_hand', className: 'text-end' },
+            { data: 'mikopo_total', name: 'mikopo_total', orderable: false, searchable: false, className: 'text-end' }
+        ],
+        order: [[1, 'asc'], [3, 'asc']],
+        pageLength: 25,
+        language: {
+            processing: 'Inapakia...',
+            search: 'Tafuta:',
+            lengthMenu: 'Onyesha _MENU_ mistari',
+            info: 'Inaonyesha _START_ hadi _END_ kati ya _TOTAL_ mistari',
+            infoEmpty: 'Hakuna mistari',
+            zeroRecords: 'Hakuna rekodi zilizopatikana',
+            emptyTable: 'Hakuna zao lililobaki stoo.',
+            paginate: {
+                first: 'Kwanza',
+                last: 'Mwisho',
+                next: 'Ijayo',
+                previous: 'Iliyotangulia'
+            }
+        }
+    });
+});
+</script>
+@endpush
+@endif
 @endcan
