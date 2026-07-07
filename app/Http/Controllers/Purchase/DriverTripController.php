@@ -9,6 +9,7 @@ use App\Models\Purchase\DriverTripMapatoRecord;
 use App\Models\Purchase\DriverTripMatumiziLine;
 use App\Models\Purchase\DriverTripMatumiziRecord;
 use App\Services\Purchase\DriverTripNotificationService;
+use App\Services\Purchase\DriverTripReportLineDeletionService;
 use App\Services\Purchase\DriverTripReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,8 @@ class DriverTripController extends Controller
 {
     public function __construct(
         private readonly DriverTripReportService $reportService,
-        private readonly DriverTripNotificationService $notificationService
+        private readonly DriverTripNotificationService $notificationService,
+        private readonly DriverTripReportLineDeletionService $reportLineDeletion
     ) {}
 
     public function index(Request $request)
@@ -155,7 +157,46 @@ class DriverTripController extends Controller
         $driverTrip = $this->findTripForScope($trip, $companyId, $branchId ? (int) $branchId : null);
         $report = $this->reportService->build($driverTrip);
 
-        return view('purchases.driver-trips.report', $report);
+        return view('purchases.driver-trips.report', array_merge($report, [
+            'can_delete' => user_can_delete_driver_trips(),
+        ]));
+    }
+
+    public function destroyReportMapatoLine(int $trip, int $line)
+    {
+        return $this->destroyReportLine('mapato', $trip, $line);
+    }
+
+    public function destroyReportMatumiziLine(int $trip, int $line)
+    {
+        return $this->destroyReportLine('matumizi', $trip, $line);
+    }
+
+    private function destroyReportLine(string $type, int $trip, int $line)
+    {
+        abort_unless(user_can_delete_driver_trips(), 403);
+
+        $user = Auth::user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?? $user->branch_id;
+
+        $this->findTripForScope($trip, $companyId, $branchId ? (int) $branchId : null);
+
+        try {
+            $this->reportLineDeletion->deleteLine(
+                $type,
+                $line,
+                $trip,
+                $companyId,
+                $branchId ? (int) $branchId : null
+            );
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            abort(404);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Rekodi imefutwa.']);
     }
 
     protected function tripsDatatable(int $companyId, ?int $branchId)

@@ -1480,6 +1480,8 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
         Route::put('/{trip}', [\App\Http\Controllers\Purchase\DriverTripController::class, 'update'])->name('update');
         Route::delete('/{trip}', [\App\Http\Controllers\Purchase\DriverTripController::class, 'destroy'])->name('destroy');
         Route::get('/{trip}/report', [\App\Http\Controllers\Purchase\DriverTripController::class, 'report'])->name('report');
+        Route::delete('/{trip}/report/mapato/{line}', [\App\Http\Controllers\Purchase\DriverTripController::class, 'destroyReportMapatoLine'])->name('report.mapato.destroy');
+        Route::delete('/{trip}/report/matumizi/{line}', [\App\Http\Controllers\Purchase\DriverTripController::class, 'destroyReportMatumiziLine'])->name('report.matumizi.destroy');
     });
 
     // Supplier advances (prepayments to suppliers)

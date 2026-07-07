@@ -22,6 +22,13 @@
             </div>
         </div>
 
+        @if(session('success'))
+            <div class="alert alert-success alert-dismissible fade show no-print" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
         <div class="card radius-10">
             <div class="card-body">
                 <div class="text-center mb-4">
@@ -76,6 +83,9 @@
                                 <tr>
                                     <th>Maelezo</th>
                                     <th class="text-end" style="width: 160px">Kiasi</th>
+                                    @if(!empty($can_delete))
+                                    <th class="text-center no-print" style="width: 90px">Vitendo</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -83,6 +93,17 @@
                                 <tr>
                                     <td>{{ $line['maelezo'] }}</td>
                                     <td class="text-end">{{ format_currency($line['amount']) }}</td>
+                                    @if(!empty($can_delete))
+                                    <td class="text-center no-print">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-danger btn-delete-trip-report-line"
+                                                data-type="mapato"
+                                                data-line-id="{{ $line['id'] }}"
+                                                title="Futa mapato">
+                                            <i class="bx bx-trash"></i>
+                                        </button>
+                                    </td>
+                                    @endif
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -90,6 +111,7 @@
                                 <tr>
                                     <td class="text-end fw-bold">Jumla ya Mapato</td>
                                     <td class="text-end fw-bold text-success">{{ format_currency($mapato_total) }}</td>
+                                    @if(!empty($can_delete))<td class="no-print"></td>@endif
                                 </tr>
                             </tfoot>
                         </table>
@@ -109,6 +131,9 @@
                                 <tr>
                                     <th>Maelezo</th>
                                     <th class="text-end" style="width: 160px">Kiasi</th>
+                                    @if(!empty($can_delete))
+                                    <th class="text-center no-print" style="width: 90px">Vitendo</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -116,6 +141,17 @@
                                 <tr>
                                     <td>{{ $line['maelezo'] }}</td>
                                     <td class="text-end">{{ format_currency($line['amount']) }}</td>
+                                    @if(!empty($can_delete))
+                                    <td class="text-center no-print">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-danger btn-delete-trip-report-line"
+                                                data-type="matumizi"
+                                                data-line-id="{{ $line['id'] }}"
+                                                title="Futa matumizi">
+                                            <i class="bx bx-trash"></i>
+                                        </button>
+                                    </td>
+                                    @endif
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -123,6 +159,7 @@
                                 <tr>
                                     <td class="text-end fw-bold">Jumla ya Matumizi</td>
                                     <td class="text-end fw-bold text-warning">{{ format_currency($matumizi_total) }}</td>
+                                    @if(!empty($can_delete))<td class="no-print"></td>@endif
                                 </tr>
                             </tfoot>
                         </table>
@@ -165,3 +202,54 @@
     }
 </style>
 @endpush
+
+@if(!empty($can_delete))
+@push('scripts')
+@php
+    $mapatoDestroyUrlTemplate = route('purchases.driver-trips.report.mapato.destroy', ['trip' => $trip->id, 'line' => '__LINE__']);
+    $matumiziDestroyUrlTemplate = route('purchases.driver-trips.report.matumizi.destroy', ['trip' => $trip->id, 'line' => '__LINE__']);
+@endphp
+<script nonce="{{ $cspNonce ?? '' }}">
+$(document).ready(function () {
+    var mapatoDestroyUrl = @json($mapatoDestroyUrlTemplate);
+    var matumiziDestroyUrl = @json($matumiziDestroyUrlTemplate);
+
+    function lineDestroyUrl(type, lineId) {
+        var template = type === 'matumizi' ? matumiziDestroyUrl : mapatoDestroyUrl;
+        return template.replace('__LINE__', lineId);
+    }
+
+    $(document).on('click', '.btn-delete-trip-report-line', function () {
+        var $btn = $(this);
+        var type = $btn.data('type');
+        var lineId = $btn.data('line-id');
+        var label = type === 'matumizi' ? 'matumizi' : 'mapato';
+
+        if (!confirm('Una uhakika unataka kufuta mstari huu wa ' + label + '?')) {
+            return;
+        }
+
+        $.ajax({
+            url: lineDestroyUrl(type, lineId),
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                'Accept': 'application/json'
+            }
+        }).done(function (res) {
+            if (res && res.success) {
+                window.location.reload();
+            } else {
+                alert((res && res.message) ? res.message : 'Imeshindikana kufuta.');
+            }
+        }).fail(function (xhr) {
+            var msg = (xhr.responseJSON && xhr.responseJSON.message)
+                ? xhr.responseJSON.message
+                : 'Imeshindikana kufuta.';
+            alert(msg);
+        });
+    });
+});
+</script>
+@endpush
+@endif
