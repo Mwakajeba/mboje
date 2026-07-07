@@ -207,3 +207,16 @@ if (!function_exists('user_can_manage_daily_workers')) {
             || $user->hasRole('Md');
     }
 }
+
+if (!function_exists('user_can_delete_wamachinga_statement')) {
+    function user_can_delete_wamachinga_statement($user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole('md') || $user->hasRole('Md');
+    }
+}

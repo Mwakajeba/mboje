@@ -83,15 +83,6 @@ class DriverTripController extends Controller
 
         $validated = $request->validate($this->tripValidationRules(), $this->tripValidationMessages());
 
-        $before = $driverTrip->only([
-            'trip_name',
-            'driver_name',
-            'vehicle_info',
-            'trip_price',
-            'trip_date',
-            'status',
-        ]);
-
         $driverTrip->update([
             'trip_name' => $validated['trip_name'],
             'driver_name' => $validated['driver_name'],
@@ -100,8 +91,6 @@ class DriverTripController extends Controller
             'trip_date' => $validated['trip_date'],
             'status' => $validated['status'] ?? DriverTrip::STATUS_ACTIVE,
         ]);
-
-        $this->notificationService->sendTripUpdated($driverTrip->fresh(), $before, $user->name);
 
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Safari imesasishwa kikamilifu.']);

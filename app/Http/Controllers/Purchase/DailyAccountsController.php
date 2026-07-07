@@ -327,18 +327,6 @@ class DailyAccountsController extends Controller
             ], 422);
         }
 
-        $kiasiBefore = null;
-        $kiasiAfter = null;
-        if ($this->reportLineService->usesNumericKiasi($type)) {
-            $kiasiBefore = $this->reportLineService->lineKiasi(
-                $type,
-                $line,
-                $companyId,
-                $branchId ? (int) $branchId : null
-            );
-            $kiasiAfter = (float) $validated[$amountField];
-        }
-
         try {
             $this->reportLineService->updateLine(
                 $type,
@@ -352,15 +340,6 @@ class DailyAccountsController extends Controller
         } catch (\InvalidArgumentException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
-
-        $this->notifyDailyReportChange(
-            (int) $validated['employee_id'],
-            $validated['entry_date'],
-            'updated',
-            $type,
-            $kiasiBefore,
-            $kiasiAfter
-        );
 
         return response()->json([
             'success' => true,
