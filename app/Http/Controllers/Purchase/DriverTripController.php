@@ -103,7 +103,7 @@ class DriverTripController extends Controller
 
     public function destroy(int $trip)
     {
-        abort_unless(user_can_enter_daily_accounts(), 403);
+        abort_unless(user_can_delete_driver_trips(), 403);
 
         $user = Auth::user();
         $companyId = (int) $user->company_id;
@@ -192,6 +192,7 @@ class DriverTripController extends Controller
                 $tripName = e($row->trip_name);
                 $tripDate = $row->trip_date?->format('Y-m-d') ?? date('Y-m-d');
                 $canEnter = user_can_enter_daily_accounts();
+                $canDelete = user_can_delete_driver_trips();
 
                 $html = '<div class="d-flex flex-wrap gap-1 justify-content-center">';
 
@@ -227,7 +228,9 @@ class DriverTripController extends Controller
                         . ' data-trip-status="' . e($row->status ?? DriverTrip::STATUS_ACTIVE) . '"'
                         . ' title="Badili safari">'
                         . '<i class="bx bx-edit"></i></button>';
+                }
 
+                if ($canDelete) {
                     $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-trip-delete"'
                         . ' data-trip-id="' . (int) $row->id . '"'
                         . ' data-trip-name="' . $tripName . '"'

@@ -220,3 +220,10 @@ if (!function_exists('user_can_delete_wamachinga_statement')) {
         return $user->hasRole('md') || $user->hasRole('Md');
     }
 }
+
+if (!function_exists('user_can_delete_driver_trips')) {
+    function user_can_delete_driver_trips($user = null): bool
+    {
+        return user_can_delete_wamachinga_statement($user);
+    }
+}
