@@ -140,8 +140,38 @@
                                             <a href="{{ route('inventory.customer-storage.index') }}" class="btn btn-info">
                                                 <i class="bx bx-archive-in me-1"></i> Simamia Uhifadhi
                                             </a>
-                                            <a href="#ripoti-stoo" class="btn btn-outline-info btn-sm">
-                                                <i class="bx bx-bar-chart-alt-2 me-1"></i> Angalia Ripoti ya Stoo
+                                            <a href="{{ route('inventory.customer-storage.report') }}" class="btn btn-outline-info btn-sm">
+                                                <i class="bx bx-bar-chart-alt-2 me-1"></i> Ripoti ya Uhifadhi wa Wateja
+                                            </a>
+                                            <a href="#ripoti-stoo" class="btn btn-outline-secondary btn-sm">
+                                                <i class="bx bx-package me-1"></i> Angalia Ripoti ya Stoo
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endcan
+
+                            <!-- Uhifadhi wa Mazao wa Kudumu -->
+                            @can('manage inventory items')
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card border-dark position-relative">
+                                    <div class="card-body text-center">
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark">
+                                            {{ $permanentStorageCount ?? 0 }}
+                                            <span class="visually-hidden">idadi ya uhifadhi wa kudumu</span>
+                                        </span>
+                                        <div class="mb-3">
+                                            <i class="bx bx-building-house fs-1 text-dark"></i>
+                                        </div>
+                                        <h5 class="card-title">Uhifadhi wa Mazao wa Kudumu</h5>
+                                        <p class="card-text">Pokea na fuatilia mazao yanayohifadhiwa kwa muda mrefu.</p>
+                                        <div class="d-grid gap-2">
+                                            <a href="{{ route('inventory.permanent-storage.index') }}" class="btn btn-dark">
+                                                <i class="bx bx-archive-in me-1"></i> Simamia Uhifadhi wa Kudumu
+                                            </a>
+                                            <a href="{{ route('inventory.permanent-storage.report') }}" class="btn btn-outline-dark btn-sm">
+                                                <i class="bx bx-bar-chart-alt-2 me-1"></i> Ripoti ya Uhifadhi wa Kudumu
                                             </a>
                                         </div>
                                     </div>

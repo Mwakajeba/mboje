@@ -17,6 +17,7 @@ class CustomerStorageWithdrawal extends Model
         'branch_id',
         'customer_id',
         'inventory_item_id',
+        'mazunguko',
         'quantity',
         'reason',
         'notes',
@@ -25,6 +26,7 @@ class CustomerStorageWithdrawal extends Model
     ];
 
     protected $casts = [
+        'mazunguko' => 'integer',
         'quantity' => 'decimal:2',
         'withdrawn_date' => 'date',
     ];

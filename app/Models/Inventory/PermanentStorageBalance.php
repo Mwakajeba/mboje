@@ -6,19 +6,17 @@ use App\Models\Customer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CustomerStorageBalance extends Model
+class PermanentStorageBalance extends Model
 {
     protected $fillable = [
         'company_id',
         'branch_id',
         'customer_id',
         'inventory_item_id',
-        'mazunguko',
         'quantity_on_hand',
     ];
 
     protected $casts = [
-        'mazunguko' => 'integer',
         'quantity_on_hand' => 'decimal:2',
     ];
 

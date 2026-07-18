@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Uhifadhi wa Wateja')
+@section('title', 'Uhifadhi wa Mazao wa Kudumu')
 
 @section('content')
 <div class="page-wrapper">
@@ -8,7 +8,7 @@
         <x-breadcrumbs-with-icons :links="[
             ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Usimamizi wa Hesabu', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
-            ['label' => 'Uhifadhi wa Wateja', 'url' => '#', 'icon' => 'bx bx-user-pin']
+            ['label' => 'Uhifadhi wa Mazao wa Kudumu', 'url' => '#', 'icon' => 'bx bx-building-house']
         ]" />
 
         @if(session('success'))
@@ -33,14 +33,14 @@
         @endif
 
         <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="bx bx-archive-in me-2"></i>Pokea Zao la Mteja</h5>
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="bx bx-archive-in me-2"></i>Pokea Zao (Uhifadhi wa Kudumu)</h5>
             </div>
             <div class="card-body">
-                <form action="{{ route('inventory.customer-storage.store') }}" method="POST">
+                <form action="{{ route('inventory.permanent-storage.store') }}" method="POST">
                     @csrf
                     <div class="row g-3">
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label for="customer_id" class="form-label">Mteja <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <select name="customer_id" id="customer_id" class="form-select select2-single @error('customer_id') is-invalid @enderror" required>
@@ -57,7 +57,7 @@
                             </div>
                             @error('customer_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label for="inventory_item_id" class="form-label">Zao <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <select name="inventory_item_id" id="inventory_item_id" class="form-select select2-single @error('inventory_item_id') is-invalid @enderror" required>
@@ -78,15 +78,6 @@
                             @if($items->isEmpty())
                             <small class="text-muted">Hakuna bidhaa zinazoonekana kwa tawi la sasa. Angalia <a href="{{ route('inventory.items.index') }}">Orodha ya Bidhaa</a> au ongeza zao jipya.</small>
                             @endif
-                        </div>
-                        <div class="col-md-2">
-                            <label for="mazunguko" class="form-label">Mazunguko <span class="text-danger">*</span></label>
-                            <input type="number" step="1" min="1" name="mazunguko" id="mazunguko"
-                                   class="form-control @error('mazunguko') is-invalid @enderror"
-                                   value="{{ old('mazunguko', 1) }}" required
-                                   placeholder="mf. 1, 2, 3">
-                            @error('mazunguko')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            <small class="text-muted">Mzunguko mpya = uhifadhi mpya</small>
                         </div>
                         <div class="col-md-2">
                             <label for="quantity" class="form-label">Idadi <span class="text-danger">*</span></label>
@@ -118,15 +109,56 @@
             </div>
         </div>
 
+        @if(!empty($balanceSummary))
+        <div class="card mb-4 border-dark">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="bx bx-bar-chart-alt-2 me-2"></i>Muhtasari wa Mazao Yaliyohifadhiwa (Salio)
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    @foreach($balanceSummary as $row)
+                    <div class="col-md-4 col-lg-3 mb-3">
+                        <div class="card radius-10 border h-100 shadow-sm">
+                            <div class="card-body">
+                                <p class="mb-1 text-secondary text-truncate" title="{{ $row['item_name'] }}">
+                                    <strong>{{ $row['item_name'] }}</strong>
+                                    @if($row['item_code'])
+                                        <small class="text-muted">({{ $row['item_code'] }})</small>
+                                    @endif
+                                </p>
+                                <h4 class="my-2 text-dark">
+                                    {{ $row['summary_display'] }}
+                                </h4>
+                                <div class="small text-muted">
+                                    <div>
+                                        <i class="bx bx-cube me-1"></i>
+                                        Idadi: <strong>{{ $row['quantity_display'] }}</strong>
+                                    </div>
+                                    <div>
+                                        <i class="bx bx-package me-1"></i>
+                                        Vifurushi: <strong>{{ $row['package_display'] }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        @endif
+
         <div class="card">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                    <h5 class="mb-0">Salio la Zao la Wateja</h5>
+                    <h5 class="mb-0">Salio la Mazao ya Kudumu</h5>
                     <div class="d-flex flex-wrap gap-2">
-                        <a href="{{ route('inventory.customer-storage.report') }}" class="btn btn-outline-dark btn-sm">
+                        <a href="{{ route('inventory.permanent-storage.report') }}" class="btn btn-outline-dark btn-sm">
                             <i class="bx bx-bar-chart-alt-2 me-1"></i> Ripoti
                         </a>
-                        <a href="{{ route('inventory.customer-storage.history') }}" class="btn btn-outline-info btn-sm">
+                        <a href="{{ route('inventory.permanent-storage.history') }}" class="btn btn-outline-info btn-sm">
                             <i class="bx bx-history me-1"></i> Angalia Historia Yote
                         </a>
                     </div>
@@ -139,7 +171,6 @@
                                 <th>Mteja</th>
                                 <th>Simu</th>
                                 <th>Zao</th>
-                                <th>Mazunguko</th>
                                 <th>Idadi</th>
                                 <th>Kifurushi</th>
                                 <th>Vitendo</th>
@@ -333,7 +364,7 @@
                     <label for="withdraw_reason" class="form-label">Sababu <span class="text-danger">*</span></label>
                     <select id="withdraw_reason" class="form-select">
                         <option value="">— Chagua Sababu —</option>
-                        @foreach(\App\Models\Inventory\CustomerStorageWithdrawal::reasonOptions() as $value => $label)
+                        @foreach(\App\Models\Inventory\PermanentStorageWithdrawal::reasonOptions() as $value => $label)
                         <option value="{{ $value }}">{{ $label }}</option>
                         @endforeach
                     </select>
@@ -522,7 +553,7 @@ $(function () {
 
         $btn.prop('disabled', true);
         $.ajax({
-            url: "{{ route('inventory.customer-storage.quick-customer') }}",
+            url: "{{ route('inventory.permanent-storage.quick-customer') }}",
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
@@ -563,7 +594,7 @@ $(function () {
 
         $btn.prop('disabled', true);
         $.ajax({
-            url: "{{ route('inventory.customer-storage.quick-item') }}",
+            url: "{{ route('inventory.permanent-storage.quick-item') }}",
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
@@ -589,7 +620,7 @@ $(function () {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{{ route('inventory.customer-storage.index') }}",
+            url: "{{ route('inventory.permanent-storage.index') }}",
             type: 'GET',
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
@@ -603,12 +634,11 @@ $(function () {
             { data: 'customer_name', name: 'customer_name', orderable: false },
             { data: 'customer_phone', name: 'customer_phone', orderable: false, searchable: false },
             { data: 'item_name', name: 'item_name', orderable: false },
-            { data: 'mazunguko', name: 'mazunguko', className: 'text-center' },
             { data: 'quantity_display', name: 'quantity_on_hand' },
             { data: 'package_display', name: 'package_display', orderable: false, searchable: false },
             { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-center' }
         ],
-        order: [[4, 'desc']],
+        order: [[3, 'desc']],
         pageLength: 25,
         language: {
             processing: 'Inapakia...',
@@ -646,7 +676,7 @@ $(function () {
     $('#withdraw_reason').on('change', toggleWithdrawPriceField);
     $('#withdraw_quantity, #withdraw_price').on('input', updateWithdrawTotalPreview);
 
-    $(document).on('click', '.btn-withdraw-storage', function () {
+    $(document).on('click', '.btn-withdraw-permanent-storage', function () {
         const $btn = $(this);
         resetWithdrawForm();
 
@@ -676,7 +706,7 @@ $(function () {
 
         $btn.prop('disabled', true);
         $.ajax({
-            url: "{{ route('inventory.customer-storage.withdraw') }}",
+            url: "{{ route('inventory.permanent-storage.withdraw') }}",
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
@@ -705,13 +735,13 @@ $(function () {
         bootstrap.Modal.getOrCreateInstance(document.getElementById(type + 'FinanceModal')).show();
     }
 
-    $(document).on('click', '.btn-customer-mapato', function () {
+    $(document).on('click', '.btn-permanent-mapato', function () {
         openFinanceModal('mapato', $(this));
     });
-    $(document).on('click', '.btn-customer-gharama', function () {
+    $(document).on('click', '.btn-permanent-gharama', function () {
         openFinanceModal('gharama', $(this));
     });
-    $(document).on('click', '.btn-customer-malipo', function () {
+    $(document).on('click', '.btn-permanent-malipo', function () {
         openFinanceModal('malipo', $(this));
     });
 
@@ -752,13 +782,13 @@ $(function () {
     }
 
     $('#save-mapato-finance').on('click', function () {
-        saveFinanceEntry('mapato', @json(route('inventory.customer-storage.mapato.store')));
+        saveFinanceEntry('mapato', @json(route('inventory.permanent-storage.mapato.store')));
     });
     $('#save-gharama-finance').on('click', function () {
-        saveFinanceEntry('gharama', @json(route('inventory.customer-storage.gharama.store')));
+        saveFinanceEntry('gharama', @json(route('inventory.permanent-storage.gharama.store')));
     });
     $('#save-malipo-finance').on('click', function () {
-        saveFinanceEntry('malipo', @json(route('inventory.customer-storage.malipo.store')));
+        saveFinanceEntry('malipo', @json(route('inventory.permanent-storage.malipo.store')));
     });
 });
 </script>

@@ -6,16 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Inventory\Category;
-use App\Models\Inventory\CustomerStorageBalance;
-use App\Models\Inventory\CustomerStorageGharama;
-use App\Models\Inventory\CustomerStorageMalipo;
-use App\Models\Inventory\CustomerStorageMapato;
-use App\Models\Inventory\CustomerStorageReceipt;
-use App\Models\Inventory\CustomerStorageSale;
-use App\Models\Inventory\CustomerStorageWithdrawal;
+use App\Models\Inventory\PermanentStorageBalance;
+use App\Models\Inventory\PermanentStorageGharama;
+use App\Models\Inventory\PermanentStorageMalipo;
+use App\Models\Inventory\PermanentStorageMapato;
+use App\Models\Inventory\PermanentStorageReceipt;
+use App\Models\Inventory\PermanentStorageSale;
+use App\Models\Inventory\PermanentStorageWithdrawal;
 use App\Models\Inventory\Item;
 use App\Models\InventoryLocation;
-use App\Services\Inventory\CustomerStorageFinanceSmsService;
+use App\Services\Inventory\PermanentStorageCustomerSmsService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Yajra\DataTables\Facades\DataTables;
 
-class CustomerStorageController extends Controller
+class PermanentStorageController extends Controller
 {
     /**
      * Align branch/location session with inventory items (ItemController).
@@ -127,14 +127,91 @@ class CustomerStorageController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('inventory.customer-storage.index', compact(
+        $balanceSummary = $this->buildBalanceSummary(
+            (int) $user->company_id,
+            $branchId ? (int) $branchId : null
+        );
+
+        return view('inventory.permanent-storage.index', compact(
             'customers',
             'items',
             'unitOptions',
             'categories',
             'assignableBranches',
-            'branchId'
+            'branchId',
+            'balanceSummary'
         ));
+    }
+
+    /**
+     * @return array<int, array{
+     *     item_name: string,
+     *     item_code: string,
+     *     total_quantity: float,
+     *     unit: string,
+     *     package_count: float|null,
+     *     package_name: string,
+     *     quantity_display: string,
+     *     package_display: string,
+     *     summary_display: string
+     * }>
+     */
+    private function buildBalanceSummary(int $companyId, ?int $branchId): array
+    {
+        if (! Schema::hasTable('permanent_storage_balances')) {
+            return [];
+        }
+
+        $balances = PermanentStorageBalance::query()
+            ->with('item')
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->where('quantity_on_hand', '>', 0)
+            ->get();
+
+        if ($balances->isEmpty()) {
+            return [];
+        }
+
+        return $balances
+            ->groupBy('inventory_item_id')
+            ->map(function ($rows) {
+                /** @var PermanentStorageBalance $first */
+                $first = $rows->first();
+                $item = $first->item;
+                $totalQty = (float) $rows->sum('quantity_on_hand');
+                $unit = trim((string) ($item->unit_of_measure ?? ''));
+                $packageQuantity = (float) ($item->package_quantity ?? 0);
+                $packageName = trim((string) ($item->package_name ?? ''));
+
+                $quantityDisplay = $this->formatQuantityWithUnit($totalQty, $item);
+                $packageCount = null;
+                $packageDisplay = '—';
+
+                if ($packageQuantity > 0 && $packageName !== '') {
+                    $packageCount = $totalQty / $packageQuantity;
+                    $packageDisplay = $this->formatStorageNumber($packageCount).' '.$packageName;
+                }
+
+                $summaryDisplay = $packageDisplay !== '—'
+                    ? $packageDisplay.' ('.$quantityDisplay.')'
+                    : $quantityDisplay;
+
+                return [
+                    'item_name' => $item->name ?? '—',
+                    'item_code' => $item->code ?? '',
+                    'total_quantity' => $totalQty,
+                    'unit' => $unit,
+                    'package_count' => $packageCount,
+                    'package_name' => $packageName,
+                    'quantity_display' => $quantityDisplay,
+                    'package_display' => $packageDisplay,
+                    'summary_display' => $summaryDisplay,
+                ];
+            })
+            ->sortBy('item_name')
+            ->values()
+            ->all();
     }
 
     public function quickStoreCustomer(Request $request)
@@ -303,21 +380,16 @@ class CustomerStorageController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|integer',
             'inventory_item_id' => 'required|integer',
-            'mazunguko' => 'required|integer|min:1',
             'quantity' => 'required|integer|min:1',
             'received_date' => 'required|date',
             'notes' => 'nullable|string|max:1000',
         ], [
             'customer_id.required' => 'Chagua mteja.',
             'inventory_item_id.required' => 'Chagua zao.',
-            'mazunguko.required' => 'Weka namba ya mzunguko.',
-            'mazunguko.min' => 'Mzunguko uwe angalau 1.',
             'quantity.required' => 'Weka idadi.',
             'quantity.min' => 'Idadi iwe angalau 1.',
             'received_date.required' => 'Weka tarehe aliyoleta zao.',
         ]);
-
-        $mazunguko = (int) $validated['mazunguko'];
 
         $customer = Customer::where('company_id', $companyId)
             ->where('branch_id', $branchId)
@@ -340,42 +412,39 @@ class CustomerStorageController extends Controller
                 ->withErrors(['inventory_item_id' => 'Zao halipatikani katika tawi hili. Chagua zao lingine au ongeza zao jipya.']);
         }
 
-        if (! Schema::hasTable('customer_storage_receipts') || ! Schema::hasTable('customer_storage_balances')) {
+        if (! Schema::hasTable('permanent_storage_receipts') || ! Schema::hasTable('permanent_storage_balances')) {
             return back()
                 ->withInput()
-                ->withErrors(['quantity' => 'Jedwali la uhifadhi wa wateja halijasanidiwa. Wasiliana na msimamizi wa mfumo kuendesha migrations.']);
+                ->withErrors(['quantity' => 'Jedwali la uhifadhi wa mazao wa kudumu halijasanidiwa. Wasiliana na msimamizi wa mfumo kuendesha migrations.']);
         }
 
         try {
-            DB::transaction(function () use ($user, $branchId, $customer, $item, $validated, $mazunguko) {
-                CustomerStorageReceipt::create([
+            DB::transaction(function () use ($user, $branchId, $customer, $item, $validated) {
+                PermanentStorageReceipt::create([
                     'company_id' => $user->company_id,
                     'branch_id' => $branchId,
                     'customer_id' => $customer->id,
                     'inventory_item_id' => $item->id,
-                    'mazunguko' => $mazunguko,
                     'quantity' => $validated['quantity'],
                     'received_date' => $validated['received_date'],
                     'notes' => $validated['notes'] ?? null,
                     'created_by' => $user->id,
                 ]);
 
-                $balance = CustomerStorageBalance::firstOrNew([
+                $balance = PermanentStorageBalance::firstOrNew([
                     'company_id' => $user->company_id,
                     'branch_id' => $branchId,
                     'customer_id' => $customer->id,
                     'inventory_item_id' => $item->id,
-                    'mazunguko' => $mazunguko,
                 ]);
 
                 $balance->quantity_on_hand = (float) ($balance->quantity_on_hand ?? 0) + (float) $validated['quantity'];
                 $balance->save();
             });
         } catch (\Throwable $e) {
-            \Log::error('Customer storage store failed: ' . $e->getMessage(), [
+            \Log::error('Permanent storage store failed: ' . $e->getMessage(), [
                 'customer_id' => $validated['customer_id'],
                 'inventory_item_id' => $validated['inventory_item_id'],
-                'mazunguko' => $mazunguko,
                 'branch_id' => $branchId,
             ]);
 
@@ -385,8 +454,8 @@ class CustomerStorageController extends Controller
         }
 
         return redirect()
-            ->to(route('inventory.customer-storage.index'))
-            ->with('success', 'Zao la mteja '.$customer->name.' limepokelewa kikamilifu (mzunguko '.$mazunguko.', idadi: '.(int) $validated['quantity'].').');
+            ->to(route('inventory.permanent-storage.index'))
+            ->with('success', 'Zao la mteja ' . $customer->name . ' limepokelewa kikamilifu (idadi: ' . (int) $validated['quantity'] . ').');
     }
 
     public function withdraw(Request $request)
@@ -398,7 +467,7 @@ class CustomerStorageController extends Controller
         $validated = $request->validate([
             'balance_id' => 'required|integer',
             'quantity' => 'required|numeric|min:0.01',
-            'reason' => ['required', Rule::in(array_keys(CustomerStorageWithdrawal::reasonOptions()))],
+            'reason' => ['required', Rule::in(array_keys(PermanentStorageWithdrawal::reasonOptions()))],
             'price' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
         ], [
@@ -419,7 +488,7 @@ class CustomerStorageController extends Controller
             $validated['price'] = (float) $request->input('price');
         }
 
-        if (! Schema::hasTable('customer_storage_withdrawals')) {
+        if (! Schema::hasTable('permanent_storage_withdrawals')) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -430,7 +499,7 @@ class CustomerStorageController extends Controller
             return back()->withErrors(['quantity' => 'Jedwali la utoaji wa zao halijasanidiwa. Endesha migrations.']);
         }
 
-        $balance = CustomerStorageBalance::query()
+        $balance = PermanentStorageBalance::query()
             ->with(['customer', 'item'])
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
@@ -448,7 +517,7 @@ class CustomerStorageController extends Controller
             return back()->withErrors(['quantity' => 'Salio halipatikani katika tawi hili.']);
         }
 
-        if ($validated['reason'] === 'kuuza' && ! Schema::hasTable('customer_storage_sales')) {
+        if ($validated['reason'] === 'kuuza' && ! Schema::hasTable('permanent_storage_sales')) {
             $migrationMessage = 'Jedwali la mauzo ya zao halijasanidiwa. Endesha migrations.';
 
             if ($request->expectsJson()) {
@@ -473,12 +542,11 @@ class CustomerStorageController extends Controller
 
         try {
             DB::transaction(function () use ($user, $branchId, $balance, $validated, $withdrawQty, $onHand) {
-                $withdrawal = CustomerStorageWithdrawal::create([
+                $withdrawal = PermanentStorageWithdrawal::create([
                     'company_id' => $user->company_id,
                     'branch_id' => $branchId,
                     'customer_id' => $balance->customer_id,
                     'inventory_item_id' => $balance->inventory_item_id,
-                    'mazunguko' => (int) ($balance->mazunguko ?? 1),
                     'quantity' => $withdrawQty,
                     'reason' => $validated['reason'],
                     'notes' => $validated['notes'] ?? null,
@@ -486,16 +554,15 @@ class CustomerStorageController extends Controller
                     'created_by' => $user->id,
                 ]);
 
-                if ($validated['reason'] === 'kuuza' && Schema::hasTable('customer_storage_sales')) {
+                if ($validated['reason'] === 'kuuza' && Schema::hasTable('permanent_storage_sales')) {
                     $price = (float) $validated['price'];
                     $total = round($withdrawQty * $price, 2);
 
-                    CustomerStorageSale::create([
+                    PermanentStorageSale::create([
                         'company_id' => $user->company_id,
                         'branch_id' => $branchId,
                         'customer_id' => $balance->customer_id,
                         'inventory_item_id' => $balance->inventory_item_id,
-                        'mazunguko' => (int) ($balance->mazunguko ?? 1),
                         'quantity' => $withdrawQty,
                         'price' => $price,
                         'total' => $total,
@@ -508,7 +575,7 @@ class CustomerStorageController extends Controller
                 $balance->save();
             });
         } catch (\Throwable $e) {
-            \Log::error('Customer storage withdraw failed: ' . $e->getMessage(), [
+            \Log::error('Permanent storage withdraw failed: ' . $e->getMessage(), [
                 'balance_id' => $validated['balance_id'],
                 'branch_id' => $branchId,
             ]);
@@ -537,66 +604,8 @@ class CustomerStorageController extends Controller
         }
 
         return redirect()
-            ->to(route('inventory.customer-storage.index'))
+            ->to(route('inventory.permanent-storage.index'))
             ->with('success', $message);
-    }
-
-    private function buildBalanceSummary(int $companyId, ?int $branchId): array
-    {
-        if (! Schema::hasTable('customer_storage_balances')) {
-            return [];
-        }
-
-        $balances = CustomerStorageBalance::query()
-            ->with('item')
-            ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->where('quantity_on_hand', '>', 0)
-            ->get();
-
-        if ($balances->isEmpty()) {
-            return [];
-        }
-
-        return $balances
-            ->groupBy('inventory_item_id')
-            ->map(function ($rows) {
-                /** @var CustomerStorageBalance $first */
-                $first = $rows->first();
-                $item = $first->item;
-                $totalQty = (float) $rows->sum('quantity_on_hand');
-                $unit = trim((string) ($item->unit_of_measure ?? ''));
-                $packageQuantity = (float) ($item->package_quantity ?? 0);
-                $packageName = trim((string) ($item->package_name ?? ''));
-
-                $quantityDisplay = $this->formatQuantityWithUnit($totalQty, $item);
-                $packageCount = null;
-                $packageDisplay = '—';
-
-                if ($packageQuantity > 0 && $packageName !== '') {
-                    $packageCount = $totalQty / $packageQuantity;
-                    $packageDisplay = $this->formatStorageNumber($packageCount).' '.$packageName;
-                }
-
-                $summaryDisplay = $packageDisplay !== '—'
-                    ? $packageDisplay.' ('.$quantityDisplay.')'
-                    : $quantityDisplay;
-
-                return [
-                    'item_name' => $item->name ?? '—',
-                    'item_code' => $item->code ?? '',
-                    'total_quantity' => $totalQty,
-                    'unit' => $unit,
-                    'package_count' => $packageCount,
-                    'package_name' => $packageName,
-                    'quantity_display' => $quantityDisplay,
-                    'package_display' => $packageDisplay,
-                    'summary_display' => $summaryDisplay,
-                ];
-            })
-            ->sortBy('item_name')
-            ->values()
-            ->all();
     }
 
     public function storeMapato(Request $request)
@@ -616,94 +625,43 @@ class CustomerStorageController extends Controller
 
     public function taarifa(Request $request)
     {
-        $data = $this->buildTaarifaData((int) $request->validate([
-            'balance_id' => 'required|integer',
-        ])['balance_id']);
-
-        return view('inventory.customer-storage.taarifa', $data);
-    }
-
-    public function exportTaarifaPdf(Request $request)
-    {
-        $data = $this->buildTaarifaData((int) $request->validate([
-            'balance_id' => 'required|integer',
-        ])['balance_id']);
-
-        $user = Auth::user();
-        $data['company'] = function_exists('current_company') ? current_company() : $user->company;
-        $data['branch'] = $this->currentBranchId()
-            ? Branch::find($this->currentBranchId())
-            : null;
-        $data['generatedAt'] = now();
-        $data['can_delete'] = false;
-
-        $customerName = preg_replace('/[^A-Za-z0-9_-]+/', '_', (string) ($data['customer']->name ?? 'mteja'));
-        $filename = 'Taarifa_Uhifadhi_'.$customerName.'_'.now()->format('Y-m-d_H-i-s').'.pdf';
-
-        $pdf = Pdf::loadView('inventory.customer-storage.taarifa-pdf', $data)
-            ->setPaper('A4', 'portrait');
-
-        return $pdf->download($filename);
-    }
-
-    public function printTaarifaReceipt(Request $request)
-    {
-        $data = $this->buildTaarifaData((int) $request->validate([
-            'balance_id' => 'required|integer',
-        ])['balance_id']);
-
-        $user = Auth::user();
-        $data['company'] = function_exists('current_company') ? current_company() : $user->company;
-        $data['branch'] = $this->currentBranchId()
-            ? Branch::find($this->currentBranchId())
-            : null;
-        $data['generatedAt'] = now();
-        $data['printedBy'] = $user->name ?? '—';
-
-        return view('inventory.customer-storage.taarifa-receipt', $data);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildTaarifaData(int $balanceId): array
-    {
         $this->ensureInventorySession();
 
         $user = Auth::user();
         $branchId = $this->currentBranchId();
         $companyId = (int) $user->company_id;
 
-        $balance = CustomerStorageBalance::query()
+        $validated = $request->validate([
+            'balance_id' => 'required|integer',
+        ]);
+
+        $balance = PermanentStorageBalance::query()
             ->with(['customer', 'item'])
             ->where('company_id', $companyId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->whereKey($balanceId)
+            ->whereKey($validated['balance_id'])
             ->firstOrFail();
 
         $customerId = (int) $balance->customer_id;
         $itemId = (int) $balance->inventory_item_id;
-        $mazunguko = (int) ($balance->mazunguko ?? 1);
 
-        $receipts = Schema::hasTable('customer_storage_receipts')
-            ? CustomerStorageReceipt::query()
+        $receipts = Schema::hasTable('permanent_storage_receipts')
+            ? PermanentStorageReceipt::query()
                 ->where('company_id', $companyId)
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->where('customer_id', $customerId)
                 ->where('inventory_item_id', $itemId)
-                ->where('mazunguko', $mazunguko)
                 ->orderBy('received_date')
                 ->orderBy('id')
                 ->get()
             : collect();
 
-        $withdrawals = Schema::hasTable('customer_storage_withdrawals')
-            ? CustomerStorageWithdrawal::query()
+        $withdrawals = Schema::hasTable('permanent_storage_withdrawals')
+            ? PermanentStorageWithdrawal::query()
                 ->where('company_id', $companyId)
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->where('customer_id', $customerId)
                 ->where('inventory_item_id', $itemId)
-                ->where('mazunguko', $mazunguko)
                 ->orderBy('withdrawn_date')
                 ->orderBy('id')
                 ->get()
@@ -721,7 +679,7 @@ class CustomerStorageController extends Controller
             ]);
         }
         foreach ($withdrawals as $row) {
-            $reason = CustomerStorageWithdrawal::reasonOptions()[$row->reason] ?? $row->reason;
+            $reason = PermanentStorageWithdrawal::reasonOptions()[$row->reason] ?? $row->reason;
             $stockLines->push([
                 'date' => $row->withdrawn_date,
                 'type' => 'out',
@@ -733,25 +691,23 @@ class CustomerStorageController extends Controller
         }
         $stockLines = $stockLines->sortBy('sort')->values();
 
-        $mapatoEntries = Schema::hasTable('customer_storage_mapato')
-            ? CustomerStorageMapato::query()
+        $mapatoEntries = Schema::hasTable('permanent_storage_mapato')
+            ? PermanentStorageMapato::query()
                 ->where('company_id', $companyId)
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->where('customer_id', $customerId)
                 ->where('inventory_item_id', $itemId)
-                ->where('mazunguko', $mazunguko)
                 ->orderBy('entry_date')
                 ->orderBy('id')
                 ->get()
             : collect();
 
-        $salesEntries = Schema::hasTable('customer_storage_sales')
-            ? CustomerStorageSale::query()
+        $salesEntries = Schema::hasTable('permanent_storage_sales')
+            ? PermanentStorageSale::query()
                 ->where('company_id', $companyId)
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->where('customer_id', $customerId)
                 ->where('inventory_item_id', $itemId)
-                ->where('mazunguko', $mazunguko)
                 ->orderBy('created_at')
                 ->orderBy('id')
                 ->get()
@@ -782,13 +738,12 @@ class CustomerStorageController extends Controller
         }
         $mapatoLines = $mapatoLines->sortBy('date')->values();
 
-        $gharamaLines = Schema::hasTable('customer_storage_gharama')
-            ? CustomerStorageGharama::query()
+        $gharamaLines = Schema::hasTable('permanent_storage_gharama')
+            ? PermanentStorageGharama::query()
                 ->where('company_id', $companyId)
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->where('customer_id', $customerId)
                 ->where('inventory_item_id', $itemId)
-                ->where('mazunguko', $mazunguko)
                 ->orderBy('entry_date')
                 ->orderBy('id')
                 ->get()
@@ -802,13 +757,12 @@ class CustomerStorageController extends Controller
                 ->values()
             : collect();
 
-        $malipoLines = Schema::hasTable('customer_storage_malipo')
-            ? CustomerStorageMalipo::query()
+        $malipoLines = Schema::hasTable('permanent_storage_malipo')
+            ? PermanentStorageMalipo::query()
                 ->where('company_id', $companyId)
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->where('customer_id', $customerId)
                 ->where('inventory_item_id', $itemId)
-                ->where('mazunguko', $mazunguko)
                 ->orderBy('entry_date')
                 ->orderBy('id')
                 ->get()
@@ -827,11 +781,10 @@ class CustomerStorageController extends Controller
         $malipoTotal = (float) $malipoLines->sum('kiasi');
         $fedhaBalance = round($mapatoTotal - $gharamaTotal - $malipoTotal, 2);
 
-        return [
+        return view('inventory.permanent-storage.taarifa', [
             'balance' => $balance,
             'customer' => $balance->customer,
             'item' => $balance->item,
-            'mazunguko' => $mazunguko,
             'stock_quantity' => (float) $balance->quantity_on_hand,
             'stock_quantity_display' => $this->formatQuantityWithUnit((float) $balance->quantity_on_hand, $balance->item),
             'stock_package_display' => $this->formatPackageCount((float) $balance->quantity_on_hand, $balance->item),
@@ -843,13 +796,13 @@ class CustomerStorageController extends Controller
             'gharamaTotal' => $gharamaTotal,
             'malipoTotal' => $malipoTotal,
             'fedhaBalance' => $fedhaBalance,
-            'can_delete' => user_can_delete_customer_storage_taarifa(),
-        ];
+            'can_delete' => user_can_delete_permanent_storage_taarifa(),
+        ]);
     }
 
     public function destroyTaarifaLine(Request $request)
     {
-        abort_unless(user_can_delete_customer_storage_taarifa(), 403);
+        abort_unless(user_can_delete_permanent_storage_taarifa(), 403);
 
         $this->ensureInventorySession();
 
@@ -863,7 +816,7 @@ class CustomerStorageController extends Controller
             'line_id' => 'required|integer',
         ]);
 
-        $balance = CustomerStorageBalance::query()
+        $balance = PermanentStorageBalance::query()
             ->where('company_id', $companyId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->whereKey($validated['balance_id'])
@@ -871,15 +824,14 @@ class CustomerStorageController extends Controller
 
         $customerId = (int) $balance->customer_id;
         $itemId = (int) $balance->inventory_item_id;
-        $mazunguko = (int) ($balance->mazunguko ?? 1);
         $source = $validated['source'];
         $lineId = (int) $validated['line_id'];
 
         $query = match ($source) {
-            'mapato' => CustomerStorageMapato::query(),
-            'mauzo' => CustomerStorageSale::query(),
-            'gharama' => CustomerStorageGharama::query(),
-            'malipo' => CustomerStorageMalipo::query(),
+            'mapato' => PermanentStorageMapato::query(),
+            'mauzo' => PermanentStorageSale::query(),
+            'gharama' => PermanentStorageGharama::query(),
+            'malipo' => PermanentStorageMalipo::query(),
         };
 
         $line = $query
@@ -887,7 +839,6 @@ class CustomerStorageController extends Controller
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->where('customer_id', $customerId)
             ->where('inventory_item_id', $itemId)
-            ->where('mazunguko', $mazunguko)
             ->whereKey($lineId)
             ->firstOrFail();
 
@@ -915,7 +866,7 @@ class CustomerStorageController extends Controller
             $this->currentBranchId()
         );
 
-        return view('inventory.customer-storage.report', $data);
+        return view('inventory.permanent-storage.report', $data);
     }
 
     public function exportReportPdf()
@@ -933,9 +884,9 @@ class CustomerStorageController extends Controller
             : $user->company;
         $data['generatedAt'] = now();
 
-        $filename = 'Ripoti_Uhifadhi_Wateja_'.now()->format('Y-m-d_H-i-s').'.pdf';
+        $filename = 'Ripoti_Uhifadhi_Kudumu_'.now()->format('Y-m-d_H-i-s').'.pdf';
 
-        $pdf = Pdf::loadView('inventory.customer-storage.report-pdf', $data)
+        $pdf = Pdf::loadView('inventory.permanent-storage.report-pdf', $data)
             ->setPaper('A4', 'portrait');
 
         return $pdf->download($filename);
@@ -966,18 +917,18 @@ class CustomerStorageController extends Controller
             $totalQuantityDisplay = $this->formatStorageNumber($totalQuantity);
         }
 
-        $balances = Schema::hasTable('customer_storage_balances')
-            ? CustomerStorageBalance::query()
+        $balances = Schema::hasTable('permanent_storage_balances')
+            ? PermanentStorageBalance::query()
                 ->with(['customer', 'item'])
                 ->where('company_id', $companyId)
                 ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
                 ->get()
             : collect();
 
-        $mapatoByCustomer = $this->sumFinanceByCustomer('customer_storage_mapato', 'kiasi', $companyId, $branchId);
-        $salesByCustomer = $this->sumFinanceByCustomer('customer_storage_sales', 'total', $companyId, $branchId);
-        $gharamaByCustomer = $this->sumFinanceByCustomer('customer_storage_gharama', 'kiasi', $companyId, $branchId);
-        $malipoByCustomer = $this->sumFinanceByCustomer('customer_storage_malipo', 'kiasi', $companyId, $branchId);
+        $mapatoByCustomer = $this->sumFinanceByCustomer('permanent_storage_mapato', 'kiasi', $companyId, $branchId);
+        $salesByCustomer = $this->sumFinanceByCustomer('permanent_storage_sales', 'total', $companyId, $branchId);
+        $gharamaByCustomer = $this->sumFinanceByCustomer('permanent_storage_gharama', 'kiasi', $companyId, $branchId);
+        $malipoByCustomer = $this->sumFinanceByCustomer('permanent_storage_malipo', 'kiasi', $companyId, $branchId);
 
         $customerIds = collect()
             ->merge($balances->pluck('customer_id'))
@@ -1113,9 +1064,9 @@ class CustomerStorageController extends Controller
         }
 
         $table = match ($type) {
-            'mapato' => 'customer_storage_mapato',
-            'gharama' => 'customer_storage_gharama',
-            'malipo' => 'customer_storage_malipo',
+            'mapato' => 'permanent_storage_mapato',
+            'gharama' => 'permanent_storage_gharama',
+            'malipo' => 'permanent_storage_malipo',
             default => null,
         };
 
@@ -1139,7 +1090,7 @@ class CustomerStorageController extends Controller
             'entry_date.required' => 'Tarehe inahitajika.',
         ]);
 
-        $balance = CustomerStorageBalance::query()
+        $balance = PermanentStorageBalance::query()
             ->with('customer')
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
@@ -1158,7 +1109,6 @@ class CustomerStorageController extends Controller
             'branch_id' => $branchId,
             'customer_id' => $balance->customer_id,
             'inventory_item_id' => $balance->inventory_item_id,
-            'mazunguko' => (int) ($balance->mazunguko ?? 1),
             'sababu' => trim($validated['sababu']),
             'kiasi' => round((float) $validated['kiasi'], 2),
             'entry_date' => $validated['entry_date'],
@@ -1167,12 +1117,12 @@ class CustomerStorageController extends Controller
 
         try {
             match ($type) {
-                'mapato' => CustomerStorageMapato::create($payload),
-                'gharama' => CustomerStorageGharama::create($payload),
-                'malipo' => CustomerStorageMalipo::create($payload),
+                'mapato' => PermanentStorageMapato::create($payload),
+                'gharama' => PermanentStorageGharama::create($payload),
+                'malipo' => PermanentStorageMalipo::create($payload),
             };
         } catch (\Throwable $e) {
-            \Log::error('Customer storage '.$type.' store failed: '.$e->getMessage(), [
+            \Log::error('Permanent storage '.$type.' store failed: '.$e->getMessage(), [
                 'balance_id' => $validated['balance_id'],
             ]);
 
@@ -1183,7 +1133,7 @@ class CustomerStorageController extends Controller
         }
 
         if (in_array($type, ['gharama', 'malipo'], true) && $balance->customer) {
-            $sms = app(CustomerStorageFinanceSmsService::class);
+            $sms = app(PermanentStorageCustomerSmsService::class);
             if ($type === 'gharama') {
                 $sms->sendGharama($balance->customer, $payload['sababu'], $payload['kiasi'], $payload['entry_date']);
             } else {
@@ -1223,7 +1173,7 @@ class CustomerStorageController extends Controller
         $customers = $this->customersForCurrentBranch()
             ->get(['id', 'name']);
 
-        return view('inventory.customer-storage.history', compact('customers', 'customer', 'customerId'));
+        return view('inventory.permanent-storage.history', compact('customers', 'customer', 'customerId'));
     }
 
     protected function balancesDatatable(Request $request)
@@ -1231,7 +1181,7 @@ class CustomerStorageController extends Controller
         $user = Auth::user();
         $branchId = $this->currentBranchId();
 
-        $query = CustomerStorageBalance::query()
+        $query = PermanentStorageBalance::query()
             ->with(['customer', 'item'])
             ->where('company_id', $user->company_id)
             ->where('branch_id', $branchId)
@@ -1242,7 +1192,6 @@ class CustomerStorageController extends Controller
             ->addColumn('customer_phone', fn ($row) => $row->customer->phone ?? '—')
             ->addColumn('item_name', fn ($row) => $row->item->name ?? '—')
             ->addColumn('item_code', fn ($row) => $row->item->code ?? '—')
-            ->addColumn('mazunguko', fn ($row) => (int) ($row->mazunguko ?? 1))
             ->addColumn('quantity_display', fn ($row) => $this->formatQuantityWithUnit((float) $row->quantity_on_hand, $row->item))
             ->addColumn('package_display', fn ($row) => $this->formatPackageCount((float) $row->quantity_on_hand, $row->item))
             ->filterColumn('customer_name', function ($query, $keyword) {
@@ -1252,7 +1201,7 @@ class CustomerStorageController extends Controller
                 $query->whereHas('item', fn ($q) => $q->where('name', 'like', '%' . $keyword . '%'));
             })
             ->addColumn('actions', function ($row) {
-                $taarifaUrl = route('inventory.customer-storage.taarifa', ['balance_id' => $row->id]);
+                $taarifaUrl = route('inventory.permanent-storage.taarifa', ['balance_id' => $row->id]);
                 $customerName = e($row->customer->name ?? '—');
                 $itemName = e($row->item->name ?? '—');
                 $onHand = (float) $row->quantity_on_hand;
@@ -1260,7 +1209,7 @@ class CustomerStorageController extends Controller
                 $balanceId = (int) $row->id;
 
                 $html = '<div class="d-flex flex-wrap gap-1 justify-content-center">';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-withdraw-storage"'
+                $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-withdraw-permanent-storage"'
                     . ' data-balance-id="' . $balanceId . '"'
                     . ' data-customer-name="' . $customerName . '"'
                     . ' data-item-name="' . $itemName . '"'
@@ -1268,24 +1217,28 @@ class CustomerStorageController extends Controller
                     . ' data-unit="' . $unit . '"'
                     . ' title="Toa Zao">'
                     . '<i class="bx bx-export me-1"></i> Toa</button>';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-success btn-customer-mapato"'
+
+                $html .= '<button type="button" class="btn btn-sm btn-outline-success btn-permanent-mapato"'
                     . ' data-balance-id="' . $balanceId . '"'
                     . ' data-customer-name="' . $customerName . '"'
                     . ' data-item-name="' . $itemName . '"'
-                    . ' title="Mapato">'
+                    . ' title="Ingiza Mapato">'
                     . '<i class="bx bx-wallet me-1"></i> Mapato</button>';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-customer-gharama"'
+
+                $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-permanent-gharama"'
                     . ' data-balance-id="' . $balanceId . '"'
                     . ' data-customer-name="' . $customerName . '"'
                     . ' data-item-name="' . $itemName . '"'
-                    . ' title="Gharama">'
+                    . ' title="Ingiza Gharama">'
                     . '<i class="bx bx-receipt me-1"></i> Gharama</button>';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-primary btn-customer-malipo"'
+
+                $html .= '<button type="button" class="btn btn-sm btn-outline-primary btn-permanent-malipo"'
                     . ' data-balance-id="' . $balanceId . '"'
                     . ' data-customer-name="' . $customerName . '"'
                     . ' data-item-name="' . $itemName . '"'
-                    . ' title="Malipo">'
+                    . ' title="Ingiza Malipo">'
                     . '<i class="bx bx-money me-1"></i> Malipo</button>';
+
                 $html .= '<a href="' . e($taarifaUrl) . '" class="btn btn-sm btn-outline-dark" title="Taarifa">'
                     . '<i class="bx bx-file me-1"></i> Taarifa</a>';
                 $html .= '</div>';
@@ -1303,7 +1256,7 @@ class CustomerStorageController extends Controller
         $companyId = $user->company_id;
         $customerId = $request->input('customer_id');
 
-        $receipts = DB::table('customer_storage_receipts as r')
+        $receipts = DB::table('permanent_storage_receipts as r')
             ->join('customers as c', 'c.id', '=', 'r.customer_id')
             ->join('inventory_items as i', 'i.id', '=', 'r.inventory_item_id')
             ->leftJoin('users as u', 'u.id', '=', 'r.created_by')
@@ -1327,8 +1280,8 @@ class CustomerStorageController extends Controller
 
         $union = $receipts;
 
-        if (Schema::hasTable('customer_storage_withdrawals')) {
-            $withdrawals = DB::table('customer_storage_withdrawals as w')
+        if (Schema::hasTable('permanent_storage_withdrawals')) {
+            $withdrawals = DB::table('permanent_storage_withdrawals as w')
                 ->join('customers as c', 'c.id', '=', 'w.customer_id')
                 ->join('inventory_items as i', 'i.id', '=', 'w.inventory_item_id')
                 ->leftJoin('users as u', 'u.id', '=', 'w.created_by')
@@ -1393,7 +1346,7 @@ class CustomerStorageController extends Controller
                     return '—';
                 }
 
-                return e(CustomerStorageWithdrawal::reasonOptions()[$row->reason] ?? $row->reason);
+                return e(PermanentStorageWithdrawal::reasonOptions()[$row->reason] ?? $row->reason);
             })
             ->editColumn('created_at', fn ($row) => $row->created_at
                 ? \Carbon\Carbon::parse($row->created_at)->format('d/m/Y H:i')

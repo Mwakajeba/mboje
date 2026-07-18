@@ -8,28 +8,26 @@ use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CustomerStorageSale extends Model
+class PermanentStorageGharama extends Model
 {
     use LogsActivity;
+
+    protected $table = 'permanent_storage_gharama';
 
     protected $fillable = [
         'company_id',
         'branch_id',
         'customer_id',
         'inventory_item_id',
-        'mazunguko',
-        'quantity',
-        'price',
-        'total',
-        'withdrawal_id',
+        'sababu',
+        'kiasi',
+        'entry_date',
         'created_by',
     ];
 
     protected $casts = [
-        'mazunguko' => 'integer',
-        'quantity' => 'decimal:2',
-        'price' => 'decimal:2',
-        'total' => 'decimal:2',
+        'kiasi' => 'decimal:2',
+        'entry_date' => 'date',
     ];
 
     public function customer(): BelongsTo
@@ -40,11 +38,6 @@ class CustomerStorageSale extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Item::class, 'inventory_item_id');
-    }
-
-    public function withdrawal(): BelongsTo
-    {
-        return $this->belongsTo(CustomerStorageWithdrawal::class, 'withdrawal_id');
     }
 
     public function createdByUser(): BelongsTo

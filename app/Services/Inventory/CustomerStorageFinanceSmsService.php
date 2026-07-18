@@ -1,0 +1,88 @@
+<?php
+
+namespace App\Services\Inventory;
+
+use App\Helpers\SmsHelper;
+use App\Models\Customer;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+
+class CustomerStorageFinanceSmsService
+{
+    public function sendGharama(Customer $customer, string $sababu, float $kiasi, string $entryDate): void
+    {
+        $this->send(
+            $customer,
+            sprintf(
+                'Gharama: %s Tsh %s tarehe %s. Asante.',
+                $sababu,
+                $this->fmtMoney($kiasi),
+                Carbon::parse($entryDate)->format('d/m/Y')
+            ),
+            'gharama'
+        );
+    }
+
+    public function sendMalipo(Customer $customer, string $sababu, float $kiasi, string $entryDate): void
+    {
+        $this->send(
+            $customer,
+            sprintf(
+                'Malipo: %s Tsh %s tarehe %s. Asante.',
+                $sababu,
+                $this->fmtMoney($kiasi),
+                Carbon::parse($entryDate)->format('d/m/Y')
+            ),
+            'malipo'
+        );
+    }
+
+    private function send(Customer $customer, string $message, string $logType): void
+    {
+        try {
+            $phone = trim((string) ($customer->phone ?? ''));
+
+            if ($phone === '') {
+                Log::warning('Customer storage SMS skipped: customer phone not set.', [
+                    'customer_id' => $customer->id,
+                    'type' => $logType,
+                ]);
+
+                return;
+            }
+
+            if (! SmsHelper::isConfigured()) {
+                Log::warning('Customer storage SMS skipped: SMS gateway not configured.', [
+                    'customer_id' => $customer->id,
+                    'type' => $logType,
+                ]);
+
+                return;
+            }
+
+            $normalized = function_exists('normalize_phone_number')
+                ? normalize_phone_number($phone)
+                : $phone;
+
+            $result = SmsHelper::send($normalized ?: $phone, $message);
+
+            if (! ($result['success'] ?? false)) {
+                Log::warning('Customer storage SMS failed.', [
+                    'customer_id' => $customer->id,
+                    'type' => $logType,
+                    'error' => $result['error'] ?? 'unknown',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Customer storage SMS exception: '.$e->getMessage(), [
+                'customer_id' => $customer->id,
+                'type' => $logType,
+            ]);
+        }
+    }
+
+    private function fmtMoney(float $amount): string
+    {
+        return number_format($amount, 2, '.', ',');
+    }
+}

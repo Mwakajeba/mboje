@@ -17,6 +17,7 @@ class CustomerStorageReceipt extends Model
         'branch_id',
         'customer_id',
         'inventory_item_id',
+        'mazunguko',
         'quantity',
         'received_date',
         'notes',
@@ -24,6 +25,7 @@ class CustomerStorageReceipt extends Model
     ];
 
     protected $casts = [
+        'mazunguko' => 'integer',
         'quantity' => 'decimal:2',
         'received_date' => 'date',
     ];

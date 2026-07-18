@@ -170,6 +170,7 @@ use App\Http\Controllers\Sales\PosSaleController;
 use App\Http\Controllers\ChangeBranchController;
 use App\Http\Controllers\Inventory\OpeningBalanceController;
 use App\Http\Controllers\Inventory\CustomerStorageController;
+use App\Http\Controllers\Inventory\PermanentStorageController;
 // Public Job Portal Routes (no authentication required)
 Route::prefix('jobs')->name('public.job-portal.')->group(function () {
     Route::get('/', [App\Http\Controllers\Public\JobPortalController::class, 'index'])->name('index');
@@ -1073,11 +1074,33 @@ Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'company.sco
 
     // Customer product storage (uhifadhi wa bidhaa za wateja)
     Route::get('/customer-storage/history', [CustomerStorageController::class, 'history'])->name('customer-storage.history');
+    Route::get('/customer-storage/taarifa', [CustomerStorageController::class, 'taarifa'])->name('customer-storage.taarifa');
+    Route::delete('/customer-storage/taarifa/line', [CustomerStorageController::class, 'destroyTaarifaLine'])->name('customer-storage.taarifa.line.destroy');
+    Route::get('/customer-storage/report', [CustomerStorageController::class, 'report'])->name('customer-storage.report');
+    Route::get('/customer-storage/report/pdf', [CustomerStorageController::class, 'exportReportPdf'])->name('customer-storage.report.pdf');
     Route::get('/customer-storage', [CustomerStorageController::class, 'index'])->name('customer-storage.index');
     Route::post('/customer-storage', [CustomerStorageController::class, 'store'])->name('customer-storage.store');
     Route::post('/customer-storage/withdraw', [CustomerStorageController::class, 'withdraw'])->name('customer-storage.withdraw');
+    Route::post('/customer-storage/mapato', [CustomerStorageController::class, 'storeMapato'])->name('customer-storage.mapato.store');
+    Route::post('/customer-storage/gharama', [CustomerStorageController::class, 'storeGharama'])->name('customer-storage.gharama.store');
+    Route::post('/customer-storage/malipo', [CustomerStorageController::class, 'storeMalipo'])->name('customer-storage.malipo.store');
     Route::post('/customer-storage/quick-customer', [CustomerStorageController::class, 'quickStoreCustomer'])->name('customer-storage.quick-customer');
     Route::post('/customer-storage/quick-item', [CustomerStorageController::class, 'quickStoreItem'])->name('customer-storage.quick-item');
+
+    // Uhifadhi wa mazao wa kudumu (long-term crop storage)
+    Route::get('/permanent-storage/history', [PermanentStorageController::class, 'history'])->name('permanent-storage.history');
+    Route::get('/permanent-storage/taarifa', [PermanentStorageController::class, 'taarifa'])->name('permanent-storage.taarifa');
+    Route::delete('/permanent-storage/taarifa/line', [PermanentStorageController::class, 'destroyTaarifaLine'])->name('permanent-storage.taarifa.line.destroy');
+    Route::get('/permanent-storage/report', [PermanentStorageController::class, 'report'])->name('permanent-storage.report');
+    Route::get('/permanent-storage/report/pdf', [PermanentStorageController::class, 'exportReportPdf'])->name('permanent-storage.report.pdf');
+    Route::get('/permanent-storage', [PermanentStorageController::class, 'index'])->name('permanent-storage.index');
+    Route::post('/permanent-storage', [PermanentStorageController::class, 'store'])->name('permanent-storage.store');
+    Route::post('/permanent-storage/withdraw', [PermanentStorageController::class, 'withdraw'])->name('permanent-storage.withdraw');
+    Route::post('/permanent-storage/mapato', [PermanentStorageController::class, 'storeMapato'])->name('permanent-storage.mapato.store');
+    Route::post('/permanent-storage/gharama', [PermanentStorageController::class, 'storeGharama'])->name('permanent-storage.gharama.store');
+    Route::post('/permanent-storage/malipo', [PermanentStorageController::class, 'storeMalipo'])->name('permanent-storage.malipo.store');
+    Route::post('/permanent-storage/quick-customer', [PermanentStorageController::class, 'quickStoreCustomer'])->name('permanent-storage.quick-customer');
+    Route::post('/permanent-storage/quick-item', [PermanentStorageController::class, 'quickStoreItem'])->name('permanent-storage.quick-item');
 
     // Stock Movements
     Route::get('/movements', [MovementController::class, 'index'])->name('movements.index');

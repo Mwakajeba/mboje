@@ -46,6 +46,40 @@
             </div>
         </div> -->
 
+        @can('manage inventory items')
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card border-info position-relative">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bx bx-user-pin fs-1 text-info"></i>
+                    </div>
+                    <h5 class="card-title">Ripoti ya Uhifadhi wa Wateja</h5>
+                    <p class="card-text">Jumla ya stoo ya mazao, gharama zinazodaiwa (salio), na orodha ya wateja.</p>
+                    <a href="{{ route('inventory.customer-storage.report') }}" class="btn btn-info">
+                        <i class="bx bx-bar-chart-alt-2 me-1"></i> Angalia Ripoti
+                    </a>
+                </div>
+            </div>
+        </div>
+        @endcan
+
+        @can('manage inventory items')
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card border-dark position-relative">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="bx bx-building-house fs-1 text-dark"></i>
+                    </div>
+                    <h5 class="card-title">Ripoti ya Uhifadhi wa Kudumu</h5>
+                    <p class="card-text">Jumla ya stoo ya mazao, gharama zinazodaiwa (salio), na orodha ya wateja.</p>
+                    <a href="{{ route('inventory.permanent-storage.report') }}" class="btn btn-dark">
+                        <i class="bx bx-bar-chart-alt-2 me-1"></i> Angalia Ripoti
+                    </a>
+                </div>
+            </div>
+        </div>
+        @endcan
+
         <!-- Movement Register Report -->
         @can('view movement register report')
         <div class="col-md-6 col-lg-4 mb-4">

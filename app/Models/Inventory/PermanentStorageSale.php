@@ -8,7 +8,7 @@ use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class CustomerStorageSale extends Model
+class PermanentStorageSale extends Model
 {
     use LogsActivity;
 
@@ -17,7 +17,6 @@ class CustomerStorageSale extends Model
         'branch_id',
         'customer_id',
         'inventory_item_id',
-        'mazunguko',
         'quantity',
         'price',
         'total',
@@ -26,7 +25,6 @@ class CustomerStorageSale extends Model
     ];
 
     protected $casts = [
-        'mazunguko' => 'integer',
         'quantity' => 'decimal:2',
         'price' => 'decimal:2',
         'total' => 'decimal:2',
@@ -44,7 +42,7 @@ class CustomerStorageSale extends Model
 
     public function withdrawal(): BelongsTo
     {
-        return $this->belongsTo(CustomerStorageWithdrawal::class, 'withdrawal_id');
+        return $this->belongsTo(PermanentStorageWithdrawal::class, 'withdrawal_id');
     }
 
     public function createdByUser(): BelongsTo

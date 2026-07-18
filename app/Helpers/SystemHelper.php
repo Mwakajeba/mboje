@@ -227,3 +227,25 @@ if (!function_exists('user_can_delete_driver_trips')) {
         return user_can_delete_wamachinga_statement($user);
     }
 }
+
+if (!function_exists('user_can_delete_permanent_storage_taarifa')) {
+    function user_can_delete_permanent_storage_taarifa($user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole('super-admin')
+            || $user->hasRole('md')
+            || $user->hasRole('Md');
+    }
+}
+
+if (!function_exists('user_can_delete_customer_storage_taarifa')) {
+    function user_can_delete_customer_storage_taarifa($user = null): bool
+    {
+        return user_can_delete_permanent_storage_taarifa($user);
+    }
+}

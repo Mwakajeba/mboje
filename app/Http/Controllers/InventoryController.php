@@ -7,10 +7,12 @@ use App\Models\Inventory\Category;
 use App\Models\Inventory\Item;
 use App\Models\Inventory\Movement;
 use App\Models\Inventory\CustomerStorageBalance;
+use App\Models\Inventory\PermanentStorageBalance;
 use App\Models\InventoryLocation;
 use App\Services\Inventory\CustomerStorageReportService;
 use App\Services\CustomerAccountSummaryService;
 use App\Services\InventoryValueService;
+use Illuminate\Support\Facades\Schema;
 use Yajra\DataTables\Facades\DataTables;
 
 class InventoryController extends Controller
@@ -108,6 +110,13 @@ class InventoryController extends Controller
             ->where('quantity_on_hand', '>', 0)
             ->count();
 
+        $permanentStorageCount = Schema::hasTable('permanent_storage_balances')
+            ? PermanentStorageBalance::where('company_id', auth()->user()->company_id)
+                ->when($currentBranchId, fn ($q) => $q->where('branch_id', $currentBranchId))
+                ->where('quantity_on_hand', '>', 0)
+                ->count()
+            : 0;
+
         $storageReport = app(CustomerStorageReportService::class)->build(
             (int) auth()->user()->company_id,
             $currentBranchId ? (int) $currentBranchId : null
@@ -135,6 +144,7 @@ class InventoryController extends Controller
             'recentMovements',
             'countSessionsCount',
             'customerStorageCount',
+            'permanentStorageCount',
             'storageReport',
             'inventoryValueAtLocation',
             'inventoryValueCurrency'
