@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use App\Models\ChartAccount;
 use App\Models\AccountClassGroup;
 use App\Models\GlTransaction;
@@ -28,172 +29,189 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $startedAt = microtime(true);
         $user = auth()->user();
         $company = $user->company;
-        
-        if (!$company) {
-            return view('dashboard', [
-                'balanceSheetData' => [],
-                'financialReportData' => [],
-                'recentJournals' => collect(),
-                'recentPayments' => collect(),
-                'recentReceipts' => collect(),
-                'previousYearData' => [],
-                'totalInventoryValue' => 0,
-                'totalInventoryItemsCount' => 0,
-                'totalSalesToday' => 0,
-                'grossProfitMtd' => 0,
-                'totalExpensesToday' => 0,
-                'outstandingInvoicesAmount' => 0,
-                'outstandingInvoicesCount' => 0,
-                'totalCustomers' => 0,
-                'roomsOccupied' => 0,
-                'totalRooms' => 0,
-                'todaysBookingsValue' => 0,
-                'todaysBookingsCount' => 0,
-                'receivablesAging' => [],
-                'branches' => collect(),
-                'selectedBranchId' => null,
-                'pendingApprovalsCount' => 0,
-            ]);
-        }
-        // Resolve permitted branches for this user
+
         $permittedBranchIds = $this->getPermittedBranchIds($user);
         if (empty($permittedBranchIds) && $user->branch_id) {
-            $permittedBranchIds = [(int)$user->branch_id];
+            $permittedBranchIds = [(int) $user->branch_id];
         }
-        // Selected branch logic: default to user's only branch, otherwise allow All (null)
+
         $defaultSelected = count($permittedBranchIds) === 1 ? $permittedBranchIds[0] : null;
         $selectedBranchId = request()->has('branch_id') ? request('branch_id') : $defaultSelected;
         $branchId = $this->normalizeBranchId($selectedBranchId);
-        // Persist specific selection for header badge.
-        // Do not clear session branch here because require.branch middleware needs it for route access.
+
         if ($branchId) {
             session(['branch_id' => $branchId]);
         }
-        $today = now()->toDateString();
-        $startOfMonth = now()->startOfMonth()->toDateString();
-        $endOfMonth = now()->endOfMonth()->toDateString();
 
-        // Get recent activities - filter by company and branch and current month
-        $recentJournals = Journal::whereHas('branch', function($query) use ($company) {
-            $query->where('company_id', $company->id);
-        })
-        ->when(!empty($permittedBranchIds), fn($q) => $q->whereIn('branch_id', $permittedBranchIds))
-        ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-        ->whereBetween('date', [$startOfMonth, $endOfMonth])
-        ->with(['user', 'branch'])
-        ->latest()
-        ->take(5)
-        ->get();
-        
-        $recentPayments = Payment::whereHas('branch', function($query) use ($company) {
-            $query->where('company_id', $company->id);
-        })
-        ->when(!empty($permittedBranchIds), fn($q) => $q->whereIn('branch_id', $permittedBranchIds))
-        ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-        ->whereBetween('date', [$startOfMonth, $endOfMonth])
-        ->with(['user', 'branch'])
-        ->latest()
-        ->take(5)
-        ->get();
-        
-        $recentReceipts = Receipt::whereHas('branch', function($query) use ($company) {
-            $query->where('company_id', $company->id);
-        })
-        ->when(!empty($permittedBranchIds), fn($q) => $q->whereIn('branch_id', $permittedBranchIds))
-        ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-        ->whereBetween('date', [$startOfMonth, $endOfMonth])
-        ->with(['user', 'branch', 'customer'])
-        ->latest()
-        ->take(5)
-        ->get();
-            
-
-
-        
-        // Restore essential financial payload (cache-backed) so dashboard is populated.
-        $currentFiscalYear = FiscalYear::forCompany($company->id)
-            ->whereDate('start_date', '<=', $today)
-            ->whereDate('end_date', '>=', $today)
-            ->orderBy('start_date', 'desc')
-            ->first();
-
-        if ($currentFiscalYear) {
-            $ytdStart = $currentFiscalYear->start_date->toDateString();
-            $ytdEnd = $today;
-        } else {
-            $ytdStart = now()->startOfYear()->toDateString();
-            $ytdEnd = $today;
-        }
-
-        $balanceSheetData = $this->getBalanceSheetData($branchId, $permittedBranchIds);
-        $financialReportData = $this->getFinancialReportData($branchId, $permittedBranchIds, $ytdEnd, $ytdEnd, $ytdStart);
-        $cumulativeProfitLoss = $this->getCumulativeProfitLoss($branchId, $permittedBranchIds, $ytdEnd);
-        $netProfitYtd = $financialReportData['profitLoss'] ?? 0;
-
-        $previousYear = date('Y') - 1;
-        $previousYearEndDate = Carbon::create($previousYear, 12, 31)->toDateString();
-        $previousYearStartDate = Carbon::create($previousYear, 1, 1)->toDateString();
-        $previousYearData = $this->getPreviousYearData($branchId, $permittedBranchIds, $previousYearEndDate, $previousYearStartDate, $previousYearEndDate);
-
-        $totalInventoryValue = 0;
-        $totalInventoryItemsCount = 0;
-        $cards = json_decode($this->dashboardCardsSummary(request())->getContent(), true) ?: [];
-        $totalSalesToday = (float) ($cards['totalSalesToday'] ?? 0);
-        $grossProfitMtd = 0;
-        $totalExpensesToday = (float) ($cards['totalExpensesToday'] ?? 0);
-        $outstandingInvoicesAmount = (float) ($cards['outstandingInvoicesAmount'] ?? 0);
-        $outstandingInvoicesCount = (int) ($cards['outstandingInvoicesCount'] ?? 0);
-        $totalCustomers = (int) ($cards['totalCustomers'] ?? 0);
-        $cashCollectedToday = (float) ($cards['cashCollectedToday'] ?? 0);
-        $revenueThisMonth = (float) ($cards['revenueThisMonth'] ?? 0);
-        $receivablesAging = [
-            'current' => 0,
-            'overdue_1_30' => 0,
-            'overdue_31_60' => 0,
-            'overdue_60_plus' => 0,
-        ];
-            
-        // Branch list for filter dropdown (restricted to user's permitted branches)
         $branches = Branch::whereIn('id', $permittedBranchIds)
             ->orderBy('name')
             ->get();
 
-        // Get pending approvals count
-        $pendingApprovalsCount = \App\Http\Controllers\ApprovalQueueController::getPendingApprovalsCount($user->id);
+        if (! $company) {
+            return view('dashboard', [
+                'branches' => $branches,
+                'selectedBranchId' => $branchId,
+                'wafanyakaziSalio' => 0.0,
+                'wamachingaSalio' => 0.0,
+                'watejaSalio' => 0.0,
+                'stooKudumuTotalQty' => 0.0,
+                'stooKudumuDisplay' => '0',
+                'stooKudumuBreakdown' => [],
+            ]);
+        }
 
-        Log::info('dashboard.index.completed', [
-            'company_id' => $company->id,
-            'branch_id' => $branchId,
-            'elapsed_ms' => (int) round((microtime(true) - $startedAt) * 1000),
-        ]);
+        $companyId = (int) $company->id;
+
+        $stoo = $this->sumPermanentStorageStock($companyId, $branchId);
 
         return view('dashboard', [
-            'balanceSheetData' => $balanceSheetData,
-            'financialReportData' => $financialReportData,
-            'recentJournals' => $recentJournals,
-            'recentPayments' => $recentPayments,
-            'recentReceipts' => $recentReceipts,
-            'previousYearData' => $previousYearData,
-            'cumulativeProfitLoss' => $cumulativeProfitLoss,
-            'totalInventoryValue' => $totalInventoryValue,
-            'totalInventoryItemsCount' => $totalInventoryItemsCount,
-            'totalSalesToday' => $totalSalesToday,
-            'grossProfitMtd' => $grossProfitMtd,
-            'netProfitYtd' => $netProfitYtd,
-            'totalExpensesToday' => $totalExpensesToday,
-            'outstandingInvoicesAmount' => $outstandingInvoicesAmount,
-            'outstandingInvoicesCount' => $outstandingInvoicesCount,
-            'totalCustomers' => $totalCustomers,
-            'cashCollectedToday' => $cashCollectedToday,
-            'pendingApprovalsCount' => $pendingApprovalsCount,
-            'revenueThisMonth' => $revenueThisMonth,
-            'receivablesAging' => $receivablesAging,
             'branches' => $branches,
             'selectedBranchId' => $branchId,
+            'wafanyakaziSalio' => $this->sumWafanyakaziSalio($companyId, $branchId),
+            'wamachingaSalio' => $this->sumWamachingaSalio($companyId, $branchId),
+            'watejaSalio' => $this->sumWatejaSalio($companyId, $branchId),
+            'stooKudumuTotalQty' => $stoo['total_quantity'],
+            'stooKudumuDisplay' => $stoo['display'],
+            'stooKudumuBreakdown' => $stoo['breakdown'],
         ]);
+    }
+
+    private function sumWafanyakaziSalio(int $companyId, ?int $branchId): float
+    {
+        $mauzo = $this->sumDailyLineKiasi(\App\Models\Purchase\DailyMauzoLine::class, $companyId, $branchId);
+        $matumizi = $this->sumDailyLineKiasi(\App\Models\Purchase\DailyMatumiziLine::class, $companyId, $branchId);
+        $manunuzi = $this->sumDailyLineKiasi(\App\Models\Purchase\DailyManunuziLine::class, $companyId, $branchId);
+
+        return round($mauzo - $matumizi - $manunuzi, 2);
+    }
+
+    /**
+     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $lineModel
+     */
+    private function sumDailyLineKiasi(string $lineModel, int $companyId, ?int $branchId): float
+    {
+        if (! class_exists($lineModel)) {
+            return 0.0;
+        }
+
+        try {
+            return (float) $lineModel::query()
+                ->whereHas('record', function ($q) use ($companyId, $branchId) {
+                    $q->where('company_id', $companyId)
+                        ->when($branchId, fn ($qq) => $qq->where('branch_id', $branchId));
+                })
+                ->sum('kiasi');
+        } catch (\Throwable $e) {
+            return 0.0;
+        }
+    }
+
+    private function sumWamachingaSalio(int $companyId, ?int $branchId): float
+    {
+        if (! Schema::hasTable('supplier_advances') || ! Schema::hasTable('supplier_advance_deductions')) {
+            return 0.0;
+        }
+
+        $advances = (float) DB::table('supplier_advances')
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->sum('amount');
+
+        $deductions = (float) DB::table('supplier_advance_deductions')
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->sum('amount');
+
+        return round($advances - $deductions, 2);
+    }
+
+    private function sumWatejaSalio(int $companyId, ?int $branchId): float
+    {
+        $mapato = $this->sumTableAmount('customer_storage_mapato', 'kiasi', $companyId, $branchId)
+            + $this->sumTableAmount('customer_storage_sales', 'total', $companyId, $branchId);
+        $gharama = $this->sumTableAmount('customer_storage_gharama', 'kiasi', $companyId, $branchId);
+        $malipo = $this->sumTableAmount('customer_storage_malipo', 'kiasi', $companyId, $branchId);
+
+        return round($mapato - $gharama - $malipo, 2);
+    }
+
+    private function sumTableAmount(string $table, string $column, int $companyId, ?int $branchId): float
+    {
+        if (! Schema::hasTable($table)) {
+            return 0.0;
+        }
+
+        return (float) DB::table($table)
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->sum($column);
+    }
+
+    /**
+     * @return array{total_quantity: float, display: string, breakdown: list<array{item_name: string, summary: string}>}
+     */
+    private function sumPermanentStorageStock(int $companyId, ?int $branchId): array
+    {
+        if (! Schema::hasTable('permanent_storage_balances')) {
+            return [
+                'total_quantity' => 0.0,
+                'display' => '0',
+                'breakdown' => [],
+            ];
+        }
+
+        $balances = \App\Models\Inventory\PermanentStorageBalance::query()
+            ->with('item')
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->where('quantity_on_hand', '>', 0)
+            ->get();
+
+        if ($balances->isEmpty()) {
+            return [
+                'total_quantity' => 0.0,
+                'display' => '0',
+                'breakdown' => [],
+            ];
+        }
+
+        $breakdown = $balances
+            ->groupBy('inventory_item_id')
+            ->map(function ($rows) {
+                $item = $rows->first()->item;
+                $qty = (float) $rows->sum('quantity_on_hand');
+                $decimals = fmod($qty, 1.0) === 0.0 ? 0 : 2;
+                $qtyDisplay = number_format($qty, $decimals).($item?->unit_of_measure ? ' '.$item->unit_of_measure : '');
+
+                $packageQty = (float) ($item->package_quantity ?? 0);
+                $packageName = trim((string) ($item->package_name ?? ''));
+                if ($packageQty > 0 && $packageName !== '') {
+                    $packages = $qty / $packageQty;
+                    $pkgDecimals = fmod($packages, 1.0) === 0.0 ? 0 : 2;
+                    $summary = number_format($packages, $pkgDecimals).' '.$packageName.' ('.$qtyDisplay.')';
+                } else {
+                    $summary = $qtyDisplay;
+                }
+
+                return [
+                    'item_name' => $item->name ?? '—',
+                    'summary' => $summary,
+                ];
+            })
+            ->sortBy('item_name')
+            ->values()
+            ->all();
+
+        $display = collect($breakdown)->pluck('summary')->implode(', ');
+        $totalQty = (float) $balances->sum('quantity_on_hand');
+
+        return [
+            'total_quantity' => $totalQty,
+            'display' => $display !== '' ? $display : number_format($totalQty, 2),
+            'breakdown' => $breakdown,
+        ];
     }
 
     /**
