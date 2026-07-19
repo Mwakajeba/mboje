@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CustomerStorageBalance extends Model
 {
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_INACTIVE = 'inactive';
+
     protected $fillable = [
         'company_id',
         'branch_id',
@@ -15,12 +18,32 @@ class CustomerStorageBalance extends Model
         'inventory_item_id',
         'mazunguko',
         'quantity_on_hand',
+        'status',
     ];
 
     protected $casts = [
         'mazunguko' => 'integer',
         'quantity_on_hand' => 'decimal:2',
     ];
+
+    /** @return array<string, string> */
+    public static function statusOptions(): array
+    {
+        return [
+            self::STATUS_ACTIVE => 'Inaendelea',
+            self::STATUS_INACTIVE => 'Imeisha',
+        ];
+    }
+
+    public function statusLabel(): string
+    {
+        return self::statusOptions()[$this->status ?? self::STATUS_ACTIVE] ?? 'Inaendelea';
+    }
+
+    public function isActive(): bool
+    {
+        return ($this->status ?? self::STATUS_ACTIVE) === self::STATUS_ACTIVE;
+    }
 
     public function customer(): BelongsTo
     {

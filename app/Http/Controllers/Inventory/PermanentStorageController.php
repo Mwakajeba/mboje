@@ -132,6 +132,16 @@ class PermanentStorageController extends Controller
             $branchId ? (int) $branchId : null
         );
 
+        $listStatus = $request->query('status') === PermanentStorageBalance::STATUS_INACTIVE
+            ? PermanentStorageBalance::STATUS_INACTIVE
+            : PermanentStorageBalance::STATUS_ACTIVE;
+
+        $statusCounts = $this->balanceStatusCounts(
+            (int) $user->company_id,
+            $branchId ? (int) $branchId : null,
+            PermanentStorageBalance::class
+        );
+
         return view('inventory.permanent-storage.index', compact(
             'customers',
             'items',
@@ -139,7 +149,9 @@ class PermanentStorageController extends Controller
             'categories',
             'assignableBranches',
             'branchId',
-            'balanceSummary'
+            'balanceSummary',
+            'listStatus',
+            'statusCounts'
         ));
     }
 
@@ -166,6 +178,7 @@ class PermanentStorageController extends Controller
             ->with('item')
             ->where('company_id', $companyId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->where('status', PermanentStorageBalance::STATUS_ACTIVE)
             ->where('quantity_on_hand', '>', 0)
             ->get();
 
@@ -439,6 +452,7 @@ class PermanentStorageController extends Controller
                 ]);
 
                 $balance->quantity_on_hand = (float) ($balance->quantity_on_hand ?? 0) + (float) $validated['quantity'];
+                $balance->status = PermanentStorageBalance::STATUS_ACTIVE;
                 $balance->save();
             });
         } catch (\Throwable $e) {
@@ -884,7 +898,7 @@ class PermanentStorageController extends Controller
             : $user->company;
         $data['generatedAt'] = now();
 
-        $filename = 'Ripoti_Uhifadhi_Kudumu_'.now()->format('Y-m-d_H-i-s').'.pdf';
+        $filename = 'Ripoti_Stoo_ya_Kudumu_'.now()->format('Y-m-d_H-i-s').'.pdf';
 
         $pdf = Pdf::loadView('inventory.permanent-storage.report-pdf', $data)
             ->setPaper('A4', 'portrait');
@@ -1180,18 +1194,27 @@ class PermanentStorageController extends Controller
     {
         $user = Auth::user();
         $branchId = $this->currentBranchId();
+        $listStatus = $request->query('status') === PermanentStorageBalance::STATUS_INACTIVE
+            ? PermanentStorageBalance::STATUS_INACTIVE
+            : PermanentStorageBalance::STATUS_ACTIVE;
+        $showingInactive = $listStatus === PermanentStorageBalance::STATUS_INACTIVE;
 
         $query = PermanentStorageBalance::query()
             ->with(['customer', 'item'])
             ->where('company_id', $user->company_id)
             ->where('branch_id', $branchId)
-            ->where('quantity_on_hand', '>', 0);
+            ->where('status', $listStatus);
+
+        if (! $showingInactive) {
+            $query->where('quantity_on_hand', '>', 0);
+        }
 
         return DataTables::of($query)
             ->addColumn('customer_name', fn ($row) => $row->customer->name ?? '—')
             ->addColumn('customer_phone', fn ($row) => $row->customer->phone ?? '—')
             ->addColumn('item_name', fn ($row) => $row->item->name ?? '—')
             ->addColumn('item_code', fn ($row) => $row->item->code ?? '—')
+            ->addColumn('status_label', fn ($row) => e($row->statusLabel()))
             ->addColumn('quantity_display', fn ($row) => $this->formatQuantityWithUnit((float) $row->quantity_on_hand, $row->item))
             ->addColumn('package_display', fn ($row) => $this->formatPackageCount((float) $row->quantity_on_hand, $row->item))
             ->filterColumn('customer_name', function ($query, $keyword) {
@@ -1200,7 +1223,7 @@ class PermanentStorageController extends Controller
             ->filterColumn('item_name', function ($query, $keyword) {
                 $query->whereHas('item', fn ($q) => $q->where('name', 'like', '%' . $keyword . '%'));
             })
-            ->addColumn('actions', function ($row) {
+            ->addColumn('actions', function ($row) use ($showingInactive) {
                 $taarifaUrl = route('inventory.permanent-storage.taarifa', ['balance_id' => $row->id]);
                 $customerName = e($row->customer->name ?? '—');
                 $itemName = e($row->item->name ?? '—');
@@ -1209,44 +1232,114 @@ class PermanentStorageController extends Controller
                 $balanceId = (int) $row->id;
 
                 $html = '<div class="d-flex flex-wrap gap-1 justify-content-center">';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-withdraw-permanent-storage"'
-                    . ' data-balance-id="' . $balanceId . '"'
-                    . ' data-customer-name="' . $customerName . '"'
-                    . ' data-item-name="' . $itemName . '"'
-                    . ' data-quantity-on-hand="' . $onHand . '"'
-                    . ' data-unit="' . $unit . '"'
-                    . ' title="Toa Zao">'
-                    . '<i class="bx bx-export me-1"></i> Toa</button>';
 
-                $html .= '<button type="button" class="btn btn-sm btn-outline-success btn-permanent-mapato"'
-                    . ' data-balance-id="' . $balanceId . '"'
-                    . ' data-customer-name="' . $customerName . '"'
-                    . ' data-item-name="' . $itemName . '"'
-                    . ' title="Ingiza Mapato">'
-                    . '<i class="bx bx-wallet me-1"></i> Mapato</button>';
+                if ($showingInactive) {
+                    $html .= '<button type="button" class="btn btn-sm btn-success btn-change-storage-status"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-status="active"'
+                        . ' title="Rudisha Inaendelea">'
+                        . '<i class="bx bx-revision me-1"></i> Inaendelea</button>';
+                    $html .= '<a href="' . e($taarifaUrl) . '" class="btn btn-sm btn-outline-dark" title="Taarifa">'
+                        . '<i class="bx bx-file me-1"></i> Taarifa</a>';
+                } else {
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-withdraw-permanent-storage"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-customer-name="' . $customerName . '"'
+                        . ' data-item-name="' . $itemName . '"'
+                        . ' data-quantity-on-hand="' . $onHand . '"'
+                        . ' data-unit="' . $unit . '"'
+                        . ' title="Toa Zao">'
+                        . '<i class="bx bx-export me-1"></i> Toa</button>';
 
-                $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-permanent-gharama"'
-                    . ' data-balance-id="' . $balanceId . '"'
-                    . ' data-customer-name="' . $customerName . '"'
-                    . ' data-item-name="' . $itemName . '"'
-                    . ' title="Ingiza Gharama">'
-                    . '<i class="bx bx-receipt me-1"></i> Gharama</button>';
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-success btn-permanent-mapato"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-customer-name="' . $customerName . '"'
+                        . ' data-item-name="' . $itemName . '"'
+                        . ' title="Ingiza Mapato">'
+                        . '<i class="bx bx-wallet me-1"></i> Mapato</button>';
 
-                $html .= '<button type="button" class="btn btn-sm btn-outline-primary btn-permanent-malipo"'
-                    . ' data-balance-id="' . $balanceId . '"'
-                    . ' data-customer-name="' . $customerName . '"'
-                    . ' data-item-name="' . $itemName . '"'
-                    . ' title="Ingiza Malipo">'
-                    . '<i class="bx bx-money me-1"></i> Malipo</button>';
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-permanent-gharama"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-customer-name="' . $customerName . '"'
+                        . ' data-item-name="' . $itemName . '"'
+                        . ' title="Ingiza Gharama">'
+                        . '<i class="bx bx-receipt me-1"></i> Gharama</button>';
 
-                $html .= '<a href="' . e($taarifaUrl) . '" class="btn btn-sm btn-outline-dark" title="Taarifa">'
-                    . '<i class="bx bx-file me-1"></i> Taarifa</a>';
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-primary btn-permanent-malipo"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-customer-name="' . $customerName . '"'
+                        . ' data-item-name="' . $itemName . '"'
+                        . ' title="Ingiza Malipo">'
+                        . '<i class="bx bx-money me-1"></i> Malipo</button>';
+
+                    $html .= '<a href="' . e($taarifaUrl) . '" class="btn btn-sm btn-outline-dark" title="Taarifa">'
+                        . '<i class="bx bx-file me-1"></i> Taarifa</a>';
+
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-secondary btn-change-storage-status"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-status="inactive"'
+                        . ' title="Weka Imeisha">'
+                        . '<i class="bx bx-check-circle me-1"></i> Imeisha</button>';
+                }
+
                 $html .= '</div>';
 
                 return $html;
             })
-            ->rawColumns(['actions'])
+            ->rawColumns(['actions', 'status_label'])
             ->make(true);
+    }
+
+    public function updateStatus(Request $request)
+    {
+        $this->ensureInventorySession();
+
+        $user = Auth::user();
+        $branchId = $this->currentBranchId();
+        $companyId = (int) $user->company_id;
+
+        $validated = $request->validate([
+            'balance_id' => 'required|integer',
+            'status' => 'required|in:active,inactive',
+        ]);
+
+        $balance = PermanentStorageBalance::query()
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereKey($validated['balance_id'])
+            ->firstOrFail();
+
+        $balance->status = $validated['status'];
+        $balance->save();
+
+        $label = PermanentStorageBalance::statusOptions()[$balance->status] ?? $balance->status;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Hali imebadilishwa kuwa: '.$label.'.',
+            'status' => $balance->status,
+            'status_label' => $label,
+        ]);
+    }
+
+    /**
+     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $model
+     * @return array{active: int, inactive: int}
+     */
+    private function balanceStatusCounts(int $companyId, ?int $branchId, string $model): array
+    {
+        if (! Schema::hasTable((new $model)->getTable())) {
+            return ['active' => 0, 'inactive' => 0];
+        }
+
+        $base = $model::query()
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
+
+        return [
+            'active' => (int) (clone $base)->where('status', 'active')->where('quantity_on_hand', '>', 0)->count(),
+            'inactive' => (int) (clone $base)->where('status', 'inactive')->count(),
+        ];
     }
 
     protected function historyDatatable(Request $request)

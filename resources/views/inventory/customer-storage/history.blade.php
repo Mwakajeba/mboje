@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Historia ya Uhifadhi wa Wateja')
+@section('title', 'Historia ya Stoo ya Muda Mfupi (Wateja)')
 
 @section('content')
 <div class="page-wrapper">
@@ -8,7 +8,7 @@
         <x-breadcrumbs-with-icons :links="[
             ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Usimamizi wa Hesabu', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
-            ['label' => 'Uhifadhi wa Wateja', 'url' => route('inventory.customer-storage.index'), 'icon' => 'bx bx-user-pin'],
+            ['label' => 'Stoo ya Muda Mfupi (Wateja)', 'url' => route('inventory.customer-storage.index'), 'icon' => 'bx bx-user-pin'],
             ['label' => 'Historia', 'url' => '#', 'icon' => 'bx bx-history']
         ]" />
 

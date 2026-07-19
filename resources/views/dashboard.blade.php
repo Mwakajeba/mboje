@@ -8,7 +8,7 @@
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <div>
                 <h4 class="mb-0">Muhtasari wa Salio</h4>
-                <p class="text-muted small mb-0">Wafanyakazi, Wamachinga, Wateja na Stoo ya Kudumu</p>
+                <p class="text-muted small mb-0">Wafanyakazi, Wamachinga, Stoo ya Muda Mfupi (Wateja) na Stoo ya Kudumu</p>
             </div>
             @if(isset($branches) && $branches->count() > 1)
             <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center gap-2">
@@ -80,7 +80,7 @@
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div>
-                                    <div class="text-muted small text-uppercase">Wateja</div>
+                                    <div class="text-muted small text-uppercase">Stoo ya Muda Mfupi (Wateja)</div>
                                     <div class="text-muted" style="font-size: 12px">Salio (Mapato − Gharama − Malipo)</div>
                                 </div>
                                 <span class="dash-icon bg-info-subtle text-info">
@@ -91,7 +91,7 @@
                                 {{ number_format($watejaSalio ?? 0, 2) }}
                             </div>
                             <div class="mt-3 small text-primary">
-                                Fungua Ripoti ya Wateja <i class="bx bx-right-arrow-alt"></i>
+                                Fungua Ripoti ya Stoo ya Muda Mfupi <i class="bx bx-right-arrow-alt"></i>
                             </div>
                         </div>
                     </div>
@@ -125,8 +125,39 @@
                                 </div>
                             @endif
                             <div class="mt-3 small text-primary">
-                                Fungua Ripoti ya Kudumu <i class="bx bx-right-arrow-alt"></i>
+                                Fungua Ripoti ya Stoo ya Kudumu <i class="bx bx-right-arrow-alt"></i>
                             </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-md-6">
+                <a href="{{ route('inventory.customer-storage.index', ['status' => 'inactive']) }}" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm h-100 radius-10" style="border-left: 4px solid #6c757d !important">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-muted small text-uppercase">Stoo ya Muda Mfupi — Imeisha</div>
+                                <div class="fs-3 fw-bold text-secondary">{{ (int) ($watejaImeishaCount ?? 0) }}</div>
+                                <div class="small text-primary mt-1">Angalia na urudishe Inaendelea <i class="bx bx-right-arrow-alt"></i></div>
+                            </div>
+                            <span class="dash-icon bg-dark-subtle text-secondary"><i class="bx bx-archive"></i></span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-6">
+                <a href="{{ route('inventory.permanent-storage.index', ['status' => 'inactive']) }}" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm h-100 radius-10" style="border-left: 4px solid #212529 !important">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-muted small text-uppercase">Stoo ya Kudumu — Imeisha</div>
+                                <div class="fs-3 fw-bold text-dark">{{ (int) ($kudumuImeishaCount ?? 0) }}</div>
+                                <div class="small text-primary mt-1">Angalia na urudishe Inaendelea <i class="bx bx-right-arrow-alt"></i></div>
+                            </div>
+                            <span class="dash-icon bg-dark-subtle text-dark"><i class="bx bx-archive"></i></span>
                         </div>
                     </div>
                 </a>

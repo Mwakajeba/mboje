@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Ripoti ya Uhifadhi wa Kudumu')
+@section('title', 'Ripoti ya Stoo ya Kudumu')
 
 @section('content')
 <div class="page-wrapper">
@@ -9,14 +9,14 @@
             <x-breadcrumbs-with-icons :links="[
                 ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
                 ['label' => 'Usimamizi wa Hesabu', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
-                ['label' => 'Ripoti ya Uhifadhi wa Kudumu', 'url' => '#', 'icon' => 'bx bx-bar-chart-alt-2']
+                ['label' => 'Ripoti ya Stoo ya Kudumu', 'url' => '#', 'icon' => 'bx bx-bar-chart-alt-2']
             ]" />
             <div class="d-flex flex-wrap gap-2">
                 <a href="{{ route('inventory.permanent-storage.report.pdf') }}" class="btn btn-danger btn-sm" target="_blank">
                     <i class="bx bx-file-pdf me-1"></i> Export PDF
                 </a>
                 <a href="{{ route('inventory.permanent-storage.index') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bx bx-archive-in me-1"></i> Simamia Uhifadhi
+                    <i class="bx bx-archive-in me-1"></i> Simamia Stoo
                 </a>
                 <a href="{{ route('inventory.index') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="bx bx-arrow-back me-1"></i> Rudi
@@ -24,7 +24,7 @@
             </div>
         </div>
 
-        <h6 class="mb-0 text-uppercase">Ripoti ya Uhifadhi wa Mazao wa Kudumu</h6>
+        <h6 class="mb-0 text-uppercase">Ripoti ya Stoo ya Kudumu</h6>
         <hr>
 
         {{-- Muhtasari --}}

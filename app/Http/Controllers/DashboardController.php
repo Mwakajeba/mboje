@@ -59,6 +59,8 @@ class DashboardController extends Controller
                 'stooKudumuTotalQty' => 0.0,
                 'stooKudumuDisplay' => '0',
                 'stooKudumuBreakdown' => [],
+                'watejaImeishaCount' => 0,
+                'kudumuImeishaCount' => 0,
             ]);
         }
 
@@ -75,6 +77,8 @@ class DashboardController extends Controller
             'stooKudumuTotalQty' => $stoo['total_quantity'],
             'stooKudumuDisplay' => $stoo['display'],
             'stooKudumuBreakdown' => $stoo['breakdown'],
+            'watejaImeishaCount' => $this->countInactiveBalances('customer_storage_balances', $companyId, $branchId),
+            'kudumuImeishaCount' => $this->countInactiveBalances('permanent_storage_balances', $companyId, $branchId),
         ]);
     }
 
@@ -166,6 +170,7 @@ class DashboardController extends Controller
             ->with('item')
             ->where('company_id', $companyId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->where('status', 'active')
             ->where('quantity_on_hand', '>', 0)
             ->get();
 
@@ -212,6 +217,19 @@ class DashboardController extends Controller
             'display' => $display !== '' ? $display : number_format($totalQty, 2),
             'breakdown' => $breakdown,
         ];
+    }
+
+    private function countInactiveBalances(string $table, int $companyId, ?int $branchId): int
+    {
+        if (! Schema::hasTable($table) || ! Schema::hasColumn($table, 'status')) {
+            return 0;
+        }
+
+        return (int) DB::table($table)
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->where('status', 'inactive')
+            ->count();
     }
 
     /**

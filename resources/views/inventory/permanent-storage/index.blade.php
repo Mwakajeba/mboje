@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Uhifadhi wa Mazao wa Kudumu')
+@section('title', 'Stoo ya Kudumu')
 
 @section('content')
 <div class="page-wrapper">
@@ -8,7 +8,7 @@
         <x-breadcrumbs-with-icons :links="[
             ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Usimamizi wa Hesabu', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
-            ['label' => 'Uhifadhi wa Mazao wa Kudumu', 'url' => '#', 'icon' => 'bx bx-building-house']
+            ['label' => 'Stoo ya Kudumu', 'url' => '#', 'icon' => 'bx bx-building-house']
         ]" />
 
         @if(session('success'))
@@ -34,7 +34,7 @@
 
         <div class="card mb-4">
             <div class="card-header bg-dark text-white">
-                <h5 class="mb-0"><i class="bx bx-archive-in me-2"></i>Pokea Zao (Uhifadhi wa Kudumu)</h5>
+                <h5 class="mb-0"><i class="bx bx-archive-in me-2"></i>Pokea Zao (Stoo ya Kudumu)</h5>
             </div>
             <div class="card-body">
                 <form action="{{ route('inventory.permanent-storage.store') }}" method="POST">
@@ -164,6 +164,23 @@
                     </div>
                 </div>
 
+                <ul class="nav nav-pills gap-2 mb-3">
+                    <li class="nav-item">
+                        <a class="nav-link {{ ($listStatus ?? 'active') === 'active' ? 'active' : '' }}"
+                           href="{{ route('inventory.permanent-storage.index') }}">
+                            Inaendelea
+                            <span class="badge bg-light text-dark ms-1">{{ $statusCounts['active'] ?? 0 }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ ($listStatus ?? '') === 'inactive' ? 'active' : '' }}"
+                           href="{{ route('inventory.permanent-storage.index', ['status' => 'inactive']) }}">
+                            Imeisha
+                            <span class="badge bg-light text-dark ms-1">{{ $statusCounts['inactive'] ?? 0 }}</span>
+                        </a>
+                    </li>
+                </ul>
+
                 <div class="table-responsive">
                     <table id="balancesTable" class="table table-striped table-bordered w-100">
                         <thead>
@@ -173,6 +190,7 @@
                                 <th>Zao</th>
                                 <th>Idadi</th>
                                 <th>Kifurushi</th>
+                                <th>Hali</th>
                                 <th>Vitendo</th>
                             </tr>
                         </thead>
@@ -620,7 +638,7 @@ $(function () {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{{ route('inventory.permanent-storage.index') }}",
+            url: "{{ route('inventory.permanent-storage.index', ['status' => $listStatus ?? 'active']) }}",
             type: 'GET',
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
@@ -636,15 +654,43 @@ $(function () {
             { data: 'item_name', name: 'item_name', orderable: false },
             { data: 'quantity_display', name: 'quantity_on_hand' },
             { data: 'package_display', name: 'package_display', orderable: false, searchable: false },
+            { data: 'status_label', name: 'status', orderable: false, searchable: false, className: 'text-center' },
             { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-center' }
         ],
         order: [[3, 'desc']],
         pageLength: 25,
         language: {
             processing: 'Inapakia...',
-            emptyTable: 'Hakuna zao la wateja lililohifadhiwa.',
+            emptyTable: @json(($listStatus ?? 'active') === 'inactive' ? 'Hakuna uhifadhi uliomaliza.' : 'Hakuna zao lililohifadhiwa.'),
             zeroRecords: 'Hakuna rekodi zilizopatikana.'
         }
+    });
+
+    $(document).on('click', '.btn-change-storage-status', function () {
+        var $btn = $(this);
+        var balanceId = $btn.data('balance-id');
+        var status = $btn.data('status');
+        var label = status === 'inactive' ? 'Imeisha' : 'Inaendelea';
+        if (!confirm('Una uhakika unataka kubadilisha hali kuwa "' + label + '"?')) {
+            return;
+        }
+        $btn.prop('disabled', true);
+        $.ajax({
+            url: @json(route('inventory.permanent-storage.status')),
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                'Accept': 'application/json'
+            },
+            data: { balance_id: balanceId, status: status }
+        }).done(function (res) {
+            Swal.fire({ icon: 'success', title: 'Imefanikiwa', text: res.message || 'Hali imebadilishwa.', timer: 1800, showConfirmButton: false });
+            $('#balancesTable').DataTable().ajax.reload(null, false);
+            setTimeout(function () { window.location.reload(); }, 900);
+        }).fail(function (xhr) {
+            alert((xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Imeshindikana kubadilisha hali.');
+            $btn.prop('disabled', false);
+        });
     });
 
     function resetWithdrawForm() {

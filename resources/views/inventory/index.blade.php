@@ -122,26 +122,26 @@
                             </div>
                             @endcan
 
-                            <!-- Uhifadhi wa Wateja -->
+                            <!-- Stoo ya Muda Mfupi (Wateja) -->
                             @can('manage inventory items')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-info position-relative">
                                     <div class="card-body text-center">
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info">
                                             {{ $customerStorageCount ?? 0 }}
-                                            <span class="visually-hidden">idadi ya uhifadhi wa wateja</span>
+                                            <span class="visually-hidden">idadi ya stoo ya muda mfupi</span>
                                         </span>
                                         <div class="mb-3">
                                             <i class="bx bx-user-pin fs-1 text-info"></i>
                                         </div>
-                                        <h5 class="card-title">Uhifadhi wa Wateja</h5>
-                                        <p class="card-text">Pokea na fuatilia zao wateja wanalohifadhi (idadi).</p>
+                                        <h5 class="card-title">Stoo ya Muda Mfupi (Wateja)</h5>
+                                        <p class="card-text">Pokea na fuatilia zao la stoo ya muda mfupi kwa wateja.</p>
                                         <div class="d-grid gap-2">
                                             <a href="{{ route('inventory.customer-storage.index') }}" class="btn btn-info">
-                                                <i class="bx bx-archive-in me-1"></i> Simamia Uhifadhi
+                                                <i class="bx bx-archive-in me-1"></i> Simamia Stoo
                                             </a>
                                             <a href="{{ route('inventory.customer-storage.report') }}" class="btn btn-outline-info btn-sm">
-                                                <i class="bx bx-bar-chart-alt-2 me-1"></i> Ripoti ya Uhifadhi wa Wateja
+                                                <i class="bx bx-bar-chart-alt-2 me-1"></i> Ripoti ya Stoo ya Muda Mfupi (Wateja)
                                             </a>
                                             <a href="#ripoti-stoo" class="btn btn-outline-secondary btn-sm">
                                                 <i class="bx bx-package me-1"></i> Angalia Ripoti ya Stoo
@@ -152,26 +152,26 @@
                             </div>
                             @endcan
 
-                            <!-- Uhifadhi wa Mazao wa Kudumu -->
+                            <!-- Stoo ya Kudumu -->
                             @can('manage inventory items')
                             <div class="col-md-6 col-lg-4 mb-4">
                                 <div class="card border-dark position-relative">
                                     <div class="card-body text-center">
                                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-dark">
                                             {{ $permanentStorageCount ?? 0 }}
-                                            <span class="visually-hidden">idadi ya uhifadhi wa kudumu</span>
+                                            <span class="visually-hidden">idadi ya stoo ya kudumu</span>
                                         </span>
                                         <div class="mb-3">
                                             <i class="bx bx-building-house fs-1 text-dark"></i>
                                         </div>
-                                        <h5 class="card-title">Uhifadhi wa Mazao wa Kudumu</h5>
+                                        <h5 class="card-title">Stoo ya Kudumu</h5>
                                         <p class="card-text">Pokea na fuatilia mazao yanayohifadhiwa kwa muda mrefu.</p>
                                         <div class="d-grid gap-2">
                                             <a href="{{ route('inventory.permanent-storage.index') }}" class="btn btn-dark">
-                                                <i class="bx bx-archive-in me-1"></i> Simamia Uhifadhi wa Kudumu
+                                                <i class="bx bx-archive-in me-1"></i> Simamia Stoo ya Kudumu
                                             </a>
                                             <a href="{{ route('inventory.permanent-storage.report') }}" class="btn btn-outline-dark btn-sm">
-                                                <i class="bx bx-bar-chart-alt-2 me-1"></i> Ripoti ya Uhifadhi wa Kudumu
+                                                <i class="bx bx-bar-chart-alt-2 me-1"></i> Ripoti ya Stoo ya Kudumu
                                             </a>
                                         </div>
                                     </div>

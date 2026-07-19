@@ -53,7 +53,7 @@
                     <div class="mb-3">
                         <i class="bx bx-user-pin fs-1 text-info"></i>
                     </div>
-                    <h5 class="card-title">Ripoti ya Uhifadhi wa Wateja</h5>
+                    <h5 class="card-title">Ripoti ya Stoo ya Muda Mfupi (Wateja)</h5>
                     <p class="card-text">Jumla ya stoo ya mazao, gharama zinazodaiwa (salio), na orodha ya wateja.</p>
                     <a href="{{ route('inventory.customer-storage.report') }}" class="btn btn-info">
                         <i class="bx bx-bar-chart-alt-2 me-1"></i> Angalia Ripoti
@@ -70,7 +70,7 @@
                     <div class="mb-3">
                         <i class="bx bx-building-house fs-1 text-dark"></i>
                     </div>
-                    <h5 class="card-title">Ripoti ya Uhifadhi wa Kudumu</h5>
+                    <h5 class="card-title">Ripoti ya Stoo ya Kudumu</h5>
                     <p class="card-text">Jumla ya stoo ya mazao, gharama zinazodaiwa (salio), na orodha ya wateja.</p>
                     <a href="{{ route('inventory.permanent-storage.report') }}" class="btn btn-dark">
                         <i class="bx bx-bar-chart-alt-2 me-1"></i> Angalia Ripoti

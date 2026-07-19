@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Uhifadhi wa Wateja')
+@section('title', 'Stoo ya Muda Mfupi (Wateja)')
 
 @section('content')
 <div class="page-wrapper">
@@ -8,7 +8,7 @@
         <x-breadcrumbs-with-icons :links="[
             ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
             ['label' => 'Usimamizi wa Hesabu', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
-            ['label' => 'Uhifadhi wa Wateja', 'url' => '#', 'icon' => 'bx bx-user-pin']
+            ['label' => 'Stoo ya Muda Mfupi (Wateja)', 'url' => '#', 'icon' => 'bx bx-user-pin']
         ]" />
 
         @if(session('success'))
@@ -121,7 +121,7 @@
         <div class="card">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                    <h5 class="mb-0">Salio la Zao la Wateja</h5>
+                    <h5 class="mb-0">Salio la Zao — Stoo ya Muda Mfupi</h5>
                     <div class="d-flex flex-wrap gap-2">
                         <a href="{{ route('inventory.customer-storage.report') }}" class="btn btn-outline-dark btn-sm">
                             <i class="bx bx-bar-chart-alt-2 me-1"></i> Ripoti
@@ -131,6 +131,23 @@
                         </a>
                     </div>
                 </div>
+
+                <ul class="nav nav-pills gap-2 mb-3">
+                    <li class="nav-item">
+                        <a class="nav-link {{ ($listStatus ?? 'active') === 'active' ? 'active' : '' }}"
+                           href="{{ route('inventory.customer-storage.index') }}">
+                            Inaendelea
+                            <span class="badge bg-light text-dark ms-1">{{ $statusCounts['active'] ?? 0 }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ ($listStatus ?? '') === 'inactive' ? 'active' : '' }}"
+                           href="{{ route('inventory.customer-storage.index', ['status' => 'inactive']) }}">
+                            Imeisha
+                            <span class="badge bg-light text-dark ms-1">{{ $statusCounts['inactive'] ?? 0 }}</span>
+                        </a>
+                    </li>
+                </ul>
 
                 <div class="table-responsive">
                     <table id="balancesTable" class="table table-striped table-bordered w-100">
@@ -142,6 +159,7 @@
                                 <th>Mazunguko</th>
                                 <th>Idadi</th>
                                 <th>Kifurushi</th>
+                                <th>Hali</th>
                                 <th>Vitendo</th>
                             </tr>
                         </thead>
@@ -589,7 +607,7 @@ $(function () {
         processing: true,
         serverSide: true,
         ajax: {
-            url: "{{ route('inventory.customer-storage.index') }}",
+            url: "{{ route('inventory.customer-storage.index', ['status' => $listStatus ?? 'active']) }}",
             type: 'GET',
             headers: {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
@@ -606,15 +624,43 @@ $(function () {
             { data: 'mazunguko', name: 'mazunguko', className: 'text-center' },
             { data: 'quantity_display', name: 'quantity_on_hand' },
             { data: 'package_display', name: 'package_display', orderable: false, searchable: false },
+            { data: 'status_label', name: 'status', orderable: false, searchable: false, className: 'text-center' },
             { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-center' }
         ],
         order: [[4, 'desc']],
         pageLength: 25,
         language: {
             processing: 'Inapakia...',
-            emptyTable: 'Hakuna zao la wateja lililohifadhiwa.',
+            emptyTable: @json(($listStatus ?? 'active') === 'inactive' ? 'Hakuna uhifadhi uliomaliza.' : 'Hakuna zao la wateja lililohifadhiwa.'),
             zeroRecords: 'Hakuna rekodi zilizopatikana.'
         }
+    });
+
+    $(document).on('click', '.btn-change-storage-status', function () {
+        var $btn = $(this);
+        var balanceId = $btn.data('balance-id');
+        var status = $btn.data('status');
+        var label = status === 'inactive' ? 'Imeisha' : 'Inaendelea';
+        if (!confirm('Una uhakika unataka kubadilisha hali kuwa "' + label + '"?')) {
+            return;
+        }
+        $btn.prop('disabled', true);
+        $.ajax({
+            url: @json(route('inventory.customer-storage.status')),
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                'Accept': 'application/json'
+            },
+            data: { balance_id: balanceId, status: status }
+        }).done(function (res) {
+            Swal.fire({ icon: 'success', title: 'Imefanikiwa', text: res.message || 'Hali imebadilishwa.', timer: 1800, showConfirmButton: false });
+            $('#balancesTable').DataTable().ajax.reload(null, false);
+            setTimeout(function () { window.location.reload(); }, 900);
+        }).fail(function (xhr) {
+            alert((xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Imeshindikana kubadilisha hali.');
+            $btn.prop('disabled', false);
+        });
     });
 
     function resetWithdrawForm() {

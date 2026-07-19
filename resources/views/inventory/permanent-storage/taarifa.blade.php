@@ -1,6 +1,6 @@
 @extends('layouts.main')
 
-@section('title', 'Taarifa ya Uhifadhi wa Kudumu')
+@section('title', 'Taarifa ya Stoo ya Kudumu')
 
 @section('content')
 @php
@@ -13,7 +13,7 @@
             <x-breadcrumbs-with-icons :links="[
                 ['label' => 'Dashibodi', 'url' => route('dashboard'), 'icon' => 'bx bx-home'],
                 ['label' => 'Usimamizi wa Hesabu', 'url' => route('inventory.index'), 'icon' => 'bx bx-package'],
-                ['label' => 'Uhifadhi wa Mazao wa Kudumu', 'url' => route('inventory.permanent-storage.index'), 'icon' => 'bx bx-building-house'],
+                ['label' => 'Stoo ya Kudumu', 'url' => route('inventory.permanent-storage.index'), 'icon' => 'bx bx-building-house'],
                 ['label' => 'Taarifa', 'url' => '#', 'icon' => 'bx bx-file']
             ]" />
             <div class="d-flex gap-2">
@@ -29,7 +29,7 @@
         <div class="card radius-10">
             <div class="card-body">
                 <div class="text-center mb-4">
-                    <h5 class="mb-1 text-uppercase">Taarifa ya Uhifadhi wa Mazao wa Kudumu</h5>
+                    <h5 class="mb-1 text-uppercase">Taarifa ya Stoo ya Kudumu</h5>
                     <p class="mb-0"><strong>Mteja:</strong> {{ $customer->name ?? '—' }}</p>
                     <p class="mb-0"><strong>Zao:</strong> {{ $item->name ?? '—' }}@if(!empty($item?->code)) ({{ $item->code }})@endif</p>
                     <p class="mb-0 text-muted small">

@@ -2,7 +2,7 @@
 <html lang="sw">
 <head>
     <meta charset="UTF-8">
-    <title>Ripoti ya Uhifadhi wa Wateja</title>
+    <title>Ripoti ya Stoo ya Muda Mfupi (Wateja)</title>
     <style>
         body {
             font-family: dejavu sans, sans-serif;
@@ -111,7 +111,7 @@
         @if(!empty($company?->name))
             <div class="company-name">{{ $company->name }}</div>
         @endif
-        <p class="report-title">Ripoti ya Uhifadhi wa Wateja</p>
+        <p class="report-title">Ripoti ya Stoo ya Muda Mfupi (Wateja)</p>
         <div class="meta">Imetengenezwa: {{ ($generatedAt ?? now())->format('d/m/Y H:i') }}</div>
     </div>
 
@@ -177,7 +177,7 @@
     </table>
 
     <div class="footer">
-        {{ $company->name ?? 'Mboje' }} — Ripoti ya Uhifadhi wa Wateja
+        {{ $company->name ?? 'Mboje' }} — Ripoti ya Stoo ya Muda Mfupi (Wateja)
     </div>
 </body>
 </html>

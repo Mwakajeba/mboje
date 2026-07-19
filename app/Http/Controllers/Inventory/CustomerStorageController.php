@@ -127,13 +127,25 @@ class CustomerStorageController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $listStatus = $request->query('status') === CustomerStorageBalance::STATUS_INACTIVE
+            ? CustomerStorageBalance::STATUS_INACTIVE
+            : CustomerStorageBalance::STATUS_ACTIVE;
+
+        $statusCounts = $this->balanceStatusCounts(
+            (int) $user->company_id,
+            $branchId ? (int) $branchId : null,
+            CustomerStorageBalance::class
+        );
+
         return view('inventory.customer-storage.index', compact(
             'customers',
             'items',
             'unitOptions',
             'categories',
             'assignableBranches',
-            'branchId'
+            'branchId',
+            'listStatus',
+            'statusCounts'
         ));
     }
 
@@ -369,6 +381,7 @@ class CustomerStorageController extends Controller
                 ]);
 
                 $balance->quantity_on_hand = (float) ($balance->quantity_on_hand ?? 0) + (float) $validated['quantity'];
+                $balance->status = CustomerStorageBalance::STATUS_ACTIVE;
                 $balance->save();
             });
         } catch (\Throwable $e) {
@@ -551,6 +564,7 @@ class CustomerStorageController extends Controller
             ->with('item')
             ->where('company_id', $companyId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->where('status', CustomerStorageBalance::STATUS_ACTIVE)
             ->where('quantity_on_hand', '>', 0)
             ->get();
 
@@ -638,7 +652,7 @@ class CustomerStorageController extends Controller
         $data['can_delete'] = false;
 
         $customerName = preg_replace('/[^A-Za-z0-9_-]+/', '_', (string) ($data['customer']->name ?? 'mteja'));
-        $filename = 'Taarifa_Uhifadhi_'.$customerName.'_'.now()->format('Y-m-d_H-i-s').'.pdf';
+        $filename = 'Taarifa_Stoo_ya_Muda_Mfupi_'.$customerName.'_'.now()->format('Y-m-d_H-i-s').'.pdf';
 
         $pdf = Pdf::loadView('inventory.customer-storage.taarifa-pdf', $data)
             ->setPaper('A4', 'portrait');
@@ -933,7 +947,7 @@ class CustomerStorageController extends Controller
             : $user->company;
         $data['generatedAt'] = now();
 
-        $filename = 'Ripoti_Uhifadhi_Wateja_'.now()->format('Y-m-d_H-i-s').'.pdf';
+        $filename = 'Ripoti_Stoo_ya_Muda_Mfupi_'.now()->format('Y-m-d_H-i-s').'.pdf';
 
         $pdf = Pdf::loadView('inventory.customer-storage.report-pdf', $data)
             ->setPaper('A4', 'portrait');
@@ -1230,12 +1244,20 @@ class CustomerStorageController extends Controller
     {
         $user = Auth::user();
         $branchId = $this->currentBranchId();
+        $listStatus = $request->query('status') === CustomerStorageBalance::STATUS_INACTIVE
+            ? CustomerStorageBalance::STATUS_INACTIVE
+            : CustomerStorageBalance::STATUS_ACTIVE;
+        $showingInactive = $listStatus === CustomerStorageBalance::STATUS_INACTIVE;
 
         $query = CustomerStorageBalance::query()
             ->with(['customer', 'item'])
             ->where('company_id', $user->company_id)
             ->where('branch_id', $branchId)
-            ->where('quantity_on_hand', '>', 0);
+            ->where('status', $listStatus);
+
+        if (! $showingInactive) {
+            $query->where('quantity_on_hand', '>', 0);
+        }
 
         return DataTables::of($query)
             ->addColumn('customer_name', fn ($row) => $row->customer->name ?? '—')
@@ -1243,6 +1265,7 @@ class CustomerStorageController extends Controller
             ->addColumn('item_name', fn ($row) => $row->item->name ?? '—')
             ->addColumn('item_code', fn ($row) => $row->item->code ?? '—')
             ->addColumn('mazunguko', fn ($row) => (int) ($row->mazunguko ?? 1))
+            ->addColumn('status_label', fn ($row) => e($row->statusLabel()))
             ->addColumn('quantity_display', fn ($row) => $this->formatQuantityWithUnit((float) $row->quantity_on_hand, $row->item))
             ->addColumn('package_display', fn ($row) => $this->formatPackageCount((float) $row->quantity_on_hand, $row->item))
             ->filterColumn('customer_name', function ($query, $keyword) {
@@ -1251,7 +1274,7 @@ class CustomerStorageController extends Controller
             ->filterColumn('item_name', function ($query, $keyword) {
                 $query->whereHas('item', fn ($q) => $q->where('name', 'like', '%' . $keyword . '%'));
             })
-            ->addColumn('actions', function ($row) {
+            ->addColumn('actions', function ($row) use ($showingInactive) {
                 $taarifaUrl = route('inventory.customer-storage.taarifa', ['balance_id' => $row->id]);
                 $customerName = e($row->customer->name ?? '—');
                 $itemName = e($row->item->name ?? '—');
@@ -1260,40 +1283,109 @@ class CustomerStorageController extends Controller
                 $balanceId = (int) $row->id;
 
                 $html = '<div class="d-flex flex-wrap gap-1 justify-content-center">';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-withdraw-storage"'
-                    . ' data-balance-id="' . $balanceId . '"'
-                    . ' data-customer-name="' . $customerName . '"'
-                    . ' data-item-name="' . $itemName . '"'
-                    . ' data-quantity-on-hand="' . $onHand . '"'
-                    . ' data-unit="' . $unit . '"'
-                    . ' title="Toa Zao">'
-                    . '<i class="bx bx-export me-1"></i> Toa</button>';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-success btn-customer-mapato"'
-                    . ' data-balance-id="' . $balanceId . '"'
-                    . ' data-customer-name="' . $customerName . '"'
-                    . ' data-item-name="' . $itemName . '"'
-                    . ' title="Mapato">'
-                    . '<i class="bx bx-wallet me-1"></i> Mapato</button>';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-customer-gharama"'
-                    . ' data-balance-id="' . $balanceId . '"'
-                    . ' data-customer-name="' . $customerName . '"'
-                    . ' data-item-name="' . $itemName . '"'
-                    . ' title="Gharama">'
-                    . '<i class="bx bx-receipt me-1"></i> Gharama</button>';
-                $html .= '<button type="button" class="btn btn-sm btn-outline-primary btn-customer-malipo"'
-                    . ' data-balance-id="' . $balanceId . '"'
-                    . ' data-customer-name="' . $customerName . '"'
-                    . ' data-item-name="' . $itemName . '"'
-                    . ' title="Malipo">'
-                    . '<i class="bx bx-money me-1"></i> Malipo</button>';
-                $html .= '<a href="' . e($taarifaUrl) . '" class="btn btn-sm btn-outline-dark" title="Taarifa">'
-                    . '<i class="bx bx-file me-1"></i> Taarifa</a>';
+
+                if ($showingInactive) {
+                    $html .= '<button type="button" class="btn btn-sm btn-success btn-change-storage-status"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-status="active"'
+                        . ' title="Rudisha Inaendelea">'
+                        . '<i class="bx bx-revision me-1"></i> Inaendelea</button>';
+                    $html .= '<a href="' . e($taarifaUrl) . '" class="btn btn-sm btn-outline-dark" title="Taarifa">'
+                        . '<i class="bx bx-file me-1"></i> Taarifa</a>';
+                } else {
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-withdraw-storage"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-customer-name="' . $customerName . '"'
+                        . ' data-item-name="' . $itemName . '"'
+                        . ' data-quantity-on-hand="' . $onHand . '"'
+                        . ' data-unit="' . $unit . '"'
+                        . ' title="Toa Zao">'
+                        . '<i class="bx bx-export me-1"></i> Toa</button>';
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-success btn-customer-mapato"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-customer-name="' . $customerName . '"'
+                        . ' data-item-name="' . $itemName . '"'
+                        . ' title="Mapato">'
+                        . '<i class="bx bx-wallet me-1"></i> Mapato</button>';
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-danger btn-customer-gharama"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-customer-name="' . $customerName . '"'
+                        . ' data-item-name="' . $itemName . '"'
+                        . ' title="Gharama">'
+                        . '<i class="bx bx-receipt me-1"></i> Gharama</button>';
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-primary btn-customer-malipo"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-customer-name="' . $customerName . '"'
+                        . ' data-item-name="' . $itemName . '"'
+                        . ' title="Malipo">'
+                        . '<i class="bx bx-money me-1"></i> Malipo</button>';
+                    $html .= '<a href="' . e($taarifaUrl) . '" class="btn btn-sm btn-outline-dark" title="Taarifa">'
+                        . '<i class="bx bx-file me-1"></i> Taarifa</a>';
+                    $html .= '<button type="button" class="btn btn-sm btn-outline-secondary btn-change-storage-status"'
+                        . ' data-balance-id="' . $balanceId . '"'
+                        . ' data-status="inactive"'
+                        . ' title="Weka Imeisha">'
+                        . '<i class="bx bx-check-circle me-1"></i> Imeisha</button>';
+                }
+
                 $html .= '</div>';
 
                 return $html;
             })
-            ->rawColumns(['actions'])
+            ->rawColumns(['actions', 'status_label'])
             ->make(true);
+    }
+
+    public function updateStatus(Request $request)
+    {
+        $this->ensureInventorySession();
+
+        $user = Auth::user();
+        $branchId = $this->currentBranchId();
+        $companyId = (int) $user->company_id;
+
+        $validated = $request->validate([
+            'balance_id' => 'required|integer',
+            'status' => 'required|in:active,inactive',
+        ]);
+
+        $balance = CustomerStorageBalance::query()
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereKey($validated['balance_id'])
+            ->firstOrFail();
+
+        $balance->status = $validated['status'];
+        $balance->save();
+
+        $label = CustomerStorageBalance::statusOptions()[$balance->status] ?? $balance->status;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Hali imebadilishwa kuwa: '.$label.'.',
+            'status' => $balance->status,
+            'status_label' => $label,
+        ]);
+    }
+
+    /**
+     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $model
+     * @return array{active: int, inactive: int}
+     */
+    private function balanceStatusCounts(int $companyId, ?int $branchId, string $model): array
+    {
+        if (! Schema::hasTable((new $model)->getTable())) {
+            return ['active' => 0, 'inactive' => 0];
+        }
+
+        $base = $model::query()
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
+
+        return [
+            'active' => (int) (clone $base)->where('status', 'active')->where('quantity_on_hand', '>', 0)->count(),
+            'inactive' => (int) (clone $base)->where('status', 'inactive')->count(),
+        ];
     }
 
     protected function historyDatatable(Request $request)

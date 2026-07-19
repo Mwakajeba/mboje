@@ -1084,6 +1084,7 @@ Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'company.sco
     Route::post('/customer-storage/mapato', [CustomerStorageController::class, 'storeMapato'])->name('customer-storage.mapato.store');
     Route::post('/customer-storage/gharama', [CustomerStorageController::class, 'storeGharama'])->name('customer-storage.gharama.store');
     Route::post('/customer-storage/malipo', [CustomerStorageController::class, 'storeMalipo'])->name('customer-storage.malipo.store');
+    Route::post('/customer-storage/status', [CustomerStorageController::class, 'updateStatus'])->name('customer-storage.status');
     Route::post('/customer-storage/quick-customer', [CustomerStorageController::class, 'quickStoreCustomer'])->name('customer-storage.quick-customer');
     Route::post('/customer-storage/quick-item', [CustomerStorageController::class, 'quickStoreItem'])->name('customer-storage.quick-item');
 
@@ -1099,6 +1100,7 @@ Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'company.sco
     Route::post('/permanent-storage/mapato', [PermanentStorageController::class, 'storeMapato'])->name('permanent-storage.mapato.store');
     Route::post('/permanent-storage/gharama', [PermanentStorageController::class, 'storeGharama'])->name('permanent-storage.gharama.store');
     Route::post('/permanent-storage/malipo', [PermanentStorageController::class, 'storeMalipo'])->name('permanent-storage.malipo.store');
+    Route::post('/permanent-storage/status', [PermanentStorageController::class, 'updateStatus'])->name('permanent-storage.status');
     Route::post('/permanent-storage/quick-customer', [PermanentStorageController::class, 'quickStoreCustomer'])->name('permanent-storage.quick-customer');
     Route::post('/permanent-storage/quick-item', [PermanentStorageController::class, 'quickStoreItem'])->name('permanent-storage.quick-item');
 
