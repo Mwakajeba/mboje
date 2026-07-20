@@ -91,7 +91,7 @@ class User extends Authenticatable
             return $this->company->branches()->pluck('id')->map(fn ($id) => (int) $id)->all();
         }
 
-        $ids = $this->branches()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $ids = $this->branches()->pluck('branches.id')->map(fn ($id) => (int) $id)->all();
 
         if ($ids === [] && $this->branch_id) {
             $ids = [(int) $this->branch_id];
