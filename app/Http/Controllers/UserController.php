@@ -144,7 +144,7 @@ class UserController extends Controller
                 'phone' => 'required|string|max:20|unique:users,phone,NULL,id,company_id,' . current_company_id(),
                 'role_id' => 'required|exists:roles,id',
                 'status' => 'required|in:active,inactive',
-                'password' => ['required', 'string', 'min:8', 'confirmed', new PasswordValidation(null)],
+                'password' => 'required|string|confirmed',
             ];
 
             $validator = \Validator::make($request->all(), $rules);

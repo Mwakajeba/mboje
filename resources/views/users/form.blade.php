@@ -224,6 +224,7 @@
                                         @error('password')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
+                                        @if(isset($user))
                                         <x-password-strength-meter input-id="password" />
                                         <small class="form-text text-muted">
                                             @php
@@ -241,24 +242,28 @@
                                                     $requirements[] = 'At least one special character';
                                                 }
                                             @endphp
-                                            @if(isset($user))
-                                                Leave blank to keep current password. If filled, password will be updated.
-                                            @endif
+                                            Leave blank to keep current password. If filled, password will be updated.
                                             <br>Password requirements: {{ implode(', ', $requirements) }}
                                         </small>
+                                        @else
+                                        <small class="form-text text-muted">
+                                            Weka nenosiri lolote rahisi. Lazima lilingane na uthibitisho.
+                                        </small>
+                                        @endif
                                     </div>
                                 </div>
 
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label for="password_confirmation" class="form-label">
-                                            Confirm New Password
-                                            <span class="text-muted">(Required if changing password)</span>
+                                            Confirm Password
+                                            @if(!isset($user))<span class="text-danger">*</span>@else<span class="text-muted">(Required if changing password)</span>@endif
                                         </label>
                                         <div class="input-group">
                                             <input type="password" class="form-control"
                                                    id="password_confirmation" name="password_confirmation"
-                                                   placeholder="Confirm new password">
+                                                   placeholder="{{ isset($user) ? 'Confirm new password' : 'Confirm password' }}"
+                                                   {{ !isset($user) ? 'required' : '' }}>
                                             <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
                                                 <i class="bx bx-show"></i>
                                             </button>
@@ -305,6 +310,7 @@
                             </div>
                             @endif
 
+                            @if(isset($user))
                             <!-- Password Strength Indicator -->
                             <div class="row" id="passwordStrengthSection" style="display: none;">
                                 <div class="col-12">
@@ -317,6 +323,7 @@
                                     </div>
                                 </div>
                             </div>
+                            @endif
 
                             <!-- Form Actions -->
                             <div class="row">
@@ -461,7 +468,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Password strength checker
+// Password strength checker (edit mode only)
+const isEditModePage = {{ isset($user) ? 'true' : 'false' }};
+if (isEditModePage) {
 document.getElementById('password').addEventListener('input', function() {
     const password = this.value;
     const strengthSection = document.getElementById('passwordStrengthSection');
@@ -526,6 +535,7 @@ document.getElementById('password').addEventListener('input', function() {
         strengthSection.style.display = 'none';
     }
 });
+}
 
 // Password field change handler - make confirmation required only if password is filled
 document.getElementById('password').addEventListener('input', function() {
@@ -611,7 +621,7 @@ document.getElementById('userForm').addEventListener('submit', function(e) {
             return false;
         }
 
-        if (password.length < 8) {
+        if (isEditMode && password.length < 8) {
             e.preventDefault();
             alert('Password must be at least 8 characters long!');
             return false;
