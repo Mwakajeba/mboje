@@ -137,6 +137,11 @@ class CustomerStorageController extends Controller
             CustomerStorageBalance::class
         );
 
+        $balanceSummary = $this->buildBalanceSummary(
+            (int) $user->company_id,
+            $branchId ? (int) $branchId : null
+        );
+
         return view('inventory.customer-storage.index', compact(
             'customers',
             'items',
@@ -144,6 +149,7 @@ class CustomerStorageController extends Controller
             'categories',
             'assignableBranches',
             'branchId',
+            'balanceSummary',
             'listStatus',
             'statusCounts'
         ));

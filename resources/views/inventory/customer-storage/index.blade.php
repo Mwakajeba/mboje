@@ -118,6 +118,47 @@
             </div>
         </div>
 
+        @if(!empty($balanceSummary))
+        <div class="card mb-4 border-info">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">
+                    <i class="bx bx-bar-chart-alt-2 me-2"></i>Muhtasari wa Mazao Yaliyohifadhiwa (Salio)
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    @foreach($balanceSummary as $row)
+                    <div class="col-md-4 col-lg-3 mb-3">
+                        <div class="card radius-10 border h-100 shadow-sm">
+                            <div class="card-body">
+                                <p class="mb-1 text-secondary text-truncate" title="{{ $row['item_name'] }}">
+                                    <strong>{{ $row['item_name'] }}</strong>
+                                    @if($row['item_code'])
+                                        <small class="text-muted">({{ $row['item_code'] }})</small>
+                                    @endif
+                                </p>
+                                <h4 class="my-2 text-info">
+                                    {{ $row['summary_display'] }}
+                                </h4>
+                                <div class="small text-muted">
+                                    <div>
+                                        <i class="bx bx-cube me-1"></i>
+                                        Idadi: <strong>{{ $row['quantity_display'] }}</strong>
+                                    </div>
+                                    <div>
+                                        <i class="bx bx-package me-1"></i>
+                                        Vifurushi: <strong>{{ $row['package_display'] }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        @endif
+
         <div class="card">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
