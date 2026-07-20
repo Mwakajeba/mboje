@@ -282,7 +282,7 @@ class UserController extends Controller
             ];
 
             if ($request->filled('password')) {
-                $rules['password'] = ['required', 'string', 'min:8', 'confirmed', new PasswordValidation($user)];
+                $rules['password'] = 'required|string|confirmed';
             }
 
             $validator = \Validator::make($request->all(), $rules);

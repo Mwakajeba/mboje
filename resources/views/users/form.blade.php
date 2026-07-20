@@ -224,32 +224,13 @@
                                         @error('password')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
-                                        @if(isset($user))
-                                        <x-password-strength-meter input-id="password" />
                                         <small class="form-text text-muted">
-                                            @php
-                                                $securityConfig = \App\Services\SystemSettingService::getSecurityConfig();
-                                                $minLength = $securityConfig['password_min_length'] ?? 8;
-                                                $requirements = ["Minimum {$minLength} characters"];
-
-                                                if ($securityConfig['password_require_uppercase'] ?? true) {
-                                                    $requirements[] = 'At least one uppercase letter';
-                                                }
-                                                if ($securityConfig['password_require_numbers'] ?? true) {
-                                                    $requirements[] = 'At least one number';
-                                                }
-                                                if ($securityConfig['password_require_special'] ?? true) {
-                                                    $requirements[] = 'At least one special character';
-                                                }
-                                            @endphp
-                                            Leave blank to keep current password. If filled, password will be updated.
-                                            <br>Password requirements: {{ implode(', ', $requirements) }}
+                                            @if(isset($user))
+                                                Leave blank to keep current password. If filled, any password is allowed as long as it matches confirmation.
+                                            @else
+                                                Weka nenosiri lolote rahisi. Lazima lilingane na uthibitisho.
+                                            @endif
                                         </small>
-                                        @else
-                                        <small class="form-text text-muted">
-                                            Weka nenosiri lolote rahisi. Lazima lilingane na uthibitisho.
-                                        </small>
-                                        @endif
                                     </div>
                                 </div>
 
@@ -305,21 +286,6 @@
                                                 </p>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                            @endif
-
-                            @if(isset($user))
-                            <!-- Password Strength Indicator -->
-                            <div class="row" id="passwordStrengthSection" style="display: none;">
-                                <div class="col-12">
-                                    <div class="mb-3">
-                                        <label class="form-label">Password Strength</label>
-                                        <div class="progress" style="height: 5px;">
-                                            <div class="progress-bar" id="passwordStrength" role="progressbar" style="width: 0%"></div>
-                                        </div>
-                                        <small class="form-text text-muted" id="passwordFeedback"></small>
                                     </div>
                                 </div>
                             </div>
@@ -468,75 +434,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Password strength checker (edit mode only)
-const isEditModePage = {{ isset($user) ? 'true' : 'false' }};
-if (isEditModePage) {
-document.getElementById('password').addEventListener('input', function() {
-    const password = this.value;
-    const strengthSection = document.getElementById('passwordStrengthSection');
-    const strengthBar = document.getElementById('passwordStrength');
-    const feedback = document.getElementById('passwordFeedback');
-
-    if (password.length > 0) {
-        strengthSection.style.display = 'block';
-
-        let strength = 0;
-        let feedbackText = '';
-
-        // Get system settings for password requirements
-        const securityConfig = @json(\App\Services\SystemSettingService::getSecurityConfig());
-        const minLength = securityConfig.password_min_length || 8;
-        const requireUppercase = securityConfig.password_require_uppercase || true;
-        const requireNumbers = securityConfig.password_require_numbers || true;
-        const requireSpecial = securityConfig.password_require_special || true;
-
-        // Check length
-        if (password.length >= minLength) strength += 25;
-        if (password.length >= minLength + 4) strength += 25;
-
-        // Check for lowercase
-        if (/[a-z]/.test(password)) strength += 25;
-
-        // Check for uppercase (if required)
-        if (requireUppercase && /[A-Z]/.test(password)) strength += 25;
-        else if (!requireUppercase) strength += 25; // Give points even if not required
-
-        // Check for numbers (if required)
-        if (requireNumbers && /[0-9]/.test(password)) strength += 25;
-        else if (!requireNumbers) strength += 25; // Give points even if not required
-
-        // Check for special characters (if required)
-        if (requireSpecial && /[^A-Za-z0-9]/.test(password)) strength += 25;
-        else if (!requireSpecial) strength += 25; // Give points even if not required
-
-        // Cap at 100%
-        strength = Math.min(strength, 100);
-
-        // Update progress bar
-        strengthBar.style.width = strength + '%';
-
-        // Update color and feedback
-        if (strength < 25) {
-            strengthBar.className = 'progress-bar bg-danger';
-            feedbackText = 'Very Weak';
-        } else if (strength < 50) {
-            strengthBar.className = 'progress-bar bg-warning';
-            feedbackText = 'Weak';
-        } else if (strength < 75) {
-            strengthBar.className = 'progress-bar bg-info';
-            feedbackText = 'Good';
-        } else {
-            strengthBar.className = 'progress-bar bg-success';
-            feedbackText = 'Strong';
-        }
-
-        feedback.textContent = feedbackText;
-    } else {
-        strengthSection.style.display = 'none';
-    }
-});
-}
-
 // Password field change handler - make confirmation required only if password is filled
 document.getElementById('password').addEventListener('input', function() {
     const password = this.value;
@@ -621,11 +518,6 @@ document.getElementById('userForm').addEventListener('submit', function(e) {
             return false;
         }
 
-        if (isEditMode && password.length < 8) {
-            e.preventDefault();
-            alert('Password must be at least 8 characters long!');
-            return false;
-        }
     } else {
         // If password is empty, clear confirmation field
         document.getElementById('password_confirmation').value = '';
