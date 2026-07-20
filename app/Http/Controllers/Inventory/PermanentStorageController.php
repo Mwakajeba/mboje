@@ -639,21 +639,53 @@ class PermanentStorageController extends Controller
 
     public function taarifa(Request $request)
     {
+        $data = $this->buildTaarifaData((int) $request->validate([
+            'balance_id' => 'required|integer',
+        ])['balance_id']);
+        $data['can_delete'] = user_can_delete_permanent_storage_taarifa();
+
+        return view('inventory.permanent-storage.taarifa', $data);
+    }
+
+    public function exportTaarifaPdf(Request $request)
+    {
+        $data = $this->buildTaarifaData((int) $request->validate([
+            'balance_id' => 'required|integer',
+        ])['balance_id']);
+
+        $user = Auth::user();
+        $data['company'] = function_exists('current_company') ? current_company() : $user->company;
+        $data['branch'] = $this->currentBranchId()
+            ? Branch::find($this->currentBranchId())
+            : null;
+        $data['generatedAt'] = now();
+        $data['can_delete'] = false;
+
+        $customerName = preg_replace('/[^A-Za-z0-9_-]+/', '_', (string) ($data['customer']->name ?? 'mteja'));
+        $filename = 'Taarifa_Stoo_ya_Kudumu_'.$customerName.'_'.now()->format('Y-m-d_H-i-s').'.pdf';
+
+        $pdf = Pdf::loadView('inventory.permanent-storage.taarifa-pdf', $data)
+            ->setPaper('A4', 'portrait');
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildTaarifaData(int $balanceId): array
+    {
         $this->ensureInventorySession();
 
         $user = Auth::user();
         $branchId = $this->currentBranchId();
         $companyId = (int) $user->company_id;
 
-        $validated = $request->validate([
-            'balance_id' => 'required|integer',
-        ]);
-
         $balance = PermanentStorageBalance::query()
             ->with(['customer', 'item'])
             ->where('company_id', $companyId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->whereKey($validated['balance_id'])
+            ->whereKey($balanceId)
             ->firstOrFail();
 
         $customerId = (int) $balance->customer_id;
@@ -795,7 +827,7 @@ class PermanentStorageController extends Controller
         $malipoTotal = (float) $malipoLines->sum('kiasi');
         $fedhaBalance = round($mapatoTotal - $gharamaTotal - $malipoTotal, 2);
 
-        return view('inventory.permanent-storage.taarifa', [
+        return [
             'balance' => $balance,
             'customer' => $balance->customer,
             'item' => $balance->item,
@@ -810,8 +842,7 @@ class PermanentStorageController extends Controller
             'gharamaTotal' => $gharamaTotal,
             'malipoTotal' => $malipoTotal,
             'fedhaBalance' => $fedhaBalance,
-            'can_delete' => user_can_delete_permanent_storage_taarifa(),
-        ]);
+        ];
     }
 
     public function destroyTaarifaLine(Request $request)

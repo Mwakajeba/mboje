@@ -10,6 +10,7 @@ use App\Models\Inventory\CustomerStorageBalance;
 use App\Models\Inventory\PermanentStorageBalance;
 use App\Models\InventoryLocation;
 use App\Services\Inventory\CustomerStorageReportService;
+use App\Services\Inventory\StorageDailyTransactionsService;
 use App\Services\CustomerAccountSummaryService;
 use App\Services\InventoryValueService;
 use Illuminate\Support\Facades\Schema;
@@ -149,6 +150,27 @@ class InventoryController extends Controller
             'inventoryValueAtLocation',
             'inventoryValueCurrency'
         ));
+    }
+
+    public function miamala(Request $request, StorageDailyTransactionsService $transactionsService)
+    {
+        abort_unless(auth()->user()->can('manage inventory items'), 403);
+
+        $user = auth()->user();
+        $companyId = (int) $user->company_id;
+        $branchId = session('branch_id') ?: $user->branch_id;
+        $branchId = $branchId ? (int) $branchId : null;
+
+        $selectedDate = $transactionsService->parseDate($request->query('date'));
+        $report = $transactionsService->build($companyId, $branchId, $selectedDate);
+
+        return view('inventory.miamala', [
+            'selectedDate' => $selectedDate,
+            'mapatoMauzo' => $report['mapato_mauzo'],
+            'gharama' => $report['gharama'],
+            'stooIngizo' => $report['stoo_ingizo'],
+            'totals' => $report['totals'],
+        ]);
     }
 
     public function storageReportDatatable(Request $request)

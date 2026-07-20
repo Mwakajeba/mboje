@@ -1039,6 +1039,7 @@ Route::prefix('accounting')->name('accounting.')->middleware(['auth', 'require.b
 Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'company.scope', 'check.inventory.cost.method', 'require.branch'])->group(function () {
     // Inventory Management Dashboard
     Route::get('/', [InventoryController::class, 'index'])->name('index');
+    Route::get('/miamala', [InventoryController::class, 'miamala'])->name('miamala');
     Route::get('/storage-report/datatable', [InventoryController::class, 'storageReportDatatable'])->name('storage-report.datatable');
 
     Route::get('/value', [App\Http\Controllers\Inventory\InventoryValueController::class, 'index'])->name('value.index');
@@ -1075,6 +1076,7 @@ Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'company.sco
     // Customer product storage (uhifadhi wa bidhaa za wateja)
     Route::get('/customer-storage/history', [CustomerStorageController::class, 'history'])->name('customer-storage.history');
     Route::get('/customer-storage/taarifa', [CustomerStorageController::class, 'taarifa'])->name('customer-storage.taarifa');
+    Route::get('/customer-storage/taarifa/pdf', [CustomerStorageController::class, 'exportTaarifaPdf'])->name('customer-storage.taarifa.pdf');
     Route::delete('/customer-storage/taarifa/line', [CustomerStorageController::class, 'destroyTaarifaLine'])->name('customer-storage.taarifa.line.destroy');
     Route::get('/customer-storage/report', [CustomerStorageController::class, 'report'])->name('customer-storage.report');
     Route::get('/customer-storage/report/pdf', [CustomerStorageController::class, 'exportReportPdf'])->name('customer-storage.report.pdf');
@@ -1091,6 +1093,7 @@ Route::prefix('inventory')->name('inventory.')->middleware(['auth', 'company.sco
     // Uhifadhi wa mazao wa kudumu (long-term crop storage)
     Route::get('/permanent-storage/history', [PermanentStorageController::class, 'history'])->name('permanent-storage.history');
     Route::get('/permanent-storage/taarifa', [PermanentStorageController::class, 'taarifa'])->name('permanent-storage.taarifa');
+    Route::get('/permanent-storage/taarifa/pdf', [PermanentStorageController::class, 'exportTaarifaPdf'])->name('permanent-storage.taarifa.pdf');
     Route::delete('/permanent-storage/taarifa/line', [PermanentStorageController::class, 'destroyTaarifaLine'])->name('permanent-storage.taarifa.line.destroy');
     Route::get('/permanent-storage/report', [PermanentStorageController::class, 'report'])->name('permanent-storage.report');
     Route::get('/permanent-storage/report/pdf', [PermanentStorageController::class, 'exportReportPdf'])->name('permanent-storage.report.pdf');

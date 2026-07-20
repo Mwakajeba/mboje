@@ -179,6 +179,24 @@
                             </div>
                             @endcan
 
+                            <!-- Miamala ya Stoo kwa Siku -->
+                            @can('manage inventory items')
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card border-primary position-relative">
+                                    <div class="card-body text-center">
+                                        <div class="mb-3">
+                                            <i class="bx bx-list-check fs-1 text-primary"></i>
+                                        </div>
+                                        <h5 class="card-title">Miamala</h5>
+                                        <p class="card-text">Angalia mapato/mauzo, gharama na stoo iliyoingizwa kwa tarehe — kudumu na muda mfupi pamoja.</p>
+                                        <a href="{{ route('inventory.miamala') }}" class="btn btn-primary">
+                                            <i class="bx bx-calendar me-1"></i> Chagua Tarehe
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            @endcan
+
                             {{-- Stock Movements (hidden)
                             @can('view inventory adjustments')
                             <div class="col-md-6 col-lg-4 mb-4">

@@ -17,6 +17,9 @@
                 ['label' => 'Taarifa', 'url' => '#', 'icon' => 'bx bx-file']
             ]" />
             <div class="d-flex gap-2">
+                <a href="{{ route('inventory.customer-storage.taarifa.pdf', ['balance_id' => $balance->id]) }}" class="btn btn-info btn-sm">
+                    <i class="bx bxs-file-pdf me-1"></i> Pakua PDF
+                </a>
                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
                     <i class="bx bx-printer me-1"></i> Chapisha
                 </button>
