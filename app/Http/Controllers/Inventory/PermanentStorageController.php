@@ -132,6 +132,13 @@ class PermanentStorageController extends Controller
             $branchId ? (int) $branchId : null
         );
 
+        $summaryTotalGharama = Schema::hasTable('permanent_storage_gharama')
+            ? (float) PermanentStorageGharama::query()
+                ->where('company_id', (int) $user->company_id)
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->sum('kiasi')
+            : 0.0;
+
         $listStatus = $request->query('status') === PermanentStorageBalance::STATUS_INACTIVE
             ? PermanentStorageBalance::STATUS_INACTIVE
             : PermanentStorageBalance::STATUS_ACTIVE;
@@ -150,6 +157,7 @@ class PermanentStorageController extends Controller
             'assignableBranches',
             'branchId',
             'balanceSummary',
+            'summaryTotalGharama',
             'listStatus',
             'statusCounts'
         ));
@@ -173,6 +181,17 @@ class PermanentStorageController extends Controller
         if (! Schema::hasTable('permanent_storage_balances')) {
             return [];
         }
+
+        $gharamaByItem = Schema::hasTable('permanent_storage_gharama')
+            ? PermanentStorageGharama::query()
+                ->where('company_id', $companyId)
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->groupBy('inventory_item_id')
+                ->selectRaw('inventory_item_id, SUM(kiasi) as total')
+                ->pluck('total', 'inventory_item_id')
+                ->map(fn ($value) => (float) $value)
+                ->all()
+            : [];
 
         $balances = PermanentStorageBalance::query()
             ->with('item')
@@ -220,6 +239,7 @@ class PermanentStorageController extends Controller
                     'quantity_display' => $quantityDisplay,
                     'package_display' => $packageDisplay,
                     'summary_display' => $summaryDisplay,
+                    'gharama_total' => (float) ($gharamaByItem[(int) $first->inventory_item_id] ?? 0),
                 ];
             })
             ->sortBy('item_name')
@@ -716,6 +736,8 @@ class PermanentStorageController extends Controller
         $stockLines = collect();
         foreach ($receipts as $row) {
             $stockLines->push([
+                'id' => (int) $row->id,
+                'source' => 'uletaji',
                 'date' => $row->received_date,
                 'type' => 'in',
                 'type_label' => 'Uletaji',
@@ -727,6 +749,8 @@ class PermanentStorageController extends Controller
         foreach ($withdrawals as $row) {
             $reason = PermanentStorageWithdrawal::reasonOptions()[$row->reason] ?? $row->reason;
             $stockLines->push([
+                'id' => (int) $row->id,
+                'source' => 'utoaji',
                 'date' => $row->withdrawn_date,
                 'type' => 'out',
                 'type_label' => 'Utoaji',
@@ -857,7 +881,7 @@ class PermanentStorageController extends Controller
 
         $validated = $request->validate([
             'balance_id' => 'required|integer',
-            'source' => 'required|in:mapato,mauzo,gharama,malipo',
+            'source' => 'required|in:mapato,mauzo,gharama,malipo,uletaji,utoaji',
             'line_id' => 'required|integer',
         ]);
 
@@ -872,29 +896,115 @@ class PermanentStorageController extends Controller
         $source = $validated['source'];
         $lineId = (int) $validated['line_id'];
 
-        $query = match ($source) {
-            'mapato' => PermanentStorageMapato::query(),
-            'mauzo' => PermanentStorageSale::query(),
-            'gharama' => PermanentStorageGharama::query(),
-            'malipo' => PermanentStorageMalipo::query(),
-        };
-
-        $line = $query
-            ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->where('customer_id', $customerId)
-            ->where('inventory_item_id', $itemId)
-            ->whereKey($lineId)
-            ->firstOrFail();
-
-        $line->delete();
-
         $labels = [
             'mapato' => 'Mapato',
             'mauzo' => 'Mauzo',
             'gharama' => 'Gharama',
             'malipo' => 'Malipo',
+            'uletaji' => 'Uletaji wa zao',
+            'utoaji' => 'Utoaji wa zao',
         ];
+
+        try {
+            DB::transaction(function () use ($companyId, $branchId, $customerId, $itemId, $source, $lineId, $balance) {
+                if ($source === 'uletaji') {
+                    $receipt = PermanentStorageReceipt::query()
+                        ->where('company_id', $companyId)
+                        ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                        ->where('customer_id', $customerId)
+                        ->where('inventory_item_id', $itemId)
+                        ->whereKey($lineId)
+                        ->firstOrFail();
+
+                    $qty = (float) $receipt->quantity;
+                    $newOnHand = round((float) $balance->quantity_on_hand - $qty, 4);
+
+                    if ($newOnHand < 0) {
+                        throw new \RuntimeException('Huwezi kufuta uletaji huu kwa sababu salio la zao litakuwa chini ya sifuri.');
+                    }
+
+                    $receipt->delete();
+                    $balance->quantity_on_hand = $newOnHand;
+                    $balance->save();
+
+                    return;
+                }
+
+                if ($source === 'utoaji') {
+                    $withdrawal = PermanentStorageWithdrawal::query()
+                        ->where('company_id', $companyId)
+                        ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                        ->where('customer_id', $customerId)
+                        ->where('inventory_item_id', $itemId)
+                        ->whereKey($lineId)
+                        ->firstOrFail();
+
+                    $qty = (float) $withdrawal->quantity;
+
+                    if (Schema::hasTable('permanent_storage_sales')) {
+                        PermanentStorageSale::query()
+                            ->where('company_id', $companyId)
+                            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                            ->where('withdrawal_id', $withdrawal->id)
+                            ->delete();
+                    }
+
+                    $withdrawal->delete();
+                    $balance->quantity_on_hand = round((float) $balance->quantity_on_hand + $qty, 4);
+                    $balance->save();
+
+                    return;
+                }
+
+                if ($source === 'mauzo') {
+                    $sale = PermanentStorageSale::query()
+                        ->where('company_id', $companyId)
+                        ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                        ->where('customer_id', $customerId)
+                        ->where('inventory_item_id', $itemId)
+                        ->whereKey($lineId)
+                        ->firstOrFail();
+
+                    $qty = (float) $sale->quantity;
+                    $withdrawalId = $sale->withdrawal_id;
+
+                    $sale->delete();
+
+                    if ($withdrawalId && Schema::hasTable('permanent_storage_withdrawals')) {
+                        PermanentStorageWithdrawal::query()
+                            ->where('company_id', $companyId)
+                            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                            ->whereKey($withdrawalId)
+                            ->delete();
+
+                        $balance->quantity_on_hand = round((float) $balance->quantity_on_hand + $qty, 4);
+                        $balance->save();
+                    }
+
+                    return;
+                }
+
+                $query = match ($source) {
+                    'mapato' => PermanentStorageMapato::query(),
+                    'gharama' => PermanentStorageGharama::query(),
+                    'malipo' => PermanentStorageMalipo::query(),
+                };
+
+                $query
+                    ->where('company_id', $companyId)
+                    ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                    ->where('customer_id', $customerId)
+                    ->where('inventory_item_id', $itemId)
+                    ->whereKey($lineId)
+                    ->firstOrFail()
+                    ->delete();
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
 
         return response()->json([
             'success' => true,

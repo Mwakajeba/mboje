@@ -6,6 +6,7 @@
 @php
     $canDelete = !empty($can_delete);
     $financeColspan = $canDelete ? 4 : 3;
+    $stockColspan = $canDelete ? 5 : 4;
 @endphp
 <div class="page-wrapper">
     <div class="page-content">
@@ -78,6 +79,9 @@
                                 <th>Aina</th>
                                 <th>Maelezo</th>
                                 <th class="text-end">Idadi</th>
+                                @if($canDelete)
+                                <th class="text-center no-print" style="width: 72px">Vitendo</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody>
@@ -95,14 +99,27 @@
                                 <td class="text-end {{ $line['type'] === 'out' ? 'text-danger' : 'text-success' }}">
                                     {{ $line['type'] === 'out' ? '-' : '+' }}{{ number_format($line['quantity'], 2) }}
                                 </td>
+                                @if($canDelete)
+                                <td class="text-center no-print">
+                                    @if(!empty($line['id']) && !empty($line['source']))
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger btn-delete-taarifa-line"
+                                            data-source="{{ $line['source'] }}"
+                                            data-line-id="{{ $line['id'] }}"
+                                            title="Futa">
+                                        <i class="bx bx-trash"></i>
+                                    </button>
+                                    @endif
+                                </td>
+                                @endif
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-3">Hakuna historia ya zao.</td>
+                                <td colspan="{{ $stockColspan }}" class="text-center text-muted py-3">Hakuna historia ya zao.</td>
                             </tr>
                             @endforelse
                             <tr class="table-light fw-semibold">
-                                <td colspan="3" class="text-end">Salio la Zao Sasa</td>
+                                <td colspan="{{ $canDelete ? 4 : 3 }}" class="text-end">Salio la Zao Sasa</td>
                                 <td class="text-end">{{ $stock_quantity_display }}</td>
                             </tr>
                         </tbody>
@@ -314,7 +331,9 @@ $(document).ready(function () {
         mapato: 'mapato',
         mauzo: 'mauzo',
         gharama: 'gharama',
-        malipo: 'malipo'
+        malipo: 'malipo',
+        uletaji: 'uletaji wa zao',
+        utoaji: 'utoaji wa zao'
     };
 
     $(document).on('click', '.btn-delete-taarifa-line', function () {

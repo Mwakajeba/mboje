@@ -39,9 +39,16 @@
                             @foreach($stock_summary as $row)
                             <div class="d-flex justify-content-between border-bottom py-1">
                                 <span>{{ $row['item_name'] }}</span>
-                                <span class="fw-semibold">{{ $row['summary_display'] }}</span>
+                                <span class="fw-semibold text-end">
+                                    {{ $row['summary_display'] }}
+                                    <div class="text-danger small">Matumizi: {{ number_format($row['gharama_total'] ?? 0, 2) }}</div>
+                                </span>
                             </div>
                             @endforeach
+                        </div>
+                        <div class="mt-3 pt-2 border-top">
+                            <span class="text-muted small text-uppercase">Jumla ya Matumizi</span>
+                            <div class="fs-5 fw-bold text-danger">{{ number_format($total_gharama ?? 0, 2) }}</div>
                         </div>
                         @endif
                     </div>

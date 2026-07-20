@@ -121,8 +121,11 @@
                 <div class="label">Jumla ya Stoo ya Mazao</div>
                 <div class="value">{{ $total_quantity_display }}</div>
                 @foreach($stock_summary as $row)
-                    <div class="stock-line">{{ $row['item_name'] }}: {{ $row['summary_display'] }}</div>
+                    <div class="stock-line">{{ $row['item_name'] }}: {{ $row['summary_display'] }} · Matumizi: {{ number_format($row['gharama_total'] ?? 0, 2) }}</div>
                 @endforeach
+                <div class="stock-line" style="margin-top:8px;font-weight:bold;color:#b91c1c">
+                    Jumla ya Matumizi: {{ number_format($total_gharama ?? 0, 2) }}
+                </div>
             </td>
             <td>
                 <div class="label">Jumla ya Gharama Zinazodaiwa (Salio)</div>

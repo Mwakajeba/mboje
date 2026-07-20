@@ -142,6 +142,13 @@ class CustomerStorageController extends Controller
             $branchId ? (int) $branchId : null
         );
 
+        $summaryTotalGharama = Schema::hasTable('customer_storage_gharama')
+            ? (float) CustomerStorageGharama::query()
+                ->where('company_id', (int) $user->company_id)
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->sum('kiasi')
+            : 0.0;
+
         return view('inventory.customer-storage.index', compact(
             'customers',
             'items',
@@ -150,6 +157,7 @@ class CustomerStorageController extends Controller
             'assignableBranches',
             'branchId',
             'balanceSummary',
+            'summaryTotalGharama',
             'listStatus',
             'statusCounts'
         ));
@@ -566,6 +574,17 @@ class CustomerStorageController extends Controller
             return [];
         }
 
+        $gharamaByItem = Schema::hasTable('customer_storage_gharama')
+            ? CustomerStorageGharama::query()
+                ->where('company_id', $companyId)
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->groupBy('inventory_item_id')
+                ->selectRaw('inventory_item_id, SUM(kiasi) as total')
+                ->pluck('total', 'inventory_item_id')
+                ->map(fn ($value) => (float) $value)
+                ->all()
+            : [];
+
         $balances = CustomerStorageBalance::query()
             ->with('item')
             ->where('company_id', $companyId)
@@ -612,6 +631,7 @@ class CustomerStorageController extends Controller
                     'quantity_display' => $quantityDisplay,
                     'package_display' => $packageDisplay,
                     'summary_display' => $summaryDisplay,
+                    'gharama_total' => (float) ($gharamaByItem[(int) $first->inventory_item_id] ?? 0),
                 ];
             })
             ->sortBy('item_name')
@@ -732,6 +752,8 @@ class CustomerStorageController extends Controller
         $stockLines = collect();
         foreach ($receipts as $row) {
             $stockLines->push([
+                'id' => (int) $row->id,
+                'source' => 'uletaji',
                 'date' => $row->received_date,
                 'type' => 'in',
                 'type_label' => 'Uletaji',
@@ -743,6 +765,8 @@ class CustomerStorageController extends Controller
         foreach ($withdrawals as $row) {
             $reason = CustomerStorageWithdrawal::reasonOptions()[$row->reason] ?? $row->reason;
             $stockLines->push([
+                'id' => (int) $row->id,
+                'source' => 'utoaji',
                 'date' => $row->withdrawn_date,
                 'type' => 'out',
                 'type_label' => 'Utoaji',
@@ -879,7 +903,7 @@ class CustomerStorageController extends Controller
 
         $validated = $request->validate([
             'balance_id' => 'required|integer',
-            'source' => 'required|in:mapato,mauzo,gharama,malipo',
+            'source' => 'required|in:mapato,mauzo,gharama,malipo,uletaji,utoaji',
             'line_id' => 'required|integer',
         ]);
 
@@ -895,30 +919,119 @@ class CustomerStorageController extends Controller
         $source = $validated['source'];
         $lineId = (int) $validated['line_id'];
 
-        $query = match ($source) {
-            'mapato' => CustomerStorageMapato::query(),
-            'mauzo' => CustomerStorageSale::query(),
-            'gharama' => CustomerStorageGharama::query(),
-            'malipo' => CustomerStorageMalipo::query(),
-        };
-
-        $line = $query
-            ->where('company_id', $companyId)
-            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
-            ->where('customer_id', $customerId)
-            ->where('inventory_item_id', $itemId)
-            ->where('mazunguko', $mazunguko)
-            ->whereKey($lineId)
-            ->firstOrFail();
-
-        $line->delete();
-
         $labels = [
             'mapato' => 'Mapato',
             'mauzo' => 'Mauzo',
             'gharama' => 'Gharama',
             'malipo' => 'Malipo',
+            'uletaji' => 'Uletaji wa zao',
+            'utoaji' => 'Utoaji wa zao',
         ];
+
+        try {
+            DB::transaction(function () use ($companyId, $branchId, $customerId, $itemId, $mazunguko, $source, $lineId, $balance) {
+                if ($source === 'uletaji') {
+                    $receipt = CustomerStorageReceipt::query()
+                        ->where('company_id', $companyId)
+                        ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                        ->where('customer_id', $customerId)
+                        ->where('inventory_item_id', $itemId)
+                        ->where('mazunguko', $mazunguko)
+                        ->whereKey($lineId)
+                        ->firstOrFail();
+
+                    $qty = (float) $receipt->quantity;
+                    $newOnHand = round((float) $balance->quantity_on_hand - $qty, 4);
+
+                    if ($newOnHand < 0) {
+                        throw new \RuntimeException('Huwezi kufuta uletaji huu kwa sababu salio la zao litakuwa chini ya sifuri.');
+                    }
+
+                    $receipt->delete();
+                    $balance->quantity_on_hand = $newOnHand;
+                    $balance->save();
+
+                    return;
+                }
+
+                if ($source === 'utoaji') {
+                    $withdrawal = CustomerStorageWithdrawal::query()
+                        ->where('company_id', $companyId)
+                        ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                        ->where('customer_id', $customerId)
+                        ->where('inventory_item_id', $itemId)
+                        ->where('mazunguko', $mazunguko)
+                        ->whereKey($lineId)
+                        ->firstOrFail();
+
+                    $qty = (float) $withdrawal->quantity;
+
+                    if (Schema::hasTable('customer_storage_sales')) {
+                        CustomerStorageSale::query()
+                            ->where('company_id', $companyId)
+                            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                            ->where('withdrawal_id', $withdrawal->id)
+                            ->delete();
+                    }
+
+                    $withdrawal->delete();
+                    $balance->quantity_on_hand = round((float) $balance->quantity_on_hand + $qty, 4);
+                    $balance->save();
+
+                    return;
+                }
+
+                if ($source === 'mauzo') {
+                    $sale = CustomerStorageSale::query()
+                        ->where('company_id', $companyId)
+                        ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                        ->where('customer_id', $customerId)
+                        ->where('inventory_item_id', $itemId)
+                        ->where('mazunguko', $mazunguko)
+                        ->whereKey($lineId)
+                        ->firstOrFail();
+
+                    $qty = (float) $sale->quantity;
+                    $withdrawalId = $sale->withdrawal_id;
+
+                    $sale->delete();
+
+                    if ($withdrawalId && Schema::hasTable('customer_storage_withdrawals')) {
+                        CustomerStorageWithdrawal::query()
+                            ->where('company_id', $companyId)
+                            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                            ->whereKey($withdrawalId)
+                            ->delete();
+
+                        $balance->quantity_on_hand = round((float) $balance->quantity_on_hand + $qty, 4);
+                        $balance->save();
+                    }
+
+                    return;
+                }
+
+                $query = match ($source) {
+                    'mapato' => CustomerStorageMapato::query(),
+                    'gharama' => CustomerStorageGharama::query(),
+                    'malipo' => CustomerStorageMalipo::query(),
+                };
+
+                $query
+                    ->where('company_id', $companyId)
+                    ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                    ->where('customer_id', $customerId)
+                    ->where('inventory_item_id', $itemId)
+                    ->where('mazunguko', $mazunguko)
+                    ->whereKey($lineId)
+                    ->firstOrFail()
+                    ->delete();
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
 
         return response()->json([
             'success' => true,

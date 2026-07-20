@@ -238,8 +238,10 @@ if (!function_exists('user_can_delete_permanent_storage_taarifa')) {
         }
 
         return $user->hasRole('super-admin')
+            || $user->hasRole('Super Admin')
             || $user->hasRole('md')
-            || $user->hasRole('Md');
+            || $user->hasRole('Md')
+            || $user->hasRole('MD');
     }
 }
 

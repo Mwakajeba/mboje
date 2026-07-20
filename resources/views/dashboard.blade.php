@@ -90,6 +90,22 @@
                             <div class="fs-4 fw-bold {{ ($watejaSalio ?? 0) >= 0 ? 'text-success' : 'text-danger' }}">
                                 {{ number_format($watejaSalio ?? 0, 2) }}
                             </div>
+                            <div class="mt-2 pt-2 border-top">
+                                <div class="text-muted small">Jumla ya Bidhaa (Stoo)</div>
+                                <div class="fw-semibold text-dark lh-sm small">
+                                    {{ $watejaStooDisplay ?? '0' }}
+                                </div>
+                                @if(!empty($watejaStooBreakdown) && count($watejaStooBreakdown) > 1)
+                                    <div class="mt-1 small text-muted">
+                                        @foreach(array_slice($watejaStooBreakdown, 0, 2) as $row)
+                                            <div>{{ $row['item_name'] }}: {{ $row['summary'] }}</div>
+                                        @endforeach
+                                        @if(count($watejaStooBreakdown) > 2)
+                                            <div>+{{ count($watejaStooBreakdown) - 2 }} zaidi…</div>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
                             <div class="mt-3 small text-primary">
                                 Fungua Ripoti ya Stoo ya Muda Mfupi <i class="bx bx-right-arrow-alt"></i>
                             </div>
@@ -124,6 +140,12 @@
                                     @endif
                                 </div>
                             @endif
+                            <div class="mt-2 pt-2 border-top">
+                                <div class="text-muted small">Jumla ya Gharama</div>
+                                <div class="fw-semibold text-danger">
+                                    {{ number_format($stooKudumuGharama ?? 0, 2) }}
+                                </div>
+                            </div>
                             <div class="mt-3 small text-primary">
                                 Fungua Ripoti ya Stoo ya Kudumu <i class="bx bx-right-arrow-alt"></i>
                             </div>

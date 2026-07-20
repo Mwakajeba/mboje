@@ -59,6 +59,9 @@ class DashboardController extends Controller
                 'stooKudumuTotalQty' => 0.0,
                 'stooKudumuDisplay' => '0',
                 'stooKudumuBreakdown' => [],
+                'stooKudumuGharama' => 0.0,
+                'watejaStooDisplay' => '0',
+                'watejaStooBreakdown' => [],
                 'watejaImeishaCount' => 0,
                 'kudumuImeishaCount' => 0,
             ]);
@@ -67,6 +70,7 @@ class DashboardController extends Controller
         $companyId = (int) $company->id;
 
         $stoo = $this->sumPermanentStorageStock($companyId, $branchId);
+        $watejaStoo = $this->sumCustomerStorageStock($companyId, $branchId);
 
         return view('dashboard', [
             'branches' => $branches,
@@ -77,6 +81,9 @@ class DashboardController extends Controller
             'stooKudumuTotalQty' => $stoo['total_quantity'],
             'stooKudumuDisplay' => $stoo['display'],
             'stooKudumuBreakdown' => $stoo['breakdown'],
+            'stooKudumuGharama' => $this->sumTableAmount('permanent_storage_gharama', 'kiasi', $companyId, $branchId),
+            'watejaStooDisplay' => $watejaStoo['display'],
+            'watejaStooBreakdown' => $watejaStoo['breakdown'],
             'watejaImeishaCount' => $this->countInactiveBalances('customer_storage_balances', $companyId, $branchId),
             'kudumuImeishaCount' => $this->countInactiveBalances('permanent_storage_balances', $companyId, $branchId),
         ]);
@@ -167,6 +174,72 @@ class DashboardController extends Controller
         }
 
         $balances = \App\Models\Inventory\PermanentStorageBalance::query()
+            ->with('item')
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->where('status', 'active')
+            ->where('quantity_on_hand', '>', 0)
+            ->get();
+
+        if ($balances->isEmpty()) {
+            return [
+                'total_quantity' => 0.0,
+                'display' => '0',
+                'breakdown' => [],
+            ];
+        }
+
+        $breakdown = $balances
+            ->groupBy('inventory_item_id')
+            ->map(function ($rows) {
+                $item = $rows->first()->item;
+                $qty = (float) $rows->sum('quantity_on_hand');
+                $decimals = fmod($qty, 1.0) === 0.0 ? 0 : 2;
+                $qtyDisplay = number_format($qty, $decimals).($item?->unit_of_measure ? ' '.$item->unit_of_measure : '');
+
+                $packageQty = (float) ($item->package_quantity ?? 0);
+                $packageName = trim((string) ($item->package_name ?? ''));
+                if ($packageQty > 0 && $packageName !== '') {
+                    $packages = $qty / $packageQty;
+                    $pkgDecimals = fmod($packages, 1.0) === 0.0 ? 0 : 2;
+                    $summary = number_format($packages, $pkgDecimals).' '.$packageName.' ('.$qtyDisplay.')';
+                } else {
+                    $summary = $qtyDisplay;
+                }
+
+                return [
+                    'item_name' => $item->name ?? '—',
+                    'summary' => $summary,
+                ];
+            })
+            ->sortBy('item_name')
+            ->values()
+            ->all();
+
+        $display = collect($breakdown)->pluck('summary')->implode(', ');
+        $totalQty = (float) $balances->sum('quantity_on_hand');
+
+        return [
+            'total_quantity' => $totalQty,
+            'display' => $display !== '' ? $display : number_format($totalQty, 2),
+            'breakdown' => $breakdown,
+        ];
+    }
+
+    /**
+     * @return array{total_quantity: float, display: string, breakdown: list<array{item_name: string, summary: string}>}
+     */
+    private function sumCustomerStorageStock(int $companyId, ?int $branchId): array
+    {
+        if (! Schema::hasTable('customer_storage_balances')) {
+            return [
+                'total_quantity' => 0.0,
+                'display' => '0',
+                'breakdown' => [],
+            ];
+        }
+
+        $balances = \App\Models\Inventory\CustomerStorageBalance::query()
             ->with('item')
             ->where('company_id', $companyId)
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
