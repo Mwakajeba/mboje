@@ -330,7 +330,7 @@ class CustomerStorageController extends Controller
             'customer_id' => 'required|integer',
             'inventory_item_id' => 'required|integer',
             'mazunguko' => 'required|integer|min:1',
-            'quantity' => 'required|integer|min:1',
+            'quantity' => 'nullable|integer|min:0',
             'received_date' => 'required|date',
             'notes' => 'nullable|string|max:1000',
         ], [
@@ -338,12 +338,13 @@ class CustomerStorageController extends Controller
             'inventory_item_id.required' => 'Chagua zao.',
             'mazunguko.required' => 'Weka namba ya mzunguko.',
             'mazunguko.min' => 'Mzunguko uwe angalau 1.',
-            'quantity.required' => 'Weka idadi.',
-            'quantity.min' => 'Idadi iwe angalau 1.',
+            'quantity.min' => 'Idadi isiwe chini ya 0.',
             'received_date.required' => 'Weka tarehe aliyoleta zao.',
         ]);
 
         $mazunguko = (int) $validated['mazunguko'];
+        $quantity = (int) ($validated['quantity'] ?? 0);
+        $validated['quantity'] = $quantity;
 
         $customer = Customer::where('company_id', $companyId)
             ->where('branch_id', $branchId)
@@ -373,18 +374,20 @@ class CustomerStorageController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($user, $branchId, $customer, $item, $validated, $mazunguko) {
-                CustomerStorageReceipt::create([
-                    'company_id' => $user->company_id,
-                    'branch_id' => $branchId,
-                    'customer_id' => $customer->id,
-                    'inventory_item_id' => $item->id,
-                    'mazunguko' => $mazunguko,
-                    'quantity' => $validated['quantity'],
-                    'received_date' => $validated['received_date'],
-                    'notes' => $validated['notes'] ?? null,
-                    'created_by' => $user->id,
-                ]);
+            DB::transaction(function () use ($user, $branchId, $customer, $item, $validated, $mazunguko, $quantity) {
+                if ($quantity > 0) {
+                    CustomerStorageReceipt::create([
+                        'company_id' => $user->company_id,
+                        'branch_id' => $branchId,
+                        'customer_id' => $customer->id,
+                        'inventory_item_id' => $item->id,
+                        'mazunguko' => $mazunguko,
+                        'quantity' => $quantity,
+                        'received_date' => $validated['received_date'],
+                        'notes' => $validated['notes'] ?? null,
+                        'created_by' => $user->id,
+                    ]);
+                }
 
                 $balance = CustomerStorageBalance::firstOrNew([
                     'company_id' => $user->company_id,
@@ -394,7 +397,7 @@ class CustomerStorageController extends Controller
                     'mazunguko' => $mazunguko,
                 ]);
 
-                $balance->quantity_on_hand = (float) ($balance->quantity_on_hand ?? 0) + (float) $validated['quantity'];
+                $balance->quantity_on_hand = (float) ($balance->quantity_on_hand ?? 0) + $quantity;
                 $balance->status = CustomerStorageBalance::STATUS_ACTIVE;
                 $balance->save();
             });
@@ -411,9 +414,13 @@ class CustomerStorageController extends Controller
                 ->withErrors(['quantity' => 'Imeshindikana kuhifadhi zao. Jaribu tena au wasiliana na msimamizi wa mfumo.']);
         }
 
+        $message = $quantity > 0
+            ? 'Zao la mteja '.$customer->name.' limepokelewa kikamilifu (mzunguko '.$mazunguko.', idadi: '.$quantity.').'
+            : 'Stoo ya mteja '.$customer->name.' imeundwa (mzunguko '.$mazunguko.', idadi: 0).';
+
         return redirect()
             ->to(route('inventory.customer-storage.index'))
-            ->with('success', 'Zao la mteja '.$customer->name.' limepokelewa kikamilifu (mzunguko '.$mazunguko.', idadi: '.(int) $validated['quantity'].').');
+            ->with('success', $message);
     }
 
     public function withdraw(Request $request)
@@ -1374,10 +1381,6 @@ class CustomerStorageController extends Controller
             ->where('branch_id', $branchId)
             ->where('status', $listStatus);
 
-        if (! $showingInactive) {
-            $query->where('quantity_on_hand', '>', 0);
-        }
-
         return DataTables::of($query)
             ->addColumn('customer_name', fn ($row) => $row->customer->name ?? '—')
             ->addColumn('customer_phone', fn ($row) => $row->customer->phone ?? '—')
@@ -1412,14 +1415,16 @@ class CustomerStorageController extends Controller
                     $html .= '<a href="' . e($taarifaUrl) . '" class="btn btn-sm btn-outline-dark" title="Taarifa">'
                         . '<i class="bx bx-file me-1"></i> Taarifa</a>';
                 } else {
-                    $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-withdraw-storage"'
-                        . ' data-balance-id="' . $balanceId . '"'
-                        . ' data-customer-name="' . $customerName . '"'
-                        . ' data-item-name="' . $itemName . '"'
-                        . ' data-quantity-on-hand="' . $onHand . '"'
-                        . ' data-unit="' . $unit . '"'
-                        . ' title="Toa Zao">'
-                        . '<i class="bx bx-export me-1"></i> Toa</button>';
+                    if ($onHand > 0) {
+                        $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-withdraw-storage"'
+                            . ' data-balance-id="' . $balanceId . '"'
+                            . ' data-customer-name="' . $customerName . '"'
+                            . ' data-item-name="' . $itemName . '"'
+                            . ' data-quantity-on-hand="' . $onHand . '"'
+                            . ' data-unit="' . $unit . '"'
+                            . ' title="Toa Zao">'
+                            . '<i class="bx bx-export me-1"></i> Toa</button>';
+                    }
                     $html .= '<button type="button" class="btn btn-sm btn-outline-success btn-customer-mapato"'
                         . ' data-balance-id="' . $balanceId . '"'
                         . ' data-customer-name="' . $customerName . '"'
@@ -1502,7 +1507,7 @@ class CustomerStorageController extends Controller
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
 
         return [
-            'active' => (int) (clone $base)->where('status', 'active')->where('quantity_on_hand', '>', 0)->count(),
+            'active' => (int) (clone $base)->where('status', 'active')->count(),
             'inactive' => (int) (clone $base)->where('status', 'inactive')->count(),
         ];
     }

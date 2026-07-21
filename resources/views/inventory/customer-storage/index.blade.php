@@ -89,11 +89,12 @@
                             <small class="text-muted">Mzunguko mpya = uhifadhi mpya</small>
                         </div>
                         <div class="col-md-2">
-                            <label for="quantity" class="form-label">Idadi <span class="text-danger">*</span></label>
-                            <input type="number" step="1" min="1" name="quantity" id="quantity"
+                            <label for="quantity" class="form-label">Idadi</label>
+                            <input type="number" step="1" min="0" name="quantity" id="quantity"
                                    class="form-control @error('quantity') is-invalid @enderror"
-                                   value="{{ old('quantity') }}" required>
+                                   value="{{ old('quantity') }}" placeholder="0">
                             @error('quantity')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <small class="text-muted">Si lazima — unaweza kuweka 0</small>
                         </div>
                         <div class="col-md-2">
                             <label for="received_date" class="form-label">Tarehe Aliyoleta <span class="text-danger">*</span></label>
