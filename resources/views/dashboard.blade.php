@@ -8,7 +8,7 @@
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <div>
                 <h4 class="mb-0">Muhtasari wa Salio</h4>
-                <p class="text-muted small mb-0">Wafanyakazi, Wamachinga, Stoo ya Muda Mfupi (Wateja) na Stoo ya Kudumu</p>
+                <p class="text-muted small mb-0">Wafanyakazi, Wamachinga, Stoo, Safari za Madereva na Malipo</p>
             </div>
             @if(isset($branches) && $branches->count() > 1)
             <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center gap-2">
@@ -149,6 +149,39 @@
                             <div class="mt-3 small text-primary">
                                 Fungua Ripoti ya Stoo ya Kudumu <i class="bx bx-right-arrow-alt"></i>
                             </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-md-6">
+                <a href="{{ route('purchases.driver-trips.index') }}" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm h-100 radius-10 dash-summary-card dash-link-card" style="border-left: 4px solid #0d6efd !important">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-muted small text-uppercase">Safari za Madereva</div>
+                                <div class="fs-5 fw-bold text-primary mt-1">Fungua Safari</div>
+                                <div class="small text-muted mt-1">Sajili safari, mapato na matumizi ya madereva</div>
+                                <div class="small text-primary mt-2">Ingia sasa <i class="bx bx-right-arrow-alt"></i></div>
+                            </div>
+                            <span class="dash-icon" style="background: #e7f1ff; color: #0d6efd"><i class="bx bx-car"></i></span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-6">
+                <a href="{{ route('purchases.supplier-advances.index') }}" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm h-100 radius-10 dash-summary-card dash-link-card" style="border-left: 4px solid #0d9488 !important">
+                        <div class="card-body d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-muted small text-uppercase">Malipo ya Wamachinga</div>
+                                <div class="fs-5 fw-bold mt-1" style="color: #0d9488">Fungua Malipo</div>
+                                <div class="small text-muted mt-1">Malipo ya awali, matumizi na salio la wamachinga</div>
+                                <div class="small text-primary mt-2">Ingia sasa <i class="bx bx-right-arrow-alt"></i></div>
+                            </div>
+                            <span class="dash-icon" style="background: #e6f7f5; color: #0d9488"><i class="bx bx-wallet-alt"></i></span>
                         </div>
                     </div>
                 </a>
