@@ -217,7 +217,11 @@ if (!function_exists('user_can_delete_wamachinga_statement')) {
             return false;
         }
 
-        return $user->hasRole('md') || $user->hasRole('Md');
+        return $user->hasRole('super-admin')
+            || $user->hasRole('Super Admin')
+            || $user->hasRole('md')
+            || $user->hasRole('Md')
+            || $user->hasRole('MD');
     }
 }
 

@@ -117,6 +117,9 @@
                                 <th>Maelezo</th>
                                 <th>Aliyeingiza</th>
                                 <th class="text-end">Malipo/Mauzo</th>
+                                @if($canDeleteStatementItems)
+                                <th class="text-end no-print text-nowrap" style="width: 90px">Vitendo</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody>
@@ -126,16 +129,30 @@
                                 <td>{{ $line['description'] }}</td>
                                 <td>{{ $line['performed_by'] ?? '—' }}</td>
                                 <td class="text-end">{{ format_currency($line['paid']) }}</td>
+                                @if($canDeleteStatementItems)
+                                <td class="text-end no-print">
+                                    @if(!empty($line['can_delete']) && !empty($line['advance_id']))
+                                        <form method="post" action="{{ route('purchases.supplier-advances.statement.advance.destroy', ['encodedSupplierId' => $encodedSupplierId, 'encodedAdvanceId' => Vinkla\Hashids\Facades\Hashids::encode($line['advance_id'])]) }}" class="d-inline" onsubmit="return confirm('Una uhakika unataka kufuta malipo haya?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" title="Futa">
+                                                <i class="bx bx-trash"></i>
+                                            </button>
+                                        </form>
+                                    @endif
+                                </td>
+                                @endif
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-3">Hakuna Malipo/Mauzo katika kipindi hiki.</td>
+                                <td colspan="{{ $canDeleteStatementItems ? 5 : 4 }}" class="text-center text-muted py-3">Hakuna Malipo/Mauzo katika kipindi hiki.</td>
                             </tr>
                             @endforelse
                             @if($malipoLines->isNotEmpty())
                             <tr class="table-light fw-semibold">
                                 <td colspan="3" class="text-end">Jumla ya Malipo/Mauzo</td>
                                 <td class="text-end">{{ format_currency($malipoTotal) }}</td>
+                                @if($canDeleteStatementItems)<td class="no-print"></td>@endif
                             </tr>
                             @endif
                         </tbody>
@@ -157,7 +174,6 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @php $expenseDeleteShown = []; @endphp
                             @forelse($matumiziLines as $line)
                             <tr>
                                 <td>{{ $line['date']->format('Y-m-d') }}</td>
@@ -166,14 +182,41 @@
                                 <td class="text-end">{{ format_currency($line['deducted']) }}</td>
                                 @if($canDeleteStatementItems)
                                 <td class="text-end no-print">
-                                    @if(!empty($line['can_delete']) && !empty($line['entry_id']))
-                                        <form method="post" action="{{ route('purchases.supplier-advances.statement.manunuzi.destroy', ['encodedSupplierId' => $encodedSupplierId, 'encodedEntryId' => Vinkla\Hashids\Facades\Hashids::encode($line['entry_id'])]) }}" class="d-inline" onsubmit="return confirm('Una uhakika unataka kufuta manunuzi haya?');">
+                                    @if(!empty($line['can_delete']))
+                                        @php
+                                            $sourceType = $line['source_type'] ?? null;
+                                            $sourceId = $line['source_id'] ?? $line['entry_id'] ?? null;
+                                            $deleteUrl = null;
+                                            $confirmMsg = 'Una uhakika unataka kufuta mstari huu?';
+                                            if ($sourceType === 'supplier_advance_manunuzi' && $sourceId) {
+                                                $deleteUrl = route('purchases.supplier-advances.statement.manunuzi.destroy', [
+                                                    'encodedSupplierId' => $encodedSupplierId,
+                                                    'encodedEntryId' => Vinkla\Hashids\Facades\Hashids::encode($sourceId),
+                                                ]);
+                                                $confirmMsg = 'Una uhakika unataka kufuta manunuzi haya?';
+                                            } elseif ($sourceType === 'supplier_advance_expense' && $sourceId) {
+                                                $deleteUrl = route('purchases.supplier-advances.statement.expense.destroy', [
+                                                    'encodedSupplierId' => $encodedSupplierId,
+                                                    'encodedJournalId' => Vinkla\Hashids\Facades\Hashids::encode($sourceId),
+                                                ]);
+                                                $confirmMsg = 'Una uhakika unataka kufuta matumizi haya?';
+                                            } elseif (!empty($line['entry_id'])) {
+                                                $deleteUrl = route('purchases.supplier-advances.statement.manunuzi.destroy', [
+                                                    'encodedSupplierId' => $encodedSupplierId,
+                                                    'encodedEntryId' => Vinkla\Hashids\Facades\Hashids::encode($line['entry_id']),
+                                                ]);
+                                                $confirmMsg = 'Una uhakika unataka kufuta manunuzi haya?';
+                                            }
+                                        @endphp
+                                        @if($deleteUrl)
+                                        <form method="post" action="{{ $deleteUrl }}" class="d-inline" onsubmit="return confirm(@json($confirmMsg));">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-outline-danger btn-sm" title="Futa">
                                                 <i class="bx bx-trash"></i>
                                             </button>
                                         </form>
+                                        @endif
                                     @endif
                                 </td>
                                 @endif

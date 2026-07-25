@@ -265,18 +265,24 @@ class SupplierAdvanceStatementService
             'date' => $advance->advance_date,
             'sort' => $advance->advance_date->format('Y-m-d').'-A-'.str_pad((string) $advance->id, 8, '0', STR_PAD_LEFT),
             'type' => 'advance',
+            'advance_id' => (int) $advance->id,
             'reference' => $advance->reference ?: ('SADV-'.$advance->id),
             'description' => $advance->description ?: 'Malipo ya awali',
             'paid' => (float) $advance->amount,
             'deducted' => 0.0,
             'performed_by' => $advance->user?->name ?? '—',
             'user_id' => $advance->user_id,
+            'can_delete' => true,
         ];
     }
 
     private function mapDeductionLine(SupplierAdvanceDeduction $deduction): array
     {
         $sourceType = (string) ($deduction->source_type ?? '');
+        $canDelete = in_array($sourceType, [
+            'supplier_advance_expense',
+            'supplier_advance_manunuzi',
+        ], true);
 
         return [
             'date' => $deduction->deduction_date,
@@ -284,15 +290,18 @@ class SupplierAdvanceStatementService
             'type' => 'deduction',
             'deduction_id' => $deduction->id,
             'source_type' => $sourceType,
-            'source_id' => $deduction->source_id,
+            'source_id' => $deduction->source_id ? (int) $deduction->source_id : null,
+            'entry_id' => $sourceType === 'supplier_advance_manunuzi' && $deduction->source_id
+                ? (int) $deduction->source_id
+                : null,
             'reference' => $this->formatDeductionReference($deduction),
             'description' => $deduction->description ?: $this->defaultDeductionDescription($deduction),
             'paid' => 0.0,
             'deducted' => (float) $deduction->amount,
             'performed_by' => $deduction->user?->name ?? '—',
             'user_id' => $deduction->user_id,
-            'can_delete' => $sourceType === 'supplier_advance_expense',
-            'is_manunuzi' => $sourceType === 'cash_purchase',
+            'can_delete' => $canDelete,
+            'is_manunuzi' => $sourceType === 'cash_purchase' || $sourceType === 'supplier_advance_manunuzi',
         ];
     }
 

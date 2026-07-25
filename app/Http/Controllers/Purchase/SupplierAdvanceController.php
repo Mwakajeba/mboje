@@ -535,31 +535,13 @@ class SupplierAdvanceController extends Controller
 
             return $line;
         });
-        $manunuziEntryQuery = SupplierAdvanceManunuziEntry::query()
-            ->where('company_id', $companyId)
-            ->where('supplier_id', $supplier->id)
-            ->when($branchId, fn ($q) => $q->where(function ($q) use ($branchId) {
-                $q->where('branch_id', $branchId)->orWhereNull('branch_id');
-            }))
-            ->with('user:id,name');
 
-        if ($fromDate && $toDate) {
-            $manunuziEntryQuery->whereBetween('entry_date', [$fromDate, $toDate]);
-        }
+        $matumiziLines = collect($statement['matumizi_lines'] ?? [])->map(function (array $line) {
+            $line['paid'] = (float) ($line['paid'] ?? 0);
+            $line['deducted'] = (float) ($line['deducted'] ?? 0);
 
-        $manunuziEntries = $manunuziEntryQuery
-            ->orderBy('entry_date')
-            ->orderBy('id')
-            ->get();
-
-        $matumiziLines = $manunuziEntries->map(fn (SupplierAdvanceManunuziEntry $entry) => [
-            'date' => $entry->entry_date,
-            'description' => $entry->maelezo,
-            'deducted' => (float) $entry->kiasi,
-            'performed_by' => $entry->user?->name ?? '—',
-            'can_delete' => true,
-            'entry_id' => $entry->id,
-        ])->values();
+            return $line;
+        });
 
         $manunuziLines = collect();
 
@@ -612,6 +594,62 @@ class SupplierAdvanceController extends Controller
         return redirect()
             ->route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encodedSupplierId])
             ->with('success', 'Matumizi yamefutwa.');
+    }
+
+    public function destroyStatementAdvance(string $encodedSupplierId, string $encodedAdvanceId)
+    {
+        abort_unless(user_can_delete_wamachinga_statement(), 403);
+
+        $companyId = (int) Auth::user()->company_id;
+        $branchId = session('branch_id') ?? Auth::user()->branch_id;
+        $supplier = $this->supplierForEncodedId($encodedSupplierId, $companyId, $branchId);
+        $advanceId = $this->decodeId($encodedAdvanceId);
+
+        $advance = SupplierAdvance::query()
+            ->where('company_id', $companyId)
+            ->where('supplier_id', $supplier->id)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->findOrFail($advanceId);
+
+        if ($advance->advanceDeductions()->exists()) {
+            return redirect()
+                ->route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encodedSupplierId])
+                ->with('error', 'Haiwezi kufuta: salio la malipo hili limetumika tayari (manunuzi, matumizi, au malipo).');
+        }
+
+        try {
+            DB::beginTransaction();
+            $this->assertAdvanceGlCanBeReversed($advance);
+
+            $advance->loadMissing(['bankAccount.chartAccount', 'debitChartAccount']);
+            if ($advance->isOpeningJournalAdvance()) {
+                $retainedId = $this->advanceJournalService->resolveRetainedEarningsAccountId((int) $advance->company_id);
+                $this->assertChartsNotInCompletedReconciliation($retainedId, $advance->advance_date);
+            } else {
+                $this->assertChartsNotInCompletedReconciliation($advance->bankAccount?->chart_account_id, $advance->advance_date);
+            }
+            $this->assertChartsNotInCompletedReconciliation($advance->debit_chart_account_id, $advance->advance_date);
+
+            $advance->removeGlTransactions();
+
+            if ($advance->attachment_path && Storage::disk('public')->exists($advance->attachment_path)) {
+                Storage::disk('public')->delete($advance->attachment_path);
+            }
+
+            $advance->delete();
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            report($e);
+
+            return redirect()
+                ->route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encodedSupplierId])
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('purchases.supplier-advances.statement', ['encodedSupplierId' => $encodedSupplierId])
+            ->with('success', 'Malipo yamefutwa.');
     }
 
     public function destroyStatementStock(string $encodedSupplierId, string $encodedStockRecordId)

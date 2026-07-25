@@ -1520,6 +1520,7 @@ Route::prefix('purchases')->name('purchases.')->middleware(['auth', 'company.sco
         Route::get('/create', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'create'])->name('create');
         Route::post('/', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'store'])->name('store');
         Route::get('/statement/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'statement'])->name('statement');
+        Route::delete('/statement/{encodedSupplierId}/advance/{encodedAdvanceId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'destroyStatementAdvance'])->name('statement.advance.destroy');
         Route::delete('/statement/{encodedSupplierId}/expense/{encodedJournalId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'destroyStatementExpense'])->name('statement.expense.destroy');
         Route::delete('/statement/{encodedSupplierId}/stock/{encodedStockRecordId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'destroyStatementStock'])->name('statement.stock.destroy');
         Route::post('/stock/{encodedSupplierId}', [\App\Http\Controllers\Purchase\SupplierAdvanceController::class, 'storeStock'])->name('stock.store');
