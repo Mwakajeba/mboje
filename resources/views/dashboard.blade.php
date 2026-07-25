@@ -8,7 +8,7 @@
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <div>
                 <h4 class="mb-0">Muhtasari wa Salio</h4>
-                <p class="text-muted small mb-0">Wafanyakazi, Wamachinga, Stoo, Safari za Madereva na Malipo</p>
+                <p class="text-muted small mb-0">Wafanyakazi, Wamachinga, Stoo na Safari za Madereva</p>
             </div>
             @if(isset($branches) && $branches->count() > 1)
             <form method="GET" action="{{ route('dashboard') }}" class="d-flex align-items-center gap-2">
@@ -167,21 +167,6 @@
                                 <div class="small text-primary mt-2">Ingia sasa <i class="bx bx-right-arrow-alt"></i></div>
                             </div>
                             <span class="dash-icon" style="background: #e7f1ff; color: #0d6efd"><i class="bx bx-car"></i></span>
-                        </div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-md-6">
-                <a href="{{ route('purchases.supplier-advances.index') }}" class="text-decoration-none">
-                    <div class="card border-0 shadow-sm h-100 radius-10 dash-summary-card dash-link-card" style="border-left: 4px solid #0d9488 !important">
-                        <div class="card-body d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="text-muted small text-uppercase">Malipo ya Wamachinga</div>
-                                <div class="fs-5 fw-bold mt-1" style="color: #0d9488">Fungua Malipo</div>
-                                <div class="small text-muted mt-1">Malipo ya awali, matumizi na salio la wamachinga</div>
-                                <div class="small text-primary mt-2">Ingia sasa <i class="bx bx-right-arrow-alt"></i></div>
-                            </div>
-                            <span class="dash-icon" style="background: #e6f7f5; color: #0d9488"><i class="bx bx-wallet-alt"></i></span>
                         </div>
                     </div>
                 </a>
