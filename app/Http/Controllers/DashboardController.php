@@ -59,7 +59,7 @@ class DashboardController extends Controller
                 'stooKudumuTotalQty' => 0.0,
                 'stooKudumuDisplay' => '0',
                 'stooKudumuBreakdown' => [],
-                'stooKudumuGharama' => 0.0,
+                'stooKudumuSalio' => 0.0,
                 'watejaStooDisplay' => '0',
                 'watejaStooBreakdown' => [],
                 'watejaImeishaCount' => 0,
@@ -81,7 +81,7 @@ class DashboardController extends Controller
             'stooKudumuTotalQty' => $stoo['total_quantity'],
             'stooKudumuDisplay' => $stoo['display'],
             'stooKudumuBreakdown' => $stoo['breakdown'],
-            'stooKudumuGharama' => $this->sumTableAmount('permanent_storage_gharama', 'kiasi', $companyId, $branchId),
+            'stooKudumuSalio' => $this->sumKudumuSalio($companyId, $branchId),
             'watejaStooDisplay' => $watejaStoo['display'],
             'watejaStooBreakdown' => $watejaStoo['breakdown'],
             'watejaImeishaCount' => $this->countInactiveBalances('customer_storage_balances', $companyId, $branchId),
@@ -144,6 +144,16 @@ class DashboardController extends Controller
             + $this->sumTableAmount('customer_storage_sales', 'total', $companyId, $branchId);
         $gharama = $this->sumTableAmount('customer_storage_gharama', 'kiasi', $companyId, $branchId);
         $malipo = $this->sumTableAmount('customer_storage_malipo', 'kiasi', $companyId, $branchId);
+
+        return round($mapato - $gharama - $malipo, 2);
+    }
+
+    private function sumKudumuSalio(int $companyId, ?int $branchId): float
+    {
+        $mapato = $this->sumTableAmount('permanent_storage_mapato', 'kiasi', $companyId, $branchId)
+            + $this->sumTableAmount('permanent_storage_sales', 'total', $companyId, $branchId);
+        $gharama = $this->sumTableAmount('permanent_storage_gharama', 'kiasi', $companyId, $branchId);
+        $malipo = $this->sumTableAmount('permanent_storage_malipo', 'kiasi', $companyId, $branchId);
 
         return round($mapato - $gharama - $malipo, 2);
     }

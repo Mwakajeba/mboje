@@ -121,30 +121,30 @@
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div>
                                     <div class="text-muted small text-uppercase">Stoo ya Kudumu</div>
-                                    <div class="text-muted" style="font-size: 12px">Jumla ya Stoo</div>
+                                    <div class="text-muted" style="font-size: 12px">Salio (Mapato − Gharama − Malipo)</div>
                                 </div>
                                 <span class="dash-icon bg-dark-subtle text-dark">
                                     <i class="bx bx-building-house"></i>
                                 </span>
                             </div>
-                            <div class="fs-5 fw-bold text-dark lh-sm">
-                                {{ $stooKudumuDisplay ?? '0' }}
+                            <div class="fs-4 fw-bold {{ ($stooKudumuSalio ?? 0) >= 0 ? 'text-success' : 'text-danger' }}">
+                                {{ number_format($stooKudumuSalio ?? 0, 2) }}
                             </div>
-                            @if(!empty($stooKudumuBreakdown) && count($stooKudumuBreakdown) > 1)
-                                <div class="mt-2 small text-muted">
-                                    @foreach(array_slice($stooKudumuBreakdown, 0, 3) as $row)
-                                        <div>{{ $row['item_name'] }}: {{ $row['summary'] }}</div>
-                                    @endforeach
-                                    @if(count($stooKudumuBreakdown) > 3)
-                                        <div>+{{ count($stooKudumuBreakdown) - 3 }} zaidi…</div>
-                                    @endif
-                                </div>
-                            @endif
                             <div class="mt-2 pt-2 border-top">
-                                <div class="text-muted small">Jumla ya Gharama</div>
-                                <div class="fw-semibold text-danger">
-                                    {{ number_format($stooKudumuGharama ?? 0, 2) }}
+                                <div class="text-muted small">Jumla ya Bidhaa (Stoo)</div>
+                                <div class="fw-semibold text-dark lh-sm small">
+                                    {{ $stooKudumuDisplay ?? '0' }}
                                 </div>
+                                @if(!empty($stooKudumuBreakdown) && count($stooKudumuBreakdown) > 1)
+                                    <div class="mt-1 small text-muted">
+                                        @foreach(array_slice($stooKudumuBreakdown, 0, 2) as $row)
+                                            <div>{{ $row['item_name'] }}: {{ $row['summary'] }}</div>
+                                        @endforeach
+                                        @if(count($stooKudumuBreakdown) > 2)
+                                            <div>+{{ count($stooKudumuBreakdown) - 2 }} zaidi…</div>
+                                        @endif
+                                    </div>
+                                @endif
                             </div>
                             <div class="mt-3 small text-primary">
                                 Fungua Ripoti ya Stoo ya Kudumu <i class="bx bx-right-arrow-alt"></i>
