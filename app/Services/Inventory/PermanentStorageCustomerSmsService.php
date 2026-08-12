@@ -9,6 +9,21 @@ use Illuminate\Support\Facades\Log;
 
 class PermanentStorageCustomerSmsService
 {
+    public function sendMapato(Customer $customer, string $sababu, float $kiasi, string $entryDate, float $salio): void
+    {
+        $this->send(
+            $customer,
+            sprintf(
+                'Mapato: %s Tsh %s tarehe %s. Salio lako Tsh %s. Asante.',
+                $sababu,
+                $this->fmtMoney($kiasi),
+                Carbon::parse($entryDate)->format('d/m/Y'),
+                $this->fmtMoney($salio)
+            ),
+            'mapato'
+        );
+    }
+
     public function sendGharama(Customer $customer, string $sababu, float $kiasi, string $entryDate): void
     {
         $this->send(

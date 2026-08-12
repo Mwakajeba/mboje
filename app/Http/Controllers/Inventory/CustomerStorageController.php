@@ -1236,6 +1236,51 @@ class CustomerStorageController extends Controller
             ->all();
     }
 
+    private function calculateFedhaBalanceForRecord(
+        int $companyId,
+        ?int $branchId,
+        int $customerId,
+        int $itemId,
+        int $mazunguko
+    ): float {
+        $mapato = $this->sumFinanceForRecord('customer_storage_mapato', 'kiasi', $companyId, $branchId, $customerId, $itemId, $mazunguko)
+            + $this->sumFinanceForRecord('customer_storage_sales', 'total', $companyId, $branchId, $customerId, $itemId, $mazunguko);
+        $gharama = $this->sumFinanceForRecord('customer_storage_gharama', 'kiasi', $companyId, $branchId, $customerId, $itemId, $mazunguko);
+        $malipo = $this->sumFinanceForRecord('customer_storage_malipo', 'kiasi', $companyId, $branchId, $customerId, $itemId, $mazunguko);
+
+        return round($mapato - $gharama - $malipo, 2);
+    }
+
+    private function sumFinanceForRecord(
+        string $table,
+        string $column,
+        int $companyId,
+        ?int $branchId,
+        int $customerId,
+        int $itemId,
+        ?int $mazunguko = null
+    ): float {
+        if (! Schema::hasTable($table)) {
+            return 0.0;
+        }
+
+        $allowed = ['kiasi', 'total'];
+        if (! in_array($column, $allowed, true)) {
+            return 0.0;
+        }
+
+        return (float) DB::table($table)
+            ->where('company_id', $companyId)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->where('customer_id', $customerId)
+            ->where('inventory_item_id', $itemId)
+            ->when(
+                $mazunguko !== null && Schema::hasColumn($table, 'mazunguko'),
+                fn ($q) => $q->where('mazunguko', $mazunguko)
+            )
+            ->sum($column);
+    }
+
     /**
      * @param  'mapato'|'gharama'|'malipo'  $type
      */
@@ -1322,7 +1367,22 @@ class CustomerStorageController extends Controller
             ], 500);
         }
 
-        if (in_array($type, ['gharama', 'malipo'], true) && $balance->customer) {
+        if ($type === 'mapato' && $balance->customer) {
+            $salio = $this->calculateFedhaBalanceForRecord(
+                $companyId,
+                $branchId,
+                (int) $balance->customer_id,
+                (int) $balance->inventory_item_id,
+                (int) ($balance->mazunguko ?? 1)
+            );
+            app(CustomerStorageFinanceSmsService::class)->sendMapato(
+                $balance->customer,
+                $payload['sababu'],
+                $payload['kiasi'],
+                $payload['entry_date'],
+                $salio
+            );
+        } elseif (in_array($type, ['gharama', 'malipo'], true) && $balance->customer) {
             $sms = app(CustomerStorageFinanceSmsService::class);
             if ($type === 'gharama') {
                 $sms->sendGharama($balance->customer, $payload['sababu'], $payload['kiasi'], $payload['entry_date']);
