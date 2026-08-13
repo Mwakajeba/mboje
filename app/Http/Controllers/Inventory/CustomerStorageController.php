@@ -142,12 +142,36 @@ class CustomerStorageController extends Controller
             $branchId ? (int) $branchId : null
         );
 
+        $companyId = (int) $user->company_id;
+        $branchIdInt = $branchId ? (int) $branchId : null;
+
+        $summaryTotalMapato = (
+            (Schema::hasTable('customer_storage_mapato')
+                ? (float) CustomerStorageMapato::query()
+                    ->where('company_id', $companyId)
+                    ->when($branchIdInt, fn ($q) => $q->where('branch_id', $branchIdInt))
+                    ->sum('kiasi')
+                : 0.0)
+            + (Schema::hasTable('customer_storage_sales')
+                ? (float) CustomerStorageSale::query()
+                    ->where('company_id', $companyId)
+                    ->when($branchIdInt, fn ($q) => $q->where('branch_id', $branchIdInt))
+                    ->sum('total')
+                : 0.0)
+        );
         $summaryTotalGharama = Schema::hasTable('customer_storage_gharama')
             ? (float) CustomerStorageGharama::query()
-                ->where('company_id', (int) $user->company_id)
-                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->where('company_id', $companyId)
+                ->when($branchIdInt, fn ($q) => $q->where('branch_id', $branchIdInt))
                 ->sum('kiasi')
             : 0.0;
+        $summaryTotalMalipo = Schema::hasTable('customer_storage_malipo')
+            ? (float) CustomerStorageMalipo::query()
+                ->where('company_id', $companyId)
+                ->when($branchIdInt, fn ($q) => $q->where('branch_id', $branchIdInt))
+                ->sum('kiasi')
+            : 0.0;
+        $summaryTotalSalio = round($summaryTotalMapato - $summaryTotalGharama - $summaryTotalMalipo, 2);
 
         return view('inventory.customer-storage.index', compact(
             'customers',
@@ -157,7 +181,10 @@ class CustomerStorageController extends Controller
             'assignableBranches',
             'branchId',
             'balanceSummary',
+            'summaryTotalMapato',
             'summaryTotalGharama',
+            'summaryTotalMalipo',
+            'summaryTotalSalio',
             'listStatus',
             'statusCounts'
         ));

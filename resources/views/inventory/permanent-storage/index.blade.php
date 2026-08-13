@@ -111,7 +111,10 @@
 
         @include('inventory.partials.storage-balance-summary', [
             'balanceSummary' => $balanceSummary,
+            'summaryTotalMapato' => $summaryTotalMapato ?? 0,
             'summaryTotalGharama' => $summaryTotalGharama ?? 0,
+            'summaryTotalMalipo' => $summaryTotalMalipo ?? 0,
+            'summaryTotalSalio' => $summaryTotalSalio ?? 0,
             'borderClass' => 'border-dark',
             'accentClass' => 'text-dark',
         ])

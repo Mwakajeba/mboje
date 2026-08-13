@@ -56,10 +56,14 @@ class DashboardController extends Controller
                 'wafanyakaziSalio' => 0.0,
                 'wamachingaSalio' => 0.0,
                 'watejaSalio' => 0.0,
+                'watejaMapato' => 0.0,
+                'watejaMatumizi' => 0.0,
                 'stooKudumuTotalQty' => 0.0,
                 'stooKudumuDisplay' => '0',
                 'stooKudumuBreakdown' => [],
                 'stooKudumuSalio' => 0.0,
+                'stooKudumuMapato' => 0.0,
+                'stooKudumuMatumizi' => 0.0,
                 'watejaStooDisplay' => '0',
                 'watejaStooBreakdown' => [],
                 'watejaImeishaCount' => 0,
@@ -71,17 +75,23 @@ class DashboardController extends Controller
 
         $stoo = $this->sumPermanentStorageStock($companyId, $branchId);
         $watejaStoo = $this->sumCustomerStorageStock($companyId, $branchId);
+        $watejaFinance = $this->sumCustomerStorageFinance($companyId, $branchId);
+        $kudumuFinance = $this->sumPermanentStorageFinance($companyId, $branchId);
 
         return view('dashboard', [
             'branches' => $branches,
             'selectedBranchId' => $branchId,
             'wafanyakaziSalio' => $this->sumWafanyakaziSalio($companyId, $branchId),
             'wamachingaSalio' => $this->sumWamachingaSalio($companyId, $branchId),
-            'watejaSalio' => $this->sumWatejaSalio($companyId, $branchId),
+            'watejaSalio' => $watejaFinance['salio'],
+            'watejaMapato' => $watejaFinance['mapato'],
+            'watejaMatumizi' => $watejaFinance['matumizi'],
             'stooKudumuTotalQty' => $stoo['total_quantity'],
             'stooKudumuDisplay' => $stoo['display'],
             'stooKudumuBreakdown' => $stoo['breakdown'],
-            'stooKudumuSalio' => $this->sumKudumuSalio($companyId, $branchId),
+            'stooKudumuSalio' => $kudumuFinance['salio'],
+            'stooKudumuMapato' => $kudumuFinance['mapato'],
+            'stooKudumuMatumizi' => $kudumuFinance['matumizi'],
             'watejaStooDisplay' => $watejaStoo['display'],
             'watejaStooBreakdown' => $watejaStoo['breakdown'],
             'watejaImeishaCount' => $this->countInactiveBalances('customer_storage_balances', $companyId, $branchId),
@@ -138,24 +148,40 @@ class DashboardController extends Controller
         return round($advances - $deductions, 2);
     }
 
-    private function sumWatejaSalio(int $companyId, ?int $branchId): float
+    /**
+     * @return array{mapato: float, matumizi: float, malipo: float, salio: float}
+     */
+    private function sumCustomerStorageFinance(int $companyId, ?int $branchId): array
     {
         $mapato = $this->sumTableAmount('customer_storage_mapato', 'kiasi', $companyId, $branchId)
             + $this->sumTableAmount('customer_storage_sales', 'total', $companyId, $branchId);
-        $gharama = $this->sumTableAmount('customer_storage_gharama', 'kiasi', $companyId, $branchId);
+        $matumizi = $this->sumTableAmount('customer_storage_gharama', 'kiasi', $companyId, $branchId);
         $malipo = $this->sumTableAmount('customer_storage_malipo', 'kiasi', $companyId, $branchId);
 
-        return round($mapato - $gharama - $malipo, 2);
+        return [
+            'mapato' => round($mapato, 2),
+            'matumizi' => round($matumizi, 2),
+            'malipo' => round($malipo, 2),
+            'salio' => round($mapato - $matumizi - $malipo, 2),
+        ];
     }
 
-    private function sumKudumuSalio(int $companyId, ?int $branchId): float
+    /**
+     * @return array{mapato: float, matumizi: float, malipo: float, salio: float}
+     */
+    private function sumPermanentStorageFinance(int $companyId, ?int $branchId): array
     {
         $mapato = $this->sumTableAmount('permanent_storage_mapato', 'kiasi', $companyId, $branchId)
             + $this->sumTableAmount('permanent_storage_sales', 'total', $companyId, $branchId);
-        $gharama = $this->sumTableAmount('permanent_storage_gharama', 'kiasi', $companyId, $branchId);
+        $matumizi = $this->sumTableAmount('permanent_storage_gharama', 'kiasi', $companyId, $branchId);
         $malipo = $this->sumTableAmount('permanent_storage_malipo', 'kiasi', $companyId, $branchId);
 
-        return round($mapato - $gharama - $malipo, 2);
+        return [
+            'mapato' => round($mapato, 2),
+            'matumizi' => round($matumizi, 2),
+            'malipo' => round($malipo, 2),
+            'salio' => round($mapato - $matumizi - $malipo, 2),
+        ];
     }
 
     private function sumTableAmount(string $table, string $column, int $companyId, ?int $branchId): float

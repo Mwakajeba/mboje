@@ -81,7 +81,7 @@
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div>
                                     <div class="text-muted small text-uppercase">Stoo ya Muda Mfupi (Wateja)</div>
-                                    <div class="text-muted" style="font-size: 12px">Salio (Mapato − Gharama − Malipo)</div>
+                                    <div class="text-muted" style="font-size: 12px">Salio (Mapato − Matumizi − Malipo)</div>
                                 </div>
                                 <span class="dash-icon bg-info-subtle text-info">
                                     <i class="bx bx-user-pin"></i>
@@ -121,7 +121,7 @@
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div>
                                     <div class="text-muted small text-uppercase">Stoo ya Kudumu</div>
-                                    <div class="text-muted" style="font-size: 12px">Salio (Mapato − Gharama − Malipo)</div>
+                                    <div class="text-muted" style="font-size: 12px">Salio (Mapato − Matumizi − Malipo)</div>
                                 </div>
                                 <span class="dash-icon bg-dark-subtle text-dark">
                                     <i class="bx bx-building-house"></i>
