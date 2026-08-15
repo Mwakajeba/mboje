@@ -1431,10 +1431,6 @@ class PermanentStorageController extends Controller
             ->where('branch_id', $branchId)
             ->where('status', $listStatus);
 
-        if (! $showingInactive) {
-            $query->where('quantity_on_hand', '>', 0);
-        }
-
         return DataTables::of($query)
             ->addColumn('customer_name', fn ($row) => $row->customer->name ?? '—')
             ->addColumn('customer_phone', fn ($row) => $row->customer->phone ?? '—')
@@ -1468,14 +1464,16 @@ class PermanentStorageController extends Controller
                     $html .= '<a href="' . e($taarifaUrl) . '" class="btn btn-sm btn-outline-dark" title="Taarifa">'
                         . '<i class="bx bx-file me-1"></i> Taarifa</a>';
                 } else {
-                    $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-withdraw-permanent-storage"'
-                        . ' data-balance-id="' . $balanceId . '"'
-                        . ' data-customer-name="' . $customerName . '"'
-                        . ' data-item-name="' . $itemName . '"'
-                        . ' data-quantity-on-hand="' . $onHand . '"'
-                        . ' data-unit="' . $unit . '"'
-                        . ' title="Toa Zao">'
-                        . '<i class="bx bx-export me-1"></i> Toa</button>';
+                    if ($onHand > 0) {
+                        $html .= '<button type="button" class="btn btn-sm btn-outline-warning btn-withdraw-permanent-storage"'
+                            . ' data-balance-id="' . $balanceId . '"'
+                            . ' data-customer-name="' . $customerName . '"'
+                            . ' data-item-name="' . $itemName . '"'
+                            . ' data-quantity-on-hand="' . $onHand . '"'
+                            . ' data-unit="' . $unit . '"'
+                            . ' title="Toa Zao">'
+                            . '<i class="bx bx-export me-1"></i> Toa</button>';
+                    }
 
                     $html .= '<button type="button" class="btn btn-sm btn-outline-success btn-permanent-mapato"'
                         . ' data-balance-id="' . $balanceId . '"'
@@ -1563,7 +1561,7 @@ class PermanentStorageController extends Controller
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
 
         return [
-            'active' => (int) (clone $base)->where('status', 'active')->where('quantity_on_hand', '>', 0)->count(),
+            'active' => (int) (clone $base)->where('status', 'active')->count(),
             'inactive' => (int) (clone $base)->where('status', 'inactive')->count(),
         ];
     }
